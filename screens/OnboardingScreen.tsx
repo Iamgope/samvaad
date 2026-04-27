@@ -1,404 +1,315 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View,
-  Text,
-  TouchableOpacity,
   StyleSheet,
-  Dimensions,
   Animated,
+  Pressable,
+  Image,
+  ImageSourcePropType,
+  PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
+import { colors } from '../constants/colors';
+import { fonts } from '../constants/fonts';
+import { spacing } from '../constants/spacing';
+import { Text } from '../components/Text';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
 };
 
-const { width: W } = Dimensions.get('window');
+type HeadLine =
+  | { kind: 'base'; text: string }
+  | { kind: 'hero'; text: string };
 
-const PURPLE = '#6B5CE7';
-const GREEN  = '#B5FF00';
-const DARK   = '#0D0D0D';
-const WHITE  = '#FFFFFF';
-const GAP    = 9;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SLIDE 1 — Crossed swords / pencils
-// ─────────────────────────────────────────────────────────────────────────────
-function SwordsIllustration() {
-  return (
-    <View style={il.wrap}>
-      <View style={[il.circle, { backgroundColor: 'rgba(0,0,0,0.22)' }]}>
-        <View style={[il.compassDot, { top: 14, left: '50%', marginLeft: -3 }]} />
-        <View style={[il.compassDot, { bottom: 14, left: '50%', marginLeft: -3 }]} />
-        <View style={[il.compassDot, { left: 14, top: '50%', marginTop: -3 }]} />
-        <View style={[il.compassDot, { right: 14, top: '50%', marginTop: -3 }]} />
-        <View style={[il.sword, { backgroundColor: GREEN, transform: [{ rotate: '-45deg' }] }]}>
-          <View style={[il.grip, { backgroundColor: 'rgba(0,0,0,0.3)' }]} />
-        </View>
-        <View style={[il.sword, { backgroundColor: 'rgba(210,205,255,0.55)', transform: [{ rotate: '45deg' }] }]}>
-          <View style={[il.grip, { backgroundColor: 'rgba(255,255,255,0.15)' }]} />
-        </View>
-        <View style={il.pivot} />
-      </View>
-    </View>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SLIDE 2 — Category cards
-// ─────────────────────────────────────────────────────────────────────────────
-const CATS = [
-  { name: 'Mela',     sub: 'Culture · Society',                bg: '#B06030', emoji: '🎪' },
-  { name: 'Sports',   sub: 'Cricket · Football',               bg: '#2E5DB5', emoji: '⚽' },
-  { name: 'Politics', sub: 'Power · Policy',                   bg: '#7A1F2A', emoji: '🏛️' },
-  { name: 'Ideas',    sub: 'Philosophy · Tech',                bg: '#5048C8', emoji: '💡' },
-  { name: 'Misc',     sub: 'Everything else · Wildcard topics', bg: '#1E1E1E', emoji: '🎲' },
-];
-
-function CategoriesGrid() {
-  return (
-    <View style={il.catGrid}>
-      <View style={il.catRow}>
-        {CATS.slice(0, 2).map(c => (
-          <View key={c.name} style={[il.catCard, { backgroundColor: c.bg }]}>
-            <View>
-              <Text style={il.catName}>{c.name}</Text>
-              <Text style={il.catSub}>{c.sub}</Text>
-            </View>
-            <Text style={il.catEmoji}>{c.emoji}</Text>
-          </View>
-        ))}
-      </View>
-      <View style={il.catRow}>
-        {CATS.slice(2, 4).map(c => (
-          <View key={c.name} style={[il.catCard, { backgroundColor: c.bg }]}>
-            <View>
-              <Text style={il.catName}>{c.name}</Text>
-              <Text style={il.catSub}>{c.sub}</Text>
-            </View>
-            <Text style={il.catEmoji}>{c.emoji}</Text>
-          </View>
-        ))}
-      </View>
-      <View style={il.catRow}>
-        <View style={[il.catCard, il.catWide, { backgroundColor: CATS[4].bg }]}>
-          <View>
-            <Text style={il.catName}>{CATS[4].name}</Text>
-            <Text style={il.catSub}>{CATS[4].sub}</Text>
-          </View>
-          <Text style={il.catEmoji}>{CATS[4].emoji}</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SLIDE 3 — Ranking podium
-// ─────────────────────────────────────────────────────────────────────────────
-function RankingIllustration() {
-  const BARS = [
-    { label: '2',   height: 68,  bg: 'rgba(107,92,231,0.7)',   textColor: WHITE },
-    { label: 'YOU', height: 100, bg: GREEN,                    textColor: DARK  },
-    { label: '3',   height: 46,  bg: 'rgba(255,255,255,0.18)', textColor: WHITE },
-  ];
-  return (
-    <View style={il.wrap}>
-      <View style={[il.circle, { backgroundColor: 'rgba(107,92,231,0.18)' }]}>
-        <Text style={il.crown}>👑</Text>
-        <Text style={[il.star, { top: 26, left: 36 }]}>✦</Text>
-        <Text style={[il.star, { top: 20, right: 40 }]}>✦</Text>
-        <Text style={[il.star, { top: 50, right: 26, fontSize: 9 }]}>✦</Text>
-        <View style={il.podiumRow}>
-          {BARS.map((b, i) => (
-            <View key={i} style={il.podiumCol}>
-              <View style={[il.podiumBar, { height: b.height, backgroundColor: b.bg }]}>
-                <Text style={[il.podiumLabel, { color: b.textColor }]}>{b.label}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-        <View style={il.podiumFloor} />
-      </View>
-    </View>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SLIDE CONFIG
-// ─────────────────────────────────────────────────────────────────────────────
 type Slide = {
-  bg: string;
-  label: string;
-  labelColor: string;
-  pre: string;
-  accent: string;
-  body: string;
-  activeDot: string;
-  Illus: () => React.JSX.Element;
+  lines: HeadLine[];
+  subhead?: string;
+  body: { text: string; accent?: boolean }[];
+  image: ImageSourcePropType;
+  cta: string;
 };
 
 const SLIDES: Slide[] = [
   {
-    bg: PURPLE,
-    label: 'WELCOME',
-    labelColor: GREEN,
-    pre: 'Say what you\nactually ',
-    accent: 'think.',
-    body: 'Find people who disagree with you. Argue it out. No trolls. No chaos. Just sharp minds going head to head.',
-    activeDot: GREEN,
-    Illus: SwordsIllustration,
+    lines: [
+      { kind: 'base', text: 'Your Ideas' },
+      { kind: 'base', text: 'Deserve' },
+      { kind: 'hero', text: 'Better' },
+    ],
+    subhead: 'than a comment section.',
+    body: [],
+    image: require('../assets/onboarding.png'),
+    cta: 'Get Started',
   },
   {
-    bg: DARK,
-    label: 'FIND YOUR ARENA',
-    labelColor: PURPLE,
-    pre: 'Every debate\nmakes\nyou ',
-    accent: 'sharper.',
-    body: "Pick your arena. Find someone who disagrees. Win or lose — you'll know exactly why you did.",
-    activeDot: PURPLE,
-    Illus: CategoriesGrid,
-  },
-  {
-    bg: DARK,
-    label: 'THE PUNCHLINE',
-    labelColor: GREEN,
-    pre: "Don't worry,\nwe'll judge ",
-    accent: 'you.',
-    body: "Lose a round? Good — you'll know exactly why. Every debate sharpens your thinking and builds your rank.",
-    activeDot: GREEN,
-    Illus: RankingIllustration,
+    lines: [
+      { kind: 'base', text: 'Make' },
+      { kind: 'hero', text: 'Better' },
+      { kind: 'base', text: 'Arguments' },
+    ],
+    body: [
+      { text: 'Structured debates. Ranked matches. Sharpen your ' },
+      { text: 'thinking', accent: true },
+      { text: '.' },
+    ],
+    image: require('../assets/onboarding2.png'),
+    cta: 'Continue',
   },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN
-// ─────────────────────────────────────────────────────────────────────────────
+const SWIPE_THRESHOLD = 50;
+const SWIPE_VELOCITY = 0.25;
+
 export default function OnboardingScreen({ navigation }: Props) {
   const [idx, setIdx] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
+  const ctaScale = useRef(new Animated.Value(1)).current;
   const slide = SLIDES[idx];
+  const isLast = idx === SLIDES.length - 1;
+
+  const transitionTo = (next: number) => {
+    Animated.timing(fade, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
+      setIdx(next);
+      Animated.timing(fade, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+    });
+  };
 
   const advance = () => {
-    const isLast = idx === SLIDES.length - 1;
     if (isLast) {
       navigation.replace('Login');
       return;
     }
-    // Fade out → swap content → fade in
-    Animated.timing(fade, { toValue: 0, duration: 140, useNativeDriver: true }).start(() => {
-      setIdx(i => i + 1);
-      Animated.timing(fade, { toValue: 1, duration: 180, useNativeDriver: true }).start();
-    });
+    transitionTo(idx + 1);
   };
 
-  const IllusComponent = slide.Illus;
+  const goBack = () => {
+    if (idx === 0) return;
+    transitionTo(idx - 1);
+  };
+
+  const onPressIn = () =>
+    Animated.timing(ctaScale, { toValue: 0.96, duration: 80, useNativeDriver: true }).start();
+  const onPressOut = () =>
+    Animated.timing(ctaScale, { toValue: 1, duration: 80, useNativeDriver: true }).start();
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, g) =>
+          Math.abs(g.dx) > 12 && Math.abs(g.dx) > Math.abs(g.dy),
+        onPanResponderRelease: (_, g) => {
+          if (g.dx < -SWIPE_THRESHOLD || g.vx < -SWIPE_VELOCITY) {
+            advance();
+          } else if (g.dx > SWIPE_THRESHOLD || g.vx > SWIPE_VELOCITY) {
+            goBack();
+          }
+        },
+      }),
+    [idx, isLast],
+  );
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: slide.bg }]}>
-      {/* Skip */}
-      <TouchableOpacity style={s.skipRow} onPress={() => navigation.replace('Login')}>
-        <Text style={s.skipText}>Skip</Text>
-      </TouchableOpacity>
+    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+      <StatusBar style="dark" />
 
-      {/* Illustration */}
-      <Animated.View style={[s.illusArea, { opacity: fade }]}>
-        <IllusComponent />
-      </Animated.View>
+      <View style={s.swipeArea} {...panResponder.panHandlers}>
+        <Animated.View style={[s.headerArea, { opacity: fade }]}>
+          <View>
+            {slide.lines.map((line, li) =>
+              line.kind === 'hero' ? (
+                <View key={li} style={s.heroRow}>
+                  <View style={s.heroBrush} pointerEvents="none" />
+                  <View style={s.heroBrushOverlay} pointerEvents="none" />
+                  <Text style={s.heroPill}>{line.text}</Text>
+                </View>
+              ) : (
+                <Text key={li} style={s.heroBase}>
+                  {line.text}
+                </Text>
+              ),
+            )}
+          </View>
 
-      {/* Bottom content */}
-      <Animated.View style={[s.content, { opacity: fade }]}>
-        <Text style={[s.label, { color: slide.labelColor }]}>{slide.label}</Text>
-        <Text style={s.headline}>
-          {slide.pre}
-          <Text style={{ color: GREEN }}>{slide.accent}</Text>
-        </Text>
-        <Text style={s.body}>{slide.body}</Text>
+          {!!slide.subhead && (
+            <Text variant="bodyLg" tone="onLightMuted" style={s.subhead}>
+              {slide.subhead}
+            </Text>
+          )}
 
-        {/* Progress dashes */}
+          <Text variant="bodyMd" tone="onLightSubtle" style={s.body}>
+            {slide.body.map((seg, i) =>
+              seg.accent ? (
+                <Text key={i} style={s.bodyAccent}>{seg.text}</Text>
+              ) : (
+                <Text key={i} tone="inverse">{seg.text}</Text>
+              ),
+            )}
+          </Text>
+        </Animated.View>
+
+        <Animated.View style={[s.illusArea, { opacity: fade }]}>
+          <Image source={slide.image} style={s.illusImage} resizeMode="contain" />
+        </Animated.View>
+      </View>
+
+      <View style={s.footer}>
         <View style={s.dotsRow}>
-          {SLIDES.map((sl, i) => (
-            <View
-              key={i}
-              style={[
-                s.dash,
-                i === idx
-                  ? { backgroundColor: sl.activeDot, width: 28 }
-                  : { backgroundColor: 'rgba(255,255,255,0.22)', width: 8 },
-              ]}
-            />
+          {SLIDES.map((_, i) => (
+            <View key={i} style={[s.dot, i === idx ? s.dotActive : s.dotInactive]} />
           ))}
         </View>
 
-        <TouchableOpacity style={s.nextBtn} onPress={advance} activeOpacity={0.88}>
-          <Text style={s.nextText}>
-            {idx === SLIDES.length - 1 ? 'Get Started →' : 'Next →'}
-          </Text>
-        </TouchableOpacity>
-      </Animated.View>
+        <Pressable
+          onPress={advance}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
+          style={s.ctaWrap}
+        >
+          <Animated.View style={[s.cta, { transform: [{ scale: ctaScale }] }]}>
+            <Text variant="labelLg" style={s.ctaText}>{slide.cta}</Text>
+            <Text style={s.ctaArrow}>{'→'}</Text>
+          </Animated.View>
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ILLUSTRATION STYLES
-// ─────────────────────────────────────────────────────────────────────────────
-const CIRCLE = 224;
+const HORIZONTAL = 24;
 
-const il = StyleSheet.create({
-  wrap: { justifyContent: 'center', alignItems: 'center' },
-  circle: {
-    width: CIRCLE,
-    height: CIRCLE,
-    borderRadius: CIRCLE / 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  compassDot: {
-    position: 'absolute',
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.35)',
-  },
-  sword: {
-    position: 'absolute',
-    width: 11,
-    height: 168,
-    borderRadius: 7,
-  },
-  grip: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 34,
-    borderRadius: 7,
-  },
-  pivot: {
-    position: 'absolute',
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: DARK,
-    borderWidth: 2.5,
-    borderColor: 'rgba(255,255,255,0.55)',
-  },
-  // Categories
-  catGrid: { width: W - 52, gap: GAP },
-  catRow: { flexDirection: 'row', gap: GAP },
-  catCard: {
-    flex: 1,
-    height: 84,
-    borderRadius: 14,
-    padding: 14,
-    justifyContent: 'space-between',
-  },
-  catWide: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    height: 70,
-  },
-  catName: { fontSize: 15, fontWeight: '800', color: WHITE, marginBottom: 3 },
-  catSub:  { fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.6)' },
-  catEmoji: { fontSize: 24 },
-  // Podium
-  crown: { position: 'absolute', top: 24, fontSize: 30, zIndex: 2 },
-  star:  { position: 'absolute', fontSize: 11, color: 'rgba(181,255,0,0.55)' },
-  podiumRow: {
-    position: 'absolute',
-    bottom: 0,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 6,
-  },
-  podiumCol: { width: 58, alignItems: 'center' },
-  podiumBar: {
-    width: 58,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingBottom: 10,
-  },
-  podiumLabel: { fontSize: 13, fontWeight: '900' },
-  podiumFloor: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SCREEN STYLES
-// ─────────────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  safe: { flex: 1 },
-  skipRow: {
-    paddingHorizontal: 26,
-    paddingTop: 12,
-    alignItems: 'flex-end',
+  safe: {
+    flex: 1,
+    backgroundColor: colors.cream,
   },
-  skipText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.4)',
+  swipeArea: {
+    flex: 1,
   },
+  headerArea: {
+    paddingHorizontal: HORIZONTAL,
+    paddingTop: 48,
+  },
+
+  // The hero brush text keeps custom dimensions because the brushstroke
+  // background geometry (rotation, skew, offset) is calibrated to these
+  // exact font sizes. Don't swap to a typography token without recalibrating.
+  heroBase: {
+    fontFamily: fonts.display.extraBold,
+    fontSize: 38,
+    lineHeight: 44,
+    color: colors.textOnLight,
+    letterSpacing: -1.6,
+  },
+  heroRow: {
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    marginBottom: 2,
+    paddingHorizontal: 14,
+    paddingVertical: 2,
+    position: 'relative',
+  },
+  heroBrush: {
+    position: 'absolute',
+    top: 8,
+    left: -4,
+    right: -2,
+    bottom: 6,
+    backgroundColor: colors.lime,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 22,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 6,
+    transform: [{ rotate: '-1.6deg' }, { skewX: '-3deg' }],
+  },
+  heroBrushOverlay: {
+    position: 'absolute',
+    top: 12,
+    left: 2,
+    right: -6,
+    bottom: 4,
+    backgroundColor: colors.lime,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 8,
+    borderBottomLeftRadius: 6,
+    borderBottomRightRadius: 20,
+    transform: [{ rotate: '1.2deg' }],
+    opacity: 0.95,
+  },
+  heroPill: {
+    fontFamily: fonts.display.black,
+    fontSize: 52,
+    lineHeight: 60,
+    color: colors.textOnLight,
+    letterSpacing: -2,
+  },
+
+  subhead: {
+    marginTop: spacing.md,
+  },
+  body: {
+    marginTop: spacing.md,
+    maxWidth: '88%',
+  },
+  bodyAccent: {
+    color: colors.purple,
+    fontFamily: fonts.jakarta.semiBold,
+  },
+
   illusArea: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: HORIZONTAL,
+    marginTop: spacing.lg,
   },
-  content: {
-    paddingHorizontal: 26,
-    paddingBottom: 38,
+  illusImage: {
+    width: '100%',
+    height: '100%',
   },
-  label: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 2.2,
-    marginBottom: 12,
-  },
-  headline: {
-    fontSize: 38,
-    fontWeight: '900',
-    color: WHITE,
-    lineHeight: 44,
-    letterSpacing: -1,
-    marginBottom: 14,
-  },
-  body: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.55)',
-    lineHeight: 24,
-    fontWeight: '400',
-    marginBottom: 26,
+
+  footer: {
+    paddingHorizontal: HORIZONTAL,
+    paddingBottom: spacing.lg,
+    alignItems: 'center',
   },
   dotsRow: {
     flexDirection: 'row',
-    gap: 6,
-    alignItems: 'center',
-    marginBottom: 20,
+    gap: 8,
+    marginBottom: spacing.xl,
   },
-  dash: { height: 4, borderRadius: 2 },
-  nextBtn: {
-    backgroundColor: GREEN,
-    borderRadius: 16,
-    height: 58,
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  dotActive: { backgroundColor: colors.purple },
+  dotInactive: { backgroundColor: 'rgba(0,0,0,0.14)' },
+
+  ctaWrap: { width: '100%' },
+  cta: {
+    backgroundColor: colors.black,
+    borderRadius: 28,
+    height: 56,
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
   },
-  nextText: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: DARK,
-    letterSpacing: 0.3,
+  ctaText: {
+    color: colors.text,
+    flex: 1,
+    textAlign: 'center',
+  },
+  ctaArrow: {
+    fontFamily: fonts.display.black,
+    fontSize: 20,
+    color: colors.lime,
+    position: 'absolute',
+    right: spacing.xl,
   },
 });
