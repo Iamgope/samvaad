@@ -11,10 +11,10 @@ import { fonts } from './fonts';
 export const text = {
   // DISPLAY — hero moments. Auth headlines, landing.
   displayHero: {
-    fontFamily: fonts.serif.italic,
+    fontFamily: fonts.display.black,
     fontSize: 56,
     lineHeight: 60,
-    letterSpacing: 0,
+    letterSpacing: -1.4,
   },
   displayLg: {
     fontFamily: fonts.display.extraBold,

@@ -3,8 +3,6 @@ import {
   View,
   TextInput,
   StyleSheet,
-  Pressable,
-  Animated,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -18,6 +16,7 @@ import { colors } from '../constants/colors';
 import { spacing } from '../constants/spacing';
 import { text } from '../constants/typography';
 import { Text } from '../components/Text';
+import { Button } from '../components/Button';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'OTP'>;
@@ -32,7 +31,6 @@ export default function OTPScreen({ navigation, route }: Props) {
   const [otp, setOtp] = useState<string[]>(Array(N).fill(''));
   const [seconds, setSeconds] = useState(RESEND_SECONDS);
   const refs = useRef<(TextInput | null)[]>([]);
-  const ctaScale = useRef(new Animated.Value(1)).current;
   const isComplete = otp.every(d => d !== '');
 
   useEffect(() => {
@@ -45,9 +43,7 @@ export default function OTPScreen({ navigation, route }: Props) {
     if (raw.length > 1) {
       const cleaned = raw.replace(/\D/g, '').split('').slice(0, N - i);
       const next = [...otp];
-      cleaned.forEach((d, j) => {
-        next[i + j] = d;
-      });
+      cleaned.forEach((d, j) => { next[i + j] = d; });
       setOtp(next);
       refs.current[Math.min(i + cleaned.length, N - 1)]?.focus();
       return;
@@ -65,11 +61,6 @@ export default function OTPScreen({ navigation, route }: Props) {
       setOtp(next);
       refs.current[i - 1]?.focus();
     }
-  };
-
-  const onVerify = () => {
-    if (!isComplete) return;
-    navigation.replace('ChooseArenas');
   };
 
   const fmt = (n: number) => `00:${n.toString().padStart(2, '0')}`;
@@ -95,16 +86,15 @@ export default function OTPScreen({ navigation, route }: Props) {
           <Text variant="displayLg">Enter the</Text>
           <Text variant="displayHero" tone="accent">code</Text>
           <Text variant="bodyLg" tone="muted" style={s.subhead}>
-            We’ve sent a 6-digit code{'\n'}to <Text variant="bodyLg" tone="accent">{phone}</Text>
+            We've sent a 6-digit code{'\n'}to{' '}
+            <Text variant="bodyLg" tone="accent">{phone}</Text>
           </Text>
 
           <View style={s.otpRow}>
             {otp.map((digit, i) => (
               <TextInput
                 key={i}
-                ref={r => {
-                  refs.current[i] = r;
-                }}
+                ref={r => { refs.current[i] = r; }}
                 style={[s.otpBox, digit ? s.otpFilled : null]}
                 value={digit}
                 onChangeText={t => handleChange(t, i)}
@@ -119,9 +109,7 @@ export default function OTPScreen({ navigation, route }: Props) {
 
           <Text variant="bodyMd" tone="subtle" style={s.resend}>
             {seconds > 0 ? (
-              <>
-                Resend code in <Text variant="bodyMd" tone="accent">{fmt(seconds)}</Text>
-              </>
+              <>Resend code in <Text variant="bodyMd" tone="accent">{fmt(seconds)}</Text></>
             ) : (
               <Text variant="bodyMd" tone="accent" onPress={() => setSeconds(RESEND_SECONDS)}>
                 Resend code
@@ -131,31 +119,13 @@ export default function OTPScreen({ navigation, route }: Props) {
         </View>
 
         <View style={s.footer}>
-          <Pressable
-            onPress={onVerify}
-            onPressIn={() =>
-              Animated.timing(ctaScale, { toValue: 0.97, duration: 80, useNativeDriver: true }).start()
-            }
-            onPressOut={() =>
-              Animated.timing(ctaScale, { toValue: 1, duration: 80, useNativeDriver: true }).start()
-            }
-          >
-            <Animated.View
-              style={[
-                s.cta,
-                !isComplete && s.ctaOff,
-                { transform: [{ scale: ctaScale }] },
-              ]}
-            >
-              <Text
-                variant="labelLg"
-                tone="inverse"
-                style={!isComplete && s.ctaTextOff}
-              >
-                Verify
-              </Text>
-            </Animated.View>
-          </Pressable>
+          <Button
+            label="Verify"
+            onPress={() => navigation.replace('OnboardingFlow')}
+            shadowColor={colors.lime}
+            disabled={!isComplete}
+            arrow
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -186,10 +156,7 @@ const s = StyleSheet.create({
   },
 
   content: { flex: 1, paddingHorizontal: HORIZONTAL, paddingTop: spacing.xl },
-  subhead: {
-    marginTop: spacing.md,
-    marginBottom: spacing.xl,
-  },
+  subhead: { marginTop: spacing.md, marginBottom: spacing.xl },
 
   otpRow: {
     flexDirection: 'row',
@@ -212,18 +179,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(202,255,51,0.06)',
   },
 
-  resend: {
-    textAlign: 'center',
-  },
+  resend: { textAlign: 'center' },
 
   footer: { paddingHorizontal: HORIZONTAL, paddingBottom: spacing.lg },
-  cta: {
-    backgroundColor: colors.lime,
-    borderRadius: 28,
-    height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  ctaOff: { backgroundColor: 'rgba(202,255,51,0.18)' },
-  ctaTextOff: { color: 'rgba(202,255,51,0.45)' },
 });

@@ -1,10 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   TextInput,
   StyleSheet,
   Pressable,
-  Animated,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -17,6 +16,7 @@ import { colors } from '../constants/colors';
 import { spacing } from '../constants/spacing';
 import { text } from '../constants/typography';
 import { Text } from '../components/Text';
+import { Button } from '../components/Button';
 import {
   CountryPickerModal,
   COUNTRIES,
@@ -32,12 +32,6 @@ export default function PhoneScreen({ navigation }: Props) {
   const [showPicker, setShowPicker] = useState(false);
   const [phone, setPhone] = useState('');
   const canContinue = phone.replace(/\D/g, '').length >= 7;
-  const ctaScale = useRef(new Animated.Value(1)).current;
-
-  const onContinue = () => {
-    if (!canContinue) return;
-    navigation.navigate('OTP', { phone: `${country.dial} ${phone}` });
-  };
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
@@ -63,7 +57,7 @@ export default function PhoneScreen({ navigation }: Props) {
             <Text variant="displayLg"> number</Text>
           </Text>
           <Text variant="bodyLg" tone="muted" style={s.subhead}>
-            We’ll send you a code to{'\n'}verify your number.
+            We'll send you a code to{'\n'}verify your number.
           </Text>
 
           <View style={s.inputRow}>
@@ -90,31 +84,13 @@ export default function PhoneScreen({ navigation }: Props) {
             </View>
           </View>
 
-          <Pressable
-            onPress={onContinue}
-            onPressIn={() =>
-              Animated.timing(ctaScale, { toValue: 0.97, duration: 80, useNativeDriver: true }).start()
-            }
-            onPressOut={() =>
-              Animated.timing(ctaScale, { toValue: 1, duration: 80, useNativeDriver: true }).start()
-            }
-          >
-            <Animated.View
-              style={[
-                s.cta,
-                !canContinue && s.ctaOff,
-                { transform: [{ scale: ctaScale }] },
-              ]}
-            >
-              <Text
-                variant="labelLg"
-                tone="inverse"
-                style={!canContinue && s.ctaTextOff}
-              >
-                Send Code
-              </Text>
-            </Animated.View>
-          </Pressable>
+          <Button
+            label="Send Code"
+            onPress={() => navigation.navigate('OTP', { phone: `${country.dial} ${phone}` })}
+            shadowColor={colors.lime}
+            disabled={!canContinue}
+            arrow
+          />
         </View>
 
         <View style={s.privacyRow}>
@@ -128,10 +104,7 @@ export default function PhoneScreen({ navigation }: Props) {
       <CountryPickerModal
         visible={showPicker}
         selected={country}
-        onSelect={(c) => {
-          setCountry(c);
-          setShowPicker(false);
-        }}
+        onSelect={(c) => { setCountry(c); setShowPicker(false); }}
         onClose={() => setShowPicker(false)}
       />
     </SafeAreaView>
@@ -206,16 +179,6 @@ const s = StyleSheet.create({
     color: colors.text,
   },
 
-  cta: {
-    backgroundColor: colors.lime,
-    borderRadius: 28,
-    height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  ctaOff: { backgroundColor: 'rgba(202,255,51,0.18)' },
-  ctaTextOff: { color: 'rgba(202,255,51,0.45)' },
-
   privacyRow: {
     paddingHorizontal: HORIZONTAL,
     paddingBottom: spacing.lg,
@@ -231,7 +194,5 @@ const s = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.textSubtle,
   },
-  privacyText: {
-    textAlign: 'center',
-  },
+  privacyText: { textAlign: 'center' },
 });

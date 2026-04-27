@@ -75,6 +75,7 @@ export function CountryPickerModal({ visible, selected, onSelect, onClose }: Pro
             data={filtered}
             keyExtractor={(c) => c.code}
             keyboardShouldPersistTaps="handled"
+            persistentScrollbar={false} 
             renderItem={({ item }) => {
               const isSelected = item.code === selected.code;
               return (

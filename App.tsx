@@ -17,17 +17,11 @@ import {
   PlusJakartaSans_700Bold,
   PlusJakartaSans_800ExtraBold,
 } from '@expo-google-fonts/plus-jakarta-sans';
-import {
-  InstrumentSerif_400Regular,
-  InstrumentSerif_400Regular_Italic,
-} from '@expo-google-fonts/instrument-serif';
 import OnboardingScreen from './screens/OnboardingScreen';
 import LoginScreen from './screens/LoginScreen';
 import PhoneScreen from './screens/PhoneScreen';
 import OTPScreen from './screens/OTPScreen';
-import ChooseArenasScreen from './screens/ChooseArenasScreen';
-import ChooseNameScreen from './screens/ChooseNameScreen';
-import AllSetScreen from './screens/AllSetScreen';
+import OnboardingFlowScreen from './screens/OnboardingFlowScreen';
 import HomeScreen from './screens/HomeScreen';
 import { colors } from './constants/colors';
 
@@ -36,9 +30,7 @@ export type RootStackParamList = {
   Login: undefined;
   Phone: undefined;
   OTP: { phone: string };
-  ChooseArenas: undefined;
-  ChooseName: { arenas: string[] };
-  AllSet: undefined;
+  OnboardingFlow: undefined;
   Home: undefined;
 };
 
@@ -55,8 +47,6 @@ export default function App() {
     PlusJakartaSans_600SemiBold,
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
-    InstrumentSerif_400Regular,
-    InstrumentSerif_400Regular_Italic,
   });
 
   if (!fontsLoaded) {
@@ -78,9 +68,7 @@ export default function App() {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Phone" component={PhoneScreen} />
         <Stack.Screen name="OTP" component={OTPScreen} />
-        <Stack.Screen name="ChooseArenas" component={ChooseArenasScreen} />
-        <Stack.Screen name="ChooseName" component={ChooseNameScreen} />
-        <Stack.Screen name="AllSet" component={AllSetScreen} />
+        <Stack.Screen name="OnboardingFlow" component={OnboardingFlowScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
       </Stack.Navigator>
     </NavigationContainer>

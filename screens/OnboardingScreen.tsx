@@ -3,7 +3,6 @@ import {
   View,
   StyleSheet,
   Animated,
-  Pressable,
   Image,
   ImageSourcePropType,
   PanResponder,
@@ -16,6 +15,7 @@ import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { spacing } from '../constants/spacing';
 import { Text } from '../components/Text';
+import { Button } from '../components/Button';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
@@ -67,7 +67,6 @@ const SWIPE_VELOCITY = 0.25;
 export default function OnboardingScreen({ navigation }: Props) {
   const [idx, setIdx] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
-  const ctaScale = useRef(new Animated.Value(1)).current;
   const slide = SLIDES[idx];
   const isLast = idx === SLIDES.length - 1;
 
@@ -90,11 +89,6 @@ export default function OnboardingScreen({ navigation }: Props) {
     if (idx === 0) return;
     transitionTo(idx - 1);
   };
-
-  const onPressIn = () =>
-    Animated.timing(ctaScale, { toValue: 0.96, duration: 80, useNativeDriver: true }).start();
-  const onPressOut = () =>
-    Animated.timing(ctaScale, { toValue: 1, duration: 80, useNativeDriver: true }).start();
 
   const panResponder = useMemo(
     () =>
@@ -163,17 +157,13 @@ export default function OnboardingScreen({ navigation }: Props) {
           ))}
         </View>
 
-        <Pressable
+        <Button
+          label={slide.cta}
           onPress={advance}
-          onPressIn={onPressIn}
-          onPressOut={onPressOut}
+          arrow
+          shadowColor={colors.lime}
           style={s.ctaWrap}
-        >
-          <Animated.View style={[s.cta, { transform: [{ scale: ctaScale }] }]}>
-            <Text variant="labelLg" style={s.ctaText}>{slide.cta}</Text>
-            <Text style={s.ctaArrow}>{'→'}</Text>
-          </Animated.View>
-        </Pressable>
+        />
       </View>
     </SafeAreaView>
   );
@@ -290,26 +280,4 @@ const s = StyleSheet.create({
   dotInactive: { backgroundColor: 'rgba(0,0,0,0.14)' },
 
   ctaWrap: { width: '100%' },
-  cta: {
-    backgroundColor: colors.black,
-    borderRadius: 28,
-    height: 56,
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-  },
-  ctaText: {
-    color: colors.text,
-    flex: 1,
-    textAlign: 'center',
-  },
-  ctaArrow: {
-    fontFamily: fonts.display.black,
-    fontSize: 20,
-    color: colors.lime,
-    position: 'absolute',
-    right: spacing.xl,
-  },
 });

@@ -1,35 +1,42 @@
+// Dark palette: navy-charcoal base instead of pure black.
+// This reduces the harsh 21:1 white-on-black contrast to a comfortable ~14:1
+// while keeping the same visual hierarchy. Lime and purple read warmer against
+// the dark navy than they do against #000.
 export const colors = {
-  // Core — 3 colors, 3 jobs
-  black:  '#080808',
+  // Core brand
+  lime:      '#CAFF33',
+  limeMuted: '#A3E635', // softer default for button shadows
   purple: '#6B3FE4',
-  lime:   '#CAFF33',
+  red:    '#FF3B5C',
 
-  // Supporting
-  cream:    '#F4EEDE',
-  surface:  '#111111',
-  surface2: '#1A1A1A',
-  border:   '#242424',
-  purple2:  '#8B5CF6',
-  purple3:  '#2D1B6E',
-  red:      '#FF3B5C',
-  streak:   '#FF6B35',
+  // Dark surface hierarchy (bg → elevated → more elevated)
+  black:    '#0C0F16',  // primary bg — dark navy-charcoal, not pure black
+  surface:  '#131920',  // card / input bg
+  surface2: '#1A2130',  // elevated surface, search bg
+  border:   '#232B3C',  // structural dividers, card borders
+  borderStrong: '#2D3748', // interactive element borders (pills, inputs)
 
-  // Text tiers — use these instead of one-off hex grays.
-  // Calibrated for the dark surface (#080808). For light backgrounds
-  // (Onboarding cream), use textOnLight* below.
-  text:        '#FFFFFF',
-  textMuted:   '#9A9A9A',
-  textSubtle:  '#6A6A6A',
-  textFaint:   '#444444',
+  // Text hierarchy — calibrated for dark navy backgrounds.
+  // Primary is off-white (#EDEEF3), not pure white, to cut harshness.
+  text:        '#EDEEF3',  // primary
+  textMuted:   '#8B93A9',  // supporting text, subheads
+  textSubtle:  '#576079',  // hints, captions, terms, placeholders
+  textFaint:   '#3B4558',  // very subdued, disabled-adjacent
 
-  // Light-bg text tiers (for cream / white backgrounds).
+  // Light-bg text hierarchy (Onboarding cream screen only)
   textOnLight:        '#0A0A0A',
   textOnLightMuted:   '#2D2D2D',
   textOnLightSubtle:  '#4A4A4A',
 
-  // Deprecated aliases — kept for any stragglers, prefer the named tiers.
-  text2:    '#9A9A9A',
-  text3:    '#6A6A6A',
+  // Misc
+  cream:   '#F4EEDE',
+  purple2: '#8B5CF6',
+  purple3: '#2D1B6E',
+  streak:  '#FF6B35',
+
+  // Deprecated — kept so nothing breaks before a full sweep
+  text2: '#8B93A9',
+  text3: '#576079',
 } as const;
 
 export type ColorToken = keyof typeof colors;
