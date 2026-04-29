@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <g transform="translate(120, 120)">
+    <path d="M -40 -30 L -50 -40 M -50 -15 L -65 -10" stroke="#fa4a45" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 50 30 Q 60 45 45 60" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 0 -50 C 20 -20, 30 -10, 25 5 C 40 0, 50 15, 40 35 C 25 65, -25 65, -40 35 C -50 15, -30 -5, -30 -5 C -30 -5, -20 10, -10 -5 C 0 -20, -10 -40, -10 -40 Z" fill="#000" transform="translate(6, 6)"/>
+    <path d="M 0 -50 C 20 -20, 30 -10, 25 5 C 40 0, 50 15, 40 35 C 25 65, -25 65, -40 35 C -50 15, -30 -5, -30 -5 C -30 -5, -20 10, -10 -5 C 0 -20, -10 -40, -10 -40 Z" fill="#fa4a45" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M 0 -50 C 20 -20, 30 -10, 25 5 C 40 0, 50 15, 40 35 C 25 65, -25 65, -40 35 C -50 15, -30 -5, -30 -5 C -30 -5, -20 10, -10 -5 C 0 -20, -10 -40, -10 -40 Z" fill="none" stroke="#000" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M -5 -5 C 10 10, 15 20, 5 40 C -10 40, -20 30, -15 15 C -10 0, -5 -5, -5 -5 Z" fill="#fdd15e" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+</svg>
