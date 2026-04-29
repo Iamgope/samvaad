@@ -13,10 +13,12 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { RootStackParamList } from '../App';
 import { colors } from '../constants/colors';
+import { fonts } from '../constants/fonts';
 import { spacing } from '../constants/spacing';
 import { text } from '../constants/typography';
 import { Text } from '../components/Text';
 import { Button } from '../components/Button';
+import { PageHeading } from '../components/PageHeading';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'OTP'>;
@@ -83,11 +85,15 @@ export default function OTPScreen({ navigation, route }: Props) {
         </View>
 
         <View style={s.content}>
-          <Text variant="displayLg">Enter the</Text>
-          <Text variant="displayHero" tone="accent">code</Text>
-          <Text variant="bodyLg" tone="muted" style={s.subhead}>
+          <PageHeading
+            lines={[
+              [{ text: 'Enter the' }],
+              [{ text: 'code', accent: 'lime' }],
+            ]}
+          />
+          <Text style={s.subhead}>
             We've sent a 6-digit code{'\n'}to{' '}
-            <Text variant="bodyLg" tone="accent">{phone}</Text>
+            <Text style={s.subheadAccent}>{phone}</Text>
           </Text>
 
           <View style={s.otpRow}>
@@ -156,7 +162,19 @@ const s = StyleSheet.create({
   },
 
   content: { flex: 1, paddingHorizontal: HORIZONTAL, paddingTop: spacing.xl },
-  subhead: { marginTop: spacing.md, marginBottom: spacing.xl },
+  subhead: {
+    fontFamily: fonts.serif.italic,
+    fontSize: 22,
+    lineHeight: 30,
+    color: colors.textMuted,
+    letterSpacing: -0.3,
+    marginTop: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  subheadAccent: {
+    fontFamily: fonts.serif.italic,
+    color: colors.lime,
+  },
 
   otpRow: {
     flexDirection: 'row',

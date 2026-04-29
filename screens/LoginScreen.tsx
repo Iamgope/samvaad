@@ -30,7 +30,9 @@ export default function LoginScreen({ navigation }: Props) {
 
       <View style={s.brand}>
         <Text style={s.wordmark}>samvaad</Text>
-        <Text variant="bodyLg" tone="muted">Make better arguments.</Text>
+        <Text style={s.tagline}>
+          Make <Text style={s.taglineAccent}>better</Text> arguments.
+        </Text>
       </View>
 
       <View style={s.footer}>
@@ -85,6 +87,17 @@ const s = StyleSheet.create({
     lineHeight: 46,
     color: colors.text,
     letterSpacing: -1.6,
+  },
+  tagline: {
+    fontFamily: fonts.serif.italic,
+    fontSize: 22,
+    lineHeight: 30,
+    color: colors.textMuted,
+    letterSpacing: -0.3,
+  },
+  taglineAccent: {
+    fontFamily: fonts.serif.italic,
+    color: colors.lime,
   },
 
   footer: {

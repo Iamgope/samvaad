@@ -11,6 +11,10 @@ import {
   Archivo_900Black,
 } from '@expo-google-fonts/archivo';
 import {
+  InstrumentSerif_400Regular,
+  InstrumentSerif_400Regular_Italic,
+} from '@expo-google-fonts/instrument-serif';
+import {
   PlusJakartaSans_400Regular,
   PlusJakartaSans_400Regular_Italic,
   PlusJakartaSans_500Medium,
@@ -50,6 +54,8 @@ export default function App() {
     Archivo_700Bold,
     Archivo_800ExtraBold,
     Archivo_900Black,
+    InstrumentSerif_400Regular,
+    InstrumentSerif_400Regular_Italic,
     PlusJakartaSans_400Regular,
     PlusJakartaSans_400Regular_Italic,
     PlusJakartaSans_500Medium,

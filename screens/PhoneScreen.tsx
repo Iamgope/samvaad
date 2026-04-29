@@ -13,10 +13,12 @@ import { StatusBar } from 'expo-status-bar';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
 import { colors } from '../constants/colors';
+import { fonts } from '../constants/fonts';
 import { spacing } from '../constants/spacing';
 import { text } from '../constants/typography';
 import { Text } from '../components/Text';
 import { Button } from '../components/Button';
+import { PageHeading } from '../components/PageHeading';
 import {
   CountryPickerModal,
   COUNTRIES,
@@ -51,12 +53,13 @@ export default function PhoneScreen({ navigation }: Props) {
         </View>
 
         <View style={s.content}>
-          <Text variant="displayLg">Enter your</Text>
-          <Text>
-            <Text variant="displayHero" tone="accent">phone</Text>
-            <Text variant="displayLg"> number</Text>
-          </Text>
-          <Text variant="bodyLg" tone="muted" style={s.subhead}>
+          <PageHeading
+            lines={[
+              [{ text: 'Enter your' }],
+              [{ text: 'phone', accent: 'lime' }, { text: ' number' }],
+            ]}
+          />
+          <Text style={s.subhead}>
             We'll send you a code to{'\n'}verify your number.
           </Text>
 
@@ -140,6 +143,11 @@ const s = StyleSheet.create({
     paddingTop: spacing.xl,
   },
   subhead: {
+    fontFamily: fonts.serif.italic,
+    fontSize: 22,
+    lineHeight: 30,
+    color: colors.textMuted,
+    letterSpacing: -0.3,
     marginTop: spacing.md,
     marginBottom: spacing.xl,
   },
