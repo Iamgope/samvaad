@@ -26,9 +26,9 @@ export default function OnboardingScreen({ navigation }: Props) {
       <View style={s.copyArea}>
         <PageHeading
           lines={[
-            [{ text: 'Your Ideas' }],
-            [{ text: 'deserve ' }, { text: 'more', accent: 'lime' }],
-            [{ text: 'than a comment' }],
+            [{ text: 'Ideas deserve' }],
+            [ { text: 'more', accent: 'lime' }, {text:' than'}],
+            [{ text: ' a comment' }],
             [{ text: 'section.', accent: 'purple', squiggle: true }],
           ]}
         />

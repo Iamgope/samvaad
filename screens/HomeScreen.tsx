@@ -9,7 +9,7 @@ import { spacing } from '../constants/spacing';
 import { Text } from '../components/Text';
 
 type Props = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'Home'>;
+  navigation: NativeStackNavigationProp<RootStackParamList, 'Main'>;
 };
 
 export default function HomeScreen({ navigation }: Props) {

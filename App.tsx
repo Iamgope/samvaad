@@ -27,7 +27,7 @@ import LoginScreen from './screens/LoginScreen';
 import PhoneScreen from './screens/PhoneScreen';
 import OTPScreen from './screens/OTPScreen';
 import OnboardingFlowScreen from './screens/OnboardingFlowScreen';
-import HomeScreen from './screens/HomeScreen';
+import { TabNavigator } from './navigation/TabNavigator';
 import { colors } from './constants/colors';
 
 export type RootStackParamList = {
@@ -36,7 +36,7 @@ export type RootStackParamList = {
   Phone: undefined;
   OTP: { phone: string };
   OnboardingFlow: undefined;
-  Home: undefined;
+  Main: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -87,7 +87,7 @@ export default function App() {
             <Stack.Screen name="Phone" component={PhoneScreen} />
             <Stack.Screen name="OTP" component={OTPScreen} />
             <Stack.Screen name="OnboardingFlow" component={OnboardingFlowScreen} />
-            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="Main" component={TabNavigator} />
           </Stack.Navigator>
         </NavigationContainer>
       </View>

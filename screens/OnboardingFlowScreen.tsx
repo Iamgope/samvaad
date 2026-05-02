@@ -116,7 +116,7 @@ export default function OnboardingFlowScreen({ navigation }: Props) {
   const goNext = () => {
     if (!canAdvance) return;
     if (step === TOTAL_STEPS - 1) {
-      navigation.replace('Home');
+      navigation.replace('Main');
       return;
     }
     const next = step + 1;
