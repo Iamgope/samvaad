@@ -74,7 +74,7 @@ export default function App() {
         <NavigationContainer theme={navTheme}>
           <StatusBar style="light" />
           <Stack.Navigator
-            initialRouteName="Onboarding"
+            initialRouteName="Main"
             screenOptions={{
               headerShown: false,
               animation: 'fade',
