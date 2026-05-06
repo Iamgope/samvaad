@@ -1,24 +1,14 @@
 import { BASE_URL, APP_VERSION } from './config';
+import { ApiError } from './errors';
+import { refreshAccessToken } from './refresh';
 import { tokens } from './tokens';
 
-export class ApiError extends Error {
-  constructor(
-    public readonly status: number,
-    public readonly code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'ApiError';
-  }
-}
+export { ApiError };
 
 type RequestOptions = {
   body?: unknown;
   headers?: Record<string, string>;
 };
-
-// Module-level lock — deduplicates concurrent 401s so only one refresh fires.
-let refreshPromise: Promise<string> | null = null;
 
 async function buildHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
   const accessToken = await tokens.getAccess();
@@ -46,33 +36,6 @@ async function doFetch(
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
-}
-
-async function refreshAccessToken(): Promise<string> {
-  const refreshToken = await tokens.getRefresh();
-  if (!refreshToken) {
-    await tokens.clear();
-    throw new ApiError(401, 'SESSION_EXPIRED', 'Please log in again');
-  }
-
-  const res = await fetch(`${BASE_URL}/auth/refresh`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-App-Version': APP_VERSION,
-    },
-    body: JSON.stringify({ refreshToken }),
-  });
-
-  if (!res.ok) {
-    await tokens.clear();
-    throw new ApiError(401, 'SESSION_EXPIRED', 'Please log in again');
-  }
-
-  const data = await res.json();
-  await tokens.setAccess(data.accessToken);
-  if (data.refreshToken) await tokens.setRefresh(data.refreshToken);
-  return data.accessToken;
 }
 
 async function parseError(res: Response): Promise<never> {
@@ -108,13 +71,7 @@ export async function request<T>(
   }
 
   if (res.status === 401) {
-    if (!refreshPromise) {
-      refreshPromise = refreshAccessToken().finally(() => {
-        refreshPromise = null;
-      });
-    }
-
-    const newToken = await refreshPromise;
+    const newToken = await refreshAccessToken();
     res = await doFetch(method, path, options, newToken);
   }
 
