@@ -4,19 +4,19 @@ import { tokens } from './tokens';
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type AuthTokens = {
-  accessToken: string;
-  refreshToken: string;
+  access_token: string;
+  refresh_token: string;
 };
 
 export type AuthResponse = AuthTokens & {
-  isNewUser: boolean;
+  is_new_user?: boolean;
 };
 
 // ── Internal ─────────────────────────────────────────────────────────────────
 
 async function storeTokens(t: AuthTokens): Promise<void> {
-  await tokens.setAccess(t.accessToken);
-  await tokens.setRefresh(t.refreshToken);
+  await tokens.setAccess(t.access_token);
+  await tokens.setRefresh(t.refresh_token);
 }
 
 // ── Phone OTP ────────────────────────────────────────────────────────────────
@@ -34,7 +34,9 @@ export async function verifyOtp(phone: string, code: string): Promise<AuthRespon
 // ── Google ───────────────────────────────────────────────────────────────────
 
 export async function signInWithGoogle(idToken: string): Promise<AuthResponse> {
-  const res = await api.post<AuthResponse>('/authentication/google', { idToken });
+  const res = await api.post<AuthResponse>('/authentication/oauth/google/callback/', {
+    id_token: idToken,
+  });
   await storeTokens(res);
   return res;
 }
@@ -48,11 +50,10 @@ export async function completeOnboarding(username: string, topics: string[]): Pr
 // ── Session ──────────────────────────────────────────────────────────────────
 
 export async function logout(): Promise<void> {
-  const refreshToken = await tokens.getRefresh();
+  const refresh_token = await tokens.getRefresh();
   try {
-    await api.post('/authentication/logout', { refreshToken });
+    await api.post('/authentication/logout', { refresh_token });
   } finally {
-    // Always clear locally even if the server call fails
     await tokens.clear();
   }
 }

@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
 import { colors } from '../constants/colors';
@@ -10,12 +12,54 @@ import { spacing } from '../constants/spacing';
 import { Text } from '../components/Text';
 import { Button } from '../components/Button';
 import { GoogleLogo } from '../components/GoogleLogo';
+import { signInWithGoogle, ApiError } from '../services/api';
+
+// Required so the OAuth browser tab closes cleanly after redirect
+WebBrowser.maybeCompleteAuthSession();
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
 };
 
 export default function LoginScreen({ navigation }: Props) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [_request, response, promptAsync] = Google.useAuthRequest({
+    iosClientId: '',
+    androidClientId: '',
+    webClientId: '',
+  });
+
+  useEffect(() => {
+    if (response?.type === 'error') {
+      setError('Google sign-in failed. Please try again.');
+      return;
+    }
+    if (response?.type !== 'success') return;
+
+    const idToken = response.authentication?.idToken;
+    if (!idToken) {
+      setError('No ID token returned from Google. Please try again.');
+      return;
+    }
+
+    handleGoogleToken(idToken);
+  }, [response]);
+
+  async function handleGoogleToken(idToken: string) {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await signInWithGoogle(idToken);
+      navigation.navigate(res.is_new_user ? 'OnboardingFlow' : 'Main');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
       <StatusBar style="light" />
@@ -36,20 +80,27 @@ export default function LoginScreen({ navigation }: Props) {
       </View>
 
       <View style={s.footer}>
-        {/* Primary: lime shadow */}
         <Button
           label="Sign in with Phone"
           onPress={() => navigation.navigate('Phone')}
           shadowColor={colors.lime}
+          disabled={loading}
         />
 
-        {/* Secondary: purple shadow to distinguish from primary */}
         <Button
           label="Sign in with Google"
-          onPress={() => navigation.navigate('OnboardingFlow')}
+          onPress={() => { setError(null); promptAsync(); }}
           shadowColor={colors.purple2}
           leadingIcon={<GoogleLogo size={18} />}
+          isLoading={loading}
+          disabled={loading}
         />
+
+        {error && (
+          <Text variant="caption" tone="danger" style={s.errorText}>
+            {error}
+          </Text>
+        )}
 
         <Text variant="caption" tone="subtle" style={s.terms}>
           By continuing, you agree to our{'\n'}
@@ -104,6 +155,9 @@ const s = StyleSheet.create({
     paddingHorizontal: HORIZONTAL,
     paddingBottom: spacing.lg,
     gap: spacing.md,
+  },
+  errorText: {
+    textAlign: 'center',
   },
   terms: {
     textAlign: 'center',
