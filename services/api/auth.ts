@@ -22,11 +22,11 @@ async function storeTokens(t: AuthTokens): Promise<void> {
 // ── Phone OTP ────────────────────────────────────────────────────────────────
 
 export async function sendOtp(phone: string): Promise<void> {
-  await api.post('/auth/otp/send', { phone });
+  await api.post('/authentication/otp/send', { phone });
 }
 
 export async function verifyOtp(phone: string, code: string): Promise<AuthResponse> {
-  const res = await api.post<AuthResponse>('/auth/otp/verify', { phone, code });
+  const res = await api.post<AuthResponse>('/authentication/otp/verify', { phone, code });
   await storeTokens(res);
   return res;
 }
@@ -34,7 +34,7 @@ export async function verifyOtp(phone: string, code: string): Promise<AuthRespon
 // ── Google ───────────────────────────────────────────────────────────────────
 
 export async function signInWithGoogle(idToken: string): Promise<AuthResponse> {
-  const res = await api.post<AuthResponse>('/auth/google', { idToken });
+  const res = await api.post<AuthResponse>('/authentication/google', { idToken });
   await storeTokens(res);
   return res;
 }
@@ -42,7 +42,7 @@ export async function signInWithGoogle(idToken: string): Promise<AuthResponse> {
 // ── Onboarding ───────────────────────────────────────────────────────────────
 
 export async function completeOnboarding(username: string, topics: string[]): Promise<void> {
-  await api.post('/auth/onboarding', { username, topics });
+  await api.post('/authentication/onboarding', { username, topics });
 }
 
 // ── Session ──────────────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ export async function completeOnboarding(username: string, topics: string[]): Pr
 export async function logout(): Promise<void> {
   const refreshToken = await tokens.getRefresh();
   try {
-    await api.post('/auth/logout', { refreshToken });
+    await api.post('/authentication/logout', { refreshToken });
   } finally {
     // Always clear locally even if the server call fails
     await tokens.clear();
