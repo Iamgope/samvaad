@@ -16,6 +16,7 @@ import { colors } from '../constants/colors'
 import { fonts } from '../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../constants/spacing'
 import { Text } from '../components/Text'
+import { DebateHeadline } from '../components/DebateHeadline'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const TRENDING_CARD_WIDTH = SCREEN_WIDTH - SCREEN_PADDING * 2
@@ -46,14 +47,22 @@ type CuratedDebate = {
   category: CategoryId
   motion: string
   debating: number
+  forVotes: number
+  againstVotes: number
+  context?: string
+  agreeCount: number
+  disagreeCount: number
+  unsureCount: number
+  isNew?: boolean
+  endsIn?: string
 }
 
 // ─── DATA ─────────────────────────────────────────────────────────
 
 const CATEGORIES: Category[] = [
   { id: 'politics', name: 'Politics',     icon: require('../assets/politics_icon.png'), accent: colors.streak },
-  { id: 'sports',   name: 'Sports',       icon: require('../assets/sports_icon.png'),   accent: '#A855F7' },
-  { id: 'lit',      name: 'Lit & Beyond', icon: require('../assets/art_icon.png'),      accent: colors.purple2 },
+  { id: 'sports',   name: 'Sports',       icon: require('../assets/sports_icon.png'),   accent: '#38BDF8' },
+  { id: 'lit',      name: 'Culture',      icon: require('../assets/art_icon.png'),      accent: colors.purple2 },
 ]
 
 const TRENDING: TrendingDebate[] = [
@@ -90,9 +99,27 @@ const TRENDING: TrendingDebate[] = [
 ]
 
 const CURATED: CuratedDebate[] = [
-  { id: 'c1', category: 'politics', motion: 'Is democracy the best form of government?', debating: 6100 },
-  { id: 'c2', category: 'lit',      motion: 'Do we glorify violence in cinema too much?', debating: 4300 },
-  { id: 'c3', category: 'sports',   motion: 'Should athletes be political role models?',  debating: 3800 },
+  {
+    id: 'c1', category: 'politics',
+    motion: 'Is democracy the best form of government?',
+    context: 'Transfer of power controversies in Bengal elections sparked a fresh wave of debate.',
+    debating: 6100, forVotes: 3800, againstVotes: 2300,
+    agreeCount: 2100, disagreeCount: 1400, unsureCount: 600,
+  },
+  {
+    id: 'c2', category: 'lit',
+    motion: 'Do we glorify violence in cinema too much?',
+    context: 'Back-to-back blockbusters this season pushed graphic content to new extremes.',
+    debating: 4300, forVotes: 2800, againstVotes: 1500, isNew: true,
+    agreeCount: 1800, disagreeCount: 900, unsureCount: 340,
+  },
+  {
+    id: 'c3', category: 'sports',
+    motion: 'Should athletes be political role models?',
+    context: "Several cricketers backed opposing parties ahead of IPL, dividing fans and pundits.",
+    debating: 3800, forVotes: 1600, againstVotes: 2200, endsIn: '3h',
+    agreeCount: 980, disagreeCount: 1600, unsureCount: 520,
+  },
 ]
 
 // ─── HELPERS ──────────────────────────────────────────────────────
@@ -148,7 +175,7 @@ function TrendingCard({
       <View style={s.debatingRow}>
         <View style={s.avatarStack}>
           <View style={[s.stackAvatar, { backgroundColor: colors.streak, left: 0 }]} />
-          <View style={[s.stackAvatar, { backgroundColor: '#A855F7',     left: 14 }]} />
+          <View style={[s.stackAvatar, { backgroundColor: '#38BDF8',     left: 14 }]} />
           <View style={[s.stackAvatar, { backgroundColor: colors.red,    left: 28 }]} />
         </View>
         <Text style={s.debatingText} tone="muted">{formatCount(debate.debating)} debating</Text>
@@ -348,36 +375,6 @@ function ExploreTopics({ onPress }: { onPress: (id: CategoryId) => void }) {
 
 // ─── FOR YOU ─────────────────────────────────────────────────────
 
-function CuratedRow({
-  debate,
-  onPress,
-}: {
-  debate: CuratedDebate
-  onPress: (id: string) => void
-}) {
-  const cat = findCategory(debate.category)
-  return (
-    <TouchableOpacity
-      style={s.curatedRow}
-      onPress={() => onPress(debate.id)}
-      activeOpacity={0.7}
-    >
-      <View style={[s.curatedIconWrap, { backgroundColor: cat.accent + '22' }]}>
-        <Image source={cat.icon} style={s.curatedIcon} resizeMode="contain" />
-      </View>
-      <View style={s.curatedBody}>
-        <Text style={s.curatedMotion} numberOfLines={2}>
-          {debate.motion}
-        </Text>
-        <Text variant="caption" tone="subtle">{formatCount(debate.debating)} debating</Text>
-      </View>
-      <TouchableOpacity style={s.bookmarkBtn} activeOpacity={0.6}>
-        <Text style={s.bookmarkIcon}>🔖</Text>
-      </TouchableOpacity>
-    </TouchableOpacity>
-  )
-}
-
 function ForYouSection({
   debates,
   onPress,
@@ -387,18 +384,31 @@ function ForYouSection({
 }) {
   return (
     <View style={s.forYouSection}>
-      <Text variant="titleMd">For you</Text>
-      <Text variant="bodySm" tone="muted" style={{ marginTop: 4, marginBottom: spacing.md }}>
-        Curated debates based on your interests
-      </Text>
-      <View style={s.curatedList}>
-        {debates.map((d, i) => (
-          <View key={d.id}>
-            <CuratedRow debate={d} onPress={onPress} />
-            {i < debates.length - 1 && <View style={s.curatedDivider} />}
-          </View>
-        ))}
+      <View style={s.forYouHeader}>
+        <Text variant="titleMd">For you</Text>
+        <Text variant="bodySm" tone="muted">Curated picks</Text>
       </View>
+      {debates.map((d, i) => {
+        const cat = findCategory(d.category)
+        return (
+          <View key={d.id}>
+            <DebateHeadline
+              motion={d.motion}
+              context={d.context}
+              categoryName={cat.name}
+              categoryAccent={cat.accent}
+              categoryIcon={cat.icon}
+              agreeCount={d.agreeCount}
+              disagreeCount={d.disagreeCount}
+              unsureCount={d.unsureCount}
+              isNew={d.isNew}
+              endsIn={d.endsIn}
+              onPress={() => onPress(d.id)}
+            />
+            {i < debates.length - 1 && <View style={s.headlineDivider} />}
+          </View>
+        )
+      })}
     </View>
   )
 }
@@ -415,7 +425,7 @@ export default function HomeScreen({ navigation }: Props) {
   }
 
   const handleCategoryPress = (id: CategoryId) => {
-    navigation.navigate('Debate', { category: id })
+    navigation.navigate('TopicScreen', { category: id })
   }
 
   const handleCuratedPress = (id: string) => {
@@ -693,40 +703,14 @@ const s = StyleSheet.create({
     borderColor: colors.border,
     overflow: 'hidden',
   },
-  curatedRow: {
+  forYouHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    gap: spacing.md,
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: spacing.xs,
   },
-  curatedIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  curatedIcon: {
-    width: 32,
-    height: 32,
-  },
-  curatedBody: {
-    flex: 1,
-    gap: 3,
-  },
-  curatedMotion: {
-    fontFamily: fonts.display.bold,
-    fontSize: 14,
-    lineHeight: 18,
-    color: colors.text,
-    letterSpacing: -0.2,
-  },
-  bookmarkBtn:  { padding: 4 },
-  bookmarkIcon: { fontSize: 16, opacity: 0.5 },
-  curatedDivider: {
+  headlineDivider: {
     height: 1,
     backgroundColor: colors.border,
-    marginHorizontal: spacing.md,
   },
 })
