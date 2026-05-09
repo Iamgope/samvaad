@@ -25,7 +25,7 @@ type Argument = {
 const CATEGORY_META: Record<string, { name: string; accent: string; emoji: string }> = {
   politics:   { name: 'Politics',   accent: '#FF6B35', emoji: '🏛️' },
   sports:     { name: 'Sports',     accent: '#38BDF8', emoji: '🏆' },
-  lit:        { name: 'Culture',    accent: '#8B5CF6', emoji: '🎭' },
+  lit:        { name: 'Culture',    accent: '#8B5CF6', emoji: '🎨' },
   philosophy: { name: 'Philosophy', accent: '#10B981', emoji: '🧠' },
 }
 

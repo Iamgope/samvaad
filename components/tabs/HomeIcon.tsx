@@ -1,23 +1,32 @@
 import React from 'react';
-import Svg, { Rect } from 'react-native-svg';
-import { colors } from '../../constants/colors';
+import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 
-const TILE = 11;
-const GAP = 3;
-const SIZE = TILE * 2 + GAP;
-
+const SIZE = 28;
 type Props = { focused: boolean };
 
 export function HomeIcon({ focused }: Props) {
-  const fill = focused ? colors.lime : 'none';
-  const stroke = focused ? 'none' : colors.textSubtle;
-
   return (
-    <Svg width={SIZE} height={SIZE} viewBox="0 0 25 25">
-      <Rect x="0.5" y="0.5" width="10" height="10" rx="2.5" fill={fill} stroke={stroke} strokeWidth={1.5} />
-      <Rect x="14.5" y="0.5" width="10" height="10" rx="2.5" fill={fill} stroke={stroke} strokeWidth={1.5} />
-      <Rect x="0.5" y="14.5" width="10" height="10" rx="2.5" fill={fill} stroke={stroke} strokeWidth={1.5} />
-      <Rect x="14.5" y="14.5" width="10" height="10" rx="2.5" fill={fill} stroke={stroke} strokeWidth={1.5} />
+    <Svg width={SIZE} height={SIZE} viewBox="0 0 28 28" fill="none">
+      <Defs>
+        <LinearGradient id="home3d" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor="#e0e0e0" />
+          <Stop offset="0.4" stopColor="#ffffff" />
+          <Stop offset="1" stopColor="#7a7a7a" />
+        </LinearGradient>
+      </Defs>
+      {focused ? (
+        <Path 
+          d="M14 3.5 L3.5 13H6v10.5h6v-6h4v6h6V13h2.5L14 3.5z" 
+          fill="url(#home3d)" 
+        />
+      ) : (
+        <Path 
+          d="M14 4.5 L4.5 13H7v9.5h4v-6h6v6h4V13h2.5L14 4.5z" 
+          stroke="#666666" 
+          strokeWidth={1.8} 
+          strokeLinejoin="round" 
+        />
+      )}
     </Svg>
   );
 }

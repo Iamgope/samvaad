@@ -1,30 +1,32 @@
 import React from 'react';
-import Svg, { Path, Line } from 'react-native-svg';
-import { colors } from '../../constants/colors';
+import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 const SIZE = 28;
-
 type Props = { focused: boolean };
 
 export function LadderIcon({ focused }: Props) {
-  const color = focused ? colors.red : colors.textSubtle;
-  const cupFill = focused ? colors.red : 'none';
-  const starFill = focused ? '#fff' : 'none';
-
   return (
     <Svg width={SIZE} height={SIZE} viewBox="0 0 28 28" fill="none">
-      <Path
-        d="M6 5h16v7a8 8 0 01-16 0V5z"
-        fill={cupFill} stroke={color} strokeWidth={1.8} strokeLinejoin="round"
-      />
-      <Path d="M6 8H4a2 2 0 000 4h2" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
-      <Path d="M22 8h2a2 2 0 010 4h-2" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
-      <Line x1="14" y1="20" x2="14" y2="24" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
-      <Line x1="9" y1="24" x2="19" y2="24" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
-      <Path
-        d="M14 8.5l1 2.2 2.4.3-1.7 1.7.4 2.4-2.1-1.1-2.1 1.1.4-2.4-1.7-1.7 2.4-.3z"
-        fill={starFill} stroke={focused ? 'none' : color} strokeWidth={1.2} strokeLinejoin="round"
-      />
+      <Defs>
+        <LinearGradient id="ladder3d" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor="#e0e0e0" />
+          <Stop offset="0.4" stopColor="#ffffff" />
+          <Stop offset="1" stopColor="#7a7a7a" />
+        </LinearGradient>
+      </Defs>
+      {focused ? (
+        <Path 
+          d="M14 2.5l3.6 7.3 8.1 1.2-5.8 5.7 1.4 8-7.3-3.8-7.3 3.8 1.4-8-5.8-5.7 8.1-1.2L14 2.5z" 
+          fill="url(#ladder3d)" 
+        />
+      ) : (
+        <Path 
+          d="M14 4.2l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8L14 4.2z" 
+          stroke="#666666" 
+          strokeWidth={1.8} 
+          strokeLinejoin="round" 
+        />
+      )}
     </Svg>
   );
 }
