@@ -107,7 +107,6 @@ const s = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 16,
     paddingHorizontal: spacing.sm,
-    paddingBottom: spacing.sm,
   },
   sparkle: {
     position: 'absolute',

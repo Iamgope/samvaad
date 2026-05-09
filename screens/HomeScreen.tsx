@@ -19,7 +19,7 @@ import { CategoryCard } from '../components/CategoryCard'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const TRENDING_CARD_WIDTH = SCREEN_WIDTH - SCREEN_PADDING * 2
-const TOPIC_CARD_WIDTH = (SCREEN_WIDTH - SCREEN_PADDING * 2 - spacing.sm * 3) / 2.95
+const TOPIC_CARD_WIDTH    = (SCREEN_WIDTH - SCREEN_PADDING * 2 - spacing.sm * 3) / 2.95
 
 type CategoryId = 'politics' | 'sports' | 'lit' | 'philosophy'
 
@@ -239,6 +239,8 @@ function TrendingSection({
               key={`${d.id}-${i}`}
               motion={d.motion}
               debating={d.debating}
+              forVotes={d.forVotes}
+              againstVotes={d.againstVotes}
               categoryAccent={findCategory(d.category).accent}
               style={{ width: TRENDING_CARD_WIDTH }}
               onPress={() => onJoin(d.id)}
@@ -263,7 +265,7 @@ function TrendingSection({
 function ExploreTopics({ onPress }: { onPress: (id: CategoryId) => void }) {
   return (
     <View style={s.exploreSection}>
-      <Text variant="titleMd">Explore Topics</Text>
+      <Text style={s.sectionLabel}>Explore topics</Text>
       <View style={s.topicsRow}>
         {CATEGORIES.map((c, i) => (
           <CategoryCard
@@ -275,6 +277,59 @@ function ExploreTopics({ onPress }: { onPress: (id: CategoryId) => void }) {
             outerStyle={{ width: TOPIC_CARD_WIDTH, aspectRatio: 1 }}
             onPress={() => onPress(c.id)}
           />
+        ))}
+      </View>
+    </View>
+  )
+}
+
+// ─── ACTION SECTION ──────────────────────────────────────────────
+
+const ACTIONS = [
+  {
+    key:      'join',
+    emoji:    '⚔️',
+    title:    'Join a Debate',
+    subtitle: 'Enter live public debates',
+    accent:   '#38BDF8',
+    primary:  true,
+  },
+  {
+    key:      'persona',
+    emoji:    '🎭',
+    title:    'Debate Personas',
+    subtitle: 'Argue the other side',
+    accent:   colors.purple2,
+    primary:  false,
+  },
+]
+
+function ActionSection({ onPress }: { onPress: (key: string) => void }) {
+  return (
+    <View style={s.actionSection}>
+      <Text style={s.sectionLabel}>Enter the arena</Text>
+      <View style={s.actionRow}>
+        {ACTIONS.map(a => (
+          <TouchableOpacity
+            key={a.key}
+            style={[
+              s.actionCard,
+              {
+                borderColor:     a.accent + '60',
+                backgroundColor: a.accent + '12',
+              },
+            ]}
+            onPress={() => onPress(a.key)}
+            activeOpacity={0.8}
+          >
+            <View style={s.actionEmojiArea}>
+              <Text style={s.actionEmoji}>{a.emoji}</Text>
+            </View>
+            <View style={s.actionTextArea}>
+              <Text style={s.actionTitle}>{a.title}</Text>
+              <Text style={s.actionSubtitle}>{a.subtitle}</Text>
+            </View>
+          </TouchableOpacity>
         ))}
       </View>
     </View>
@@ -309,8 +364,7 @@ function ForYouSection({
               agreeCount={d.agreeCount}
               disagreeCount={d.disagreeCount}
               unsureCount={d.unsureCount}
-              isNew={d.isNew}
-              endsIn={d.endsIn}
+              headlineSize={20}
               onPress={() => onPress(d.id)}
             />
             {i < debates.length - 1 && <View style={s.headlineDivider} />}
@@ -364,6 +418,7 @@ export default function HomeScreen({ navigation }: Props) {
         <Header />
         <TrendingSection debates={TRENDING} onJoin={handleJoin} />
         <ExploreTopics onPress={handleCategoryPress} />
+        <ActionSection onPress={() => {}} />
         <ForYouSection debates={CURATED} onPress={handleCuratedPress} />
       </ScrollView>
     </SafeAreaView>
@@ -434,6 +489,54 @@ const s = StyleSheet.create({
     marginTop: spacing.md,
   },
 
+  // ── Action section ──
+  actionSection: {
+    paddingHorizontal: SCREEN_PADDING,
+    marginBottom: spacing.xl,
+  },
+  sectionLabel: {
+    fontFamily: fonts.jakarta.semiBold,
+    fontSize: 12,
+    color: colors.textSubtle,
+    letterSpacing: 0.3,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  actionCard: {
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.lg,
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  actionEmojiArea: {
+    alignItems: 'center',
+  },
+  actionEmoji: {
+    fontSize: 32,
+  },
+  actionTextArea: {
+    alignItems: 'center',
+    gap: 3,
+  },
+  actionTitle: {
+    fontFamily: fonts.display.black,
+    fontSize: 15,
+    color: colors.text,
+    letterSpacing: -0.3,
+    lineHeight: 19,
+  },
+  actionSubtitle: {
+    fontFamily: fonts.jakarta.regular,
+    fontSize: 11,
+    lineHeight: 15,
+    color: colors.textMuted,
+  },
   // ── For you ──
   forYouSection: {
     paddingHorizontal: SCREEN_PADDING,

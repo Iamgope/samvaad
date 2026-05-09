@@ -10,12 +10,11 @@ type Props = {
   context?: string
   categoryName: string
   categoryAccent: string
-  categoryIcon: any
+  categoryIcon?: any
   agreeCount: number
   disagreeCount: number
   unsureCount: number
-  isNew?: boolean
-  endsIn?: string
+  headlineSize?: number
   onPress?: () => void
 }
 
@@ -37,8 +36,7 @@ export function DebateHeadline({
   agreeCount,
   disagreeCount,
   unsureCount,
-  isNew,
-  endsIn,
+  headlineSize = 20,
   onPress,
 }: Props) {
   const emoji = CATEGORY_EMOJI[categoryName.toLowerCase()] ?? '💬'
@@ -50,30 +48,31 @@ export function DebateHeadline({
         <Text style={[s.categoryLabel, { color: categoryAccent }]}>
           {emoji}  {categoryName}
         </Text>
-        {/* {isNew && <Text style={[s.badge, { color: colors.lime }]}>· NEW</Text>}
-        {endsIn && <Text style={[s.badge, { color: colors.red }]}>· ENDS {endsIn}</Text>} */}
       </View>
 
       {/* Headline + thumbnail */}
       <View style={s.mainRow}>
         <View style={s.mainLeft}>
-          <Text style={s.headline} numberOfLines={3}>{motion}</Text>
+          <Text style={[s.headline, { fontSize: headlineSize, lineHeight: headlineSize * 1.3 }]} numberOfLines={3}>{motion}</Text>
           {context ? (
             <Text style={s.context} numberOfLines={2}>{context}</Text>
           ) : null}
         </View>
         <View style={[s.thumb, { backgroundColor: categoryAccent + '18' }]}>
-          <Image source={categoryIcon} style={s.thumbIcon} resizeMode="contain" />
+          {categoryIcon
+            ? <Image source={categoryIcon} style={s.thumbIcon} resizeMode="contain" />
+            : <Text style={s.thumbEmoji}>{emoji}</Text>
+          }
         </View>
       </View>
 
-      {/* Opinion stats */}
-      <View style={s.opinionRow}>
-        <Text style={s.opinionItem}>👍  {fmt(agreeCount)}</Text>
-        <Text style={s.opinionDot}>·</Text>
-        <Text style={s.opinionItem}>👎  {fmt(disagreeCount)}</Text>
-        <Text style={s.opinionDot}>·</Text>
-        <Text style={s.opinionItem}>🤷  {fmt(unsureCount)}</Text>
+      {/* For / Against counts */}
+      <View style={s.statsRow}>
+        <Text style={[s.statFor, { color: colors.lime + '99' }]}>{fmt(agreeCount)} for</Text>
+        <Text style={s.statSep}>·</Text>
+        <Text style={[s.statAgainst, { color: colors.red + '99' }]}>{fmt(disagreeCount)} against</Text>
+        <Text style={s.statSep}>·</Text>
+        <Text style={s.statNeutral}>{fmt(unsureCount)} unsure</Text>
       </View>
     </TouchableOpacity>
   )
@@ -95,12 +94,6 @@ const s = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 0.2,
   },
-  badge: {
-    fontFamily: fonts.jakarta.extraBold,
-    fontSize: 10,
-    letterSpacing: 0.5,
-  },
-
   mainRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -131,6 +124,9 @@ const s = StyleSheet.create({
     width: 56,
     height: 56,
   },
+  thumbEmoji: {
+    fontSize: 28,
+  },
 
   context: {
     fontFamily: fonts.jakarta.regular,
@@ -139,17 +135,26 @@ const s = StyleSheet.create({
     color: colors.textSubtle,
   },
 
-  opinionRow: {
+  statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
+    paddingTop: spacing.md,
   },
-  opinionItem: {
+  statFor: {
+    fontFamily: fonts.jakarta.semiBold,
+    fontSize: 12,
+  },
+  statAgainst: {
+    fontFamily: fonts.jakarta.semiBold,
+    fontSize: 12,
+  },
+  statNeutral: {
     fontFamily: fonts.jakarta.medium,
     fontSize: 12,
     color: colors.textFaint,
   },
-  opinionDot: {
+  statSep: {
     fontSize: 10,
     color: colors.textFaint,
   },

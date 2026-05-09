@@ -8,6 +8,8 @@ import { spacing } from '../constants/spacing'
 type Props = {
   motion: string
   debating: number
+  forVotes?: number
+  againstVotes?: number
   categoryAccent?: string
   label?: string
   labelIcon?: string
@@ -20,12 +22,18 @@ const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : `${n}`
 export function DebateCard({
   motion,
   debating,
+  forVotes,
+  againstVotes,
   categoryAccent = colors.streak,
   label = 'Hot Debate',
   labelIcon = '🔥',
   style,
   onPress,
 }: Props) {
+  const hasSplit = forVotes !== undefined && againstVotes !== undefined
+  const total    = hasSplit ? forVotes! + againstVotes! : 0
+  const forPct   = total > 0 ? Math.round((forVotes! / total) * 100) : 50
+
   return (
     <TouchableOpacity style={[s.card, style]} onPress={onPress} activeOpacity={0.85}>
       <View style={s.labelRow}>
@@ -42,7 +50,11 @@ export function DebateCard({
           <View style={[s.avatar, { backgroundColor: colors.purple2, left: 28 }]} />
         </View>
         <Text style={s.debatingText} tone="muted">{fmt(debating)} debating</Text>
+        {hasSplit && (
+          <Text style={s.splitLabel}>· {forPct}% for</Text>
+        )}
       </View>
+
     </TouchableOpacity>
   )
 }
@@ -56,7 +68,7 @@ const s = StyleSheet.create({
     borderColor: colors.borderStrong,
     borderBottomColor: '#3D4A5C',
     padding: spacing.lg,
-    paddingBottom: spacing.xl + 4,
+    paddingBottom: spacing.lg,
     shadowColor: '#000',
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 0.55,
@@ -91,4 +103,10 @@ const s = StyleSheet.create({
     borderColor: colors.surface,
   },
   debatingText: { fontFamily: fonts.jakarta.medium, fontSize: 13 },
+  splitLabel: {
+    fontFamily: fonts.jakarta.medium,
+    fontSize: 12,
+    color: colors.textSubtle,
+    marginLeft: spacing.sm,
+  },
 })

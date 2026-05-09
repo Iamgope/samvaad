@@ -32,7 +32,8 @@ export const colors = {
   cream:   '#F4EEDE',
   purple2: '#8B5CF6',
   purple3: '#2D1B6E',
-  streak:  '#FF6B35',
+  streak:  '#FF6B35',  // politics / orange
+  sky:     '#38BDF8',  // sports / sky blue
 
   // Deprecated — kept so nothing breaks before a full sweep
   text2: '#8B93A9',
