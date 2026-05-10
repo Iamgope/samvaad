@@ -11,39 +11,29 @@ import {
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 
-// Neo-brutalist anatomy: surface · 2px border · offset shadow that collapses
-// on press. No angled corners — the shadow-color system already carries
-// hierarchy; shape variation would be redundant signal.
+// Neo-brutalist anatomy: surface · border · offset shadow that collapses on press.
+// 'game' variant amps up the shadow (6px) and border (3px) for a heavier, tactile feel.
 const SHADOW_OFFSET = 4;
-const BORDER_WIDTH = 2;
+const GAME_SHADOW   = 6;
+const BORDER_WIDTH  = 2;
+const GAME_BORDER   = 3;
 const RADIUS = 6;
 
 const HEIGHTS = { lg: 56, md: 48, sm: 40 };
 const CHIP_SIZE = { lg: 36, md: 32, sm: 28 };
 
 type Size = 'lg' | 'md' | 'sm';
-export type ButtonVariant = 'primary' | 'action' | 'outline' | 'ghost' | 'text';
+export type ButtonVariant = 'primary' | 'action' | 'outline' | 'ghost' | 'text' | 'game';
 
 export type ButtonProps = {
   label: string;
   onPress: () => void;
-  /** Visual treatment. Defaults to 'primary'. */
   variant?: ButtonVariant;
-  /**
-   * Inverts the surface to shadowColor with black text. Use sparingly —
-   * reserved for the single highest-stakes action in a screen (e.g. COUNTER).
-   */
   filled?: boolean;
-  /** Offset shadow / accent color. Applies to primary, action, text. */
   shadowColor?: string;
   disabled?: boolean;
   isLoading?: boolean;
-  /** Trailing arrow → at the right edge (or inline for text variant). */
   arrow?: boolean;
-  /**
-   * Leading icon. On 'action' it sits inside a tinted chip;
-   * on other variants it sits inline next to the label.
-   */
   leadingIcon?: React.ReactNode;
   trailingIcon?: React.ReactNode;
   size?: Size;
@@ -77,6 +67,15 @@ function tokensFor(
   }
 
   switch (variant) {
+    case 'game':
+      return {
+        surface: shadowColor,
+        border:  colors.black,
+        text:    colors.black,
+        shadow:  colors.black,
+        hasShadow: true,
+        hasBorder: true,
+      };
     case 'primary':
     case 'action':
       return filled
@@ -84,8 +83,6 @@ function tokensFor(
             surface: shadowColor,
             border:  colors.black,
             text:    colors.black,
-            // When filled, the offset shadow becomes solid black —
-            // reads as a stamped, weighted move.
             shadow:  colors.black,
             hasShadow: true,
             hasBorder: true,
@@ -148,10 +145,15 @@ export function Button({
   const v = tokensFor(variant, filled, disabled, shadowColor);
   const isInteractable = !disabled && !isLoading;
 
+  const isGame   = variant === 'game';
+  const isAction = variant === 'action';
+  const shadowOff = isGame ? GAME_SHADOW : SHADOW_OFFSET;
+  const borderW   = isGame ? GAME_BORDER : BORDER_WIDTH;
+
   const sink = () => {
     if (v.hasShadow) {
       Animated.spring(press, {
-        toValue: SHADOW_OFFSET,
+        toValue: shadowOff,
         useNativeDriver: true,
         tension: 600,
         friction: 25,
@@ -182,7 +184,6 @@ export function Button({
     }
   };
 
-  // Text variant: inline link style. No surface, no fixed height.
   if (variant === 'text') {
     return (
       <Pressable
@@ -203,26 +204,31 @@ export function Button({
     );
   }
 
-  // Action variant: leading icon sits inside a tinted chip.
-  // The chip flips contrast when filled (black chip on accent surface).
-  const isAction = variant === 'action';
   const chipBg = isAction
     ? (filled ? colors.black : shadowColor)
     : 'transparent';
-  const chipIconTint = isAction
-    ? (filled ? shadowColor : colors.black)
-    : v.text;
 
   return (
     <Pressable
       onPress={isInteractable ? onPress : undefined}
       onPressIn={isInteractable ? sink : undefined}
       onPressOut={isInteractable ? rise : undefined}
-      style={[v.hasShadow ? s.wrapperWithShadow : null, style]}
+      style={[
+        v.hasShadow ? { paddingRight: shadowOff, paddingBottom: shadowOff } : null,
+        style,
+      ]}
     >
       {v.hasShadow && (
         <View
-          style={[s.shadow, { backgroundColor: v.shadow, borderRadius: RADIUS }]}
+          style={{
+            position: 'absolute',
+            top:    shadowOff,
+            left:   shadowOff,
+            right:  0,
+            bottom: 0,
+            borderRadius: RADIUS,
+            backgroundColor: v.shadow,
+          }}
         />
       )}
 
@@ -230,9 +236,9 @@ export function Button({
         style={[
           s.btn,
           {
-            height: HEIGHTS[size],
+            height: isGame ? 60 : HEIGHTS[size],
             borderRadius: RADIUS,
-            borderWidth: v.hasBorder ? BORDER_WIDTH : 0,
+            borderWidth: v.hasBorder ? borderW : 0,
             borderColor: v.border,
             backgroundColor: v.surface,
             transform: [{ translateX: press }, { translateY: press }],
@@ -241,7 +247,6 @@ export function Button({
           },
         ]}
       >
-        {/* Action chip — pinned left, surface-tinted */}
         {isAction && leadingIcon && (
           <View
             style={[
@@ -253,22 +258,16 @@ export function Button({
               },
             ]}
           >
-            {/* The icon's color comes from the consumer; we let them
-                pass a node already coloured. chipIconTint is exposed
-                via context-less prop drilling — i.e. the consumer
-                should pass an icon coloured to match. */}
             <View style={{ opacity: 1 }}>{leadingIcon}</View>
           </View>
         )}
 
-        {/* Trailing arrow pinned right (primary/action/outline/ghost) */}
         {arrow && !isLoading && !isAction && (
           <View style={s.arrowContainer}>
             <Text style={[s.arrow, { color: v.text }]}>→</Text>
           </View>
         )}
 
-        {/* Centred label group */}
         <View
           style={[
             s.contentGroup,
@@ -283,8 +282,9 @@ export function Button({
             style={[
               s.label,
               {
-                color: v.text,
-                letterSpacing: isAction ? 0.4 : -0.1,
+                color:         v.text,
+                letterSpacing: isGame ? 1.5 : (isAction ? 0.4 : -0.1),
+                fontSize:      isGame ? 16 : 15,
               },
             ]}
             numberOfLines={1}
@@ -312,17 +312,6 @@ export function DebateActionButton({
 }
 
 const s = StyleSheet.create({
-  wrapperWithShadow: {
-    paddingRight: SHADOW_OFFSET,
-    paddingBottom: SHADOW_OFFSET,
-  },
-  shadow: {
-    position: 'absolute',
-    top: SHADOW_OFFSET,
-    left: SHADOW_OFFSET,
-    right: 0,
-    bottom: 0,
-  },
   btn: {
     flexDirection: 'row',
     alignItems: 'center',

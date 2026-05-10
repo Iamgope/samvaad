@@ -299,7 +299,7 @@ const s = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderRadius: 10,
     borderWidth: 1,
-    borderBottomWidth: 4,
+    borderBottomWidth: 3,
   },
   pillLabel: {
     fontFamily: fonts.jakarta.semiBold,

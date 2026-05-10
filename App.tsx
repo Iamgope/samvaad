@@ -29,6 +29,7 @@ import OTPScreen from './screens/OTPScreen';
 import OnboardingFlowScreen from './screens/OnboardingFlowScreen';
 import TopicScreen from './screens/TopicScreen';
 import DebateScreen from './screens/DebateScreen';
+import JoinDebateScreen from './screens/JoinDebateScreen';
 import { TabNavigator } from './navigation/TabNavigator';
 import { colors } from './constants/colors';
 
@@ -41,6 +42,7 @@ export type RootStackParamList = {
   Main: undefined;
   TopicScreen: { category: string };
   Debate: { debateId: string; categoryId: string; motion: string; debating: number };
+  JoinDebate: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -94,6 +96,7 @@ export default function App() {
             <Stack.Screen name="Main" component={TabNavigator} />
             <Stack.Screen name="TopicScreen" component={TopicScreen} />
             <Stack.Screen name="Debate" component={DebateScreen} />
+            <Stack.Screen name="JoinDebate" component={JoinDebateScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </View>

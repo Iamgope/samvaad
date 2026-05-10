@@ -418,7 +418,7 @@ export default function HomeScreen({ navigation }: Props) {
         <Header />
         <TrendingSection debates={TRENDING} onJoin={handleJoin} />
         <ExploreTopics onPress={handleCategoryPress} />
-        <ActionSection onPress={() => {}} />
+        <ActionSection onPress={(key) => { if (key === 'join') navigation.navigate('JoinDebate') }} />
         <ForYouSection debates={CURATED} onPress={handleCuratedPress} />
       </ScrollView>
     </SafeAreaView>
