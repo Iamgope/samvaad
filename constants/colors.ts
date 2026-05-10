@@ -13,7 +13,7 @@ export const colors = {
   black:    '#0C0F16',  // primary bg — dark navy-charcoal, not pure black
   surface:  '#131920',  // card / input bg
   surface2: '#1A2130',  // elevated surface, search bg
-  border:   '#232B3C',  // structural dividers, card borders
+  border:   '#373d4c',  // structural dividers, card borders
   borderStrong: '#2D3748', // interactive element borders (pills, inputs)
 
   // Text hierarchy — calibrated for dark navy backgrounds.

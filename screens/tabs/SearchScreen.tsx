@@ -80,7 +80,7 @@ const ALL_DEBATES: Debate[] = [
 type PillId = 'explore' | CategoryId
 
 const PILLS: { id: PillId; label: string; emoji?: string; color: string }[] = [
-  { id: 'explore',  label: 'Explore',  color: colors.textMuted },
+  { id: 'explore',  label: 'Explore', emoji: '🧭', color: colors.text },
   { id: 'politics', label: 'Politics', emoji: '🏛️', color: colors.streak  },
   { id: 'sports',   label: 'Sports',   emoji: '🏆', color: colors.sky     },
   { id: 'culture',  label: 'Culture',  emoji: '🎭', color: colors.purple2 },
@@ -299,7 +299,7 @@ const s = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderRadius: 10,
     borderWidth: 1,
-    borderBottomWidth: 3,
+  borderBottomWidth: 2,
   },
   pillLabel: {
     fontFamily: fonts.jakarta.semiBold,

@@ -18,35 +18,16 @@ import { Button } from '../components/Button'
 // ─── DATA ─────────────────────────────────────────────────────────
 
 const TOPICS = [
-  { id: 'all',      label: 'All',      emoji: '🌏' },
-  { id: 'politics', label: 'Politics', emoji: '🏛️' },
-  { id: 'sports',   label: 'Sports',   emoji: '🏆' },
-  { id: 'culture',  label: 'Culture',  emoji: '🎨' },
+  { id: 'all',      label: 'All',      emoji: '🌏', accent: colors.lime    },
+  { id: 'politics', label: 'Politics', emoji: '🏛️',  accent: colors.streak  },
+  { id: 'sports',   label: 'Sports',   emoji: '🏆', accent: colors.sky     },
+  { id: 'culture',  label: 'Culture',  emoji: '🎨', accent: colors.purple2 },
 ]
 
-// 'surprise' is always first — it's the default and gets special treatment
 const STANCES = [
-  {
-    id:     'surprise',
-    label:  'Surprise Me',
-    emoji:  '🎲',
-    accent: colors.lime,
-    desc:   'We assign your side when matched',
-  },
-  {
-    id:     'for',
-    label:  'Defend',
-    emoji:  '🛡️',
-    accent: colors.sky,
-    desc:   'Argue in favour\nof the motion',
-  },
-  {
-    id:     'against',
-    label:  'Attack',
-    emoji:  '⚔️',
-    accent: colors.streak,
-    desc:   'Argue against\nthe motion',
-  },
+  { id: 'surprise', label: 'Surprise Me', emoji: '🎲', accent: colors.lime   },
+  { id: 'for',      label: 'Defend',      emoji: '🛡️',  accent: colors.sky    },
+  { id: 'against',  label: 'Attack',      emoji: '⚔️',  accent: colors.streak },
 ]
 
 const RULES = [
@@ -54,54 +35,83 @@ const RULES = [
   'Debate ideas, not people. Personal attacks end the match.',
 ]
 
-// ─── FILTER CHIP ──────────────────────────────────────────────────
-// Compact trigger that shows current selection — tap to expand options inline
+// ─── CHIP DROPDOWN ────────────────────────────────────────────────
 
-function FilterChip({
-  emoji, label, accent, open, onPress,
+type Option = { id: string; label: string; emoji: string; accent?: string }
+
+function ChipDropdown<T extends Option>({
+  selected,
+  options,
+  onSelect,
+  accent,
+  zIndex,
 }: {
-  emoji: string
-  label: string
+  selected: T
+  options: T[]
+  onSelect: (o: T) => void
   accent: string
-  open: boolean
-  onPress: () => void
+  zIndex?: number
 }) {
+  const [open, setOpen] = useState(false)
+
   return (
-    <TouchableOpacity
-      style={[
-        fc.chip,
-        open && { borderColor: accent, backgroundColor: accent + '14' },
-      ]}
-      onPress={onPress}
-      activeOpacity={0.75}
-    >
-      <Text style={fc.emoji}>{emoji}</Text>
-      <Text style={[fc.label, open && { color: accent }]}>{label}</Text>
-      <Svg
-        width={10} height={10} viewBox="0 0 10 10" fill="none"
-        style={{ transform: [{ rotate: open ? '180deg' : '0deg' }] }}
+    <View style={[cd.wrap, { zIndex: open ? 50 : (zIndex ?? 1) }]}>
+      <TouchableOpacity
+        style={[cd.chip, open && { borderColor: accent, backgroundColor: accent + '14' }]}
+        onPress={() => setOpen(v => !v)}
+        activeOpacity={0.8}
       >
-        <Path
-          d="M2 3.5l3 3 3-3"
-          stroke={open ? accent : colors.textSubtle}
-          strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
-        />
-      </Svg>
-    </TouchableOpacity>
+        <Text style={cd.emoji}>{selected.emoji}</Text>
+        <Text style={[cd.label, open && { color: accent }]}>{selected.label}</Text>
+        <Svg
+          width={10} height={10} viewBox="0 0 10 10" fill="none"
+          style={{ transform: [{ rotate: open ? '180deg' : '0deg' }] }}
+        >
+          <Path
+            d="M2 3.5l3 3 3-3"
+            stroke={open ? accent : colors.textSubtle}
+            strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
+          />
+        </Svg>
+      </TouchableOpacity>
+
+      {open && (
+        <View style={cd.menu}>
+          {options.map((o, i) => {
+            const active    = o.id === selected.id
+            const itemAccent = o.accent ?? accent
+            return (
+              <TouchableOpacity
+                key={o.id}
+                style={[cd.option, i < options.length - 1 && cd.optionDivider]}
+                onPress={() => { onSelect(o); setOpen(false) }}
+                activeOpacity={0.7}
+              >
+                <Text style={cd.optionEmoji}>{o.emoji}</Text>
+                <Text style={[cd.optionLabel, active && { color: itemAccent }]}>
+                  {o.label}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      )}
+    </View>
   )
 }
 
-const fc = StyleSheet.create({
+const cd = StyleSheet.create({
+  wrap: { position: 'relative' },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 3,
-    borderRadius: 8,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    backgroundColor: colors.surface,
+    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 3,
   },
   emoji: { fontSize: 14 },
   label: {
@@ -109,152 +119,38 @@ const fc = StyleSheet.create({
     fontSize: 13,
     color: colors.text,
   },
-})
-
-// ─── TOPIC PILL ───────────────────────────────────────────────────
-
-type TopicOption = typeof TOPICS[number]
-
-function TopicPill({ topic, selected, onPress }: {
-  topic: TopicOption; selected: boolean; onPress: () => void
-}) {
-  return (
-    <TouchableOpacity
-      style={[
-        tp.pill,
-        selected && { borderColor: colors.lime, backgroundColor: colors.lime + '14' },
-      ]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <Text style={tp.emoji}>{topic.emoji}</Text>
-      <Text style={[tp.label, selected && { color: colors.lime }]}>{topic.label}</Text>
-    </TouchableOpacity>
-  )
-}
-
-const tp = StyleSheet.create({
-  pill: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.xs + 2,
-    borderRadius: 100, borderWidth: 1,
-    borderColor: colors.border, backgroundColor: colors.surface,
+  menu: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    marginTop: 6,
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: 10,
+    overflow: 'hidden',
+    minWidth: 150,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
   },
-  emoji: { fontSize: 14 },
-  label: {
-    fontFamily: fonts.jakarta.semiBold,
-    fontSize: 13,
-    color: colors.textSubtle,
-  },
-})
-
-// ─── STANCE OPTIONS ───────────────────────────────────────────────
-// Surprise Me: full-width horizontal card (default, easiest choice)
-// Defend / Attack: side-by-side vertical cards (deliberate selection)
-
-type StanceOption = typeof STANCES[number]
-
-function SurpriseCard({ selected, onPress }: { selected: boolean; onPress: () => void }) {
-  const st = STANCES[0]
-  return (
-    <TouchableOpacity
-      style={[
-        sm.card,
-        selected
-          ? { borderColor: st.accent, backgroundColor: st.accent + '14' }
-          : { borderColor: colors.border, backgroundColor: colors.surface },
-      ]}
-      onPress={onPress}
-      activeOpacity={0.75}
-    >
-      <Text style={sm.emoji}>{st.emoji}</Text>
-      <View style={sm.textGroup}>
-        <Text style={[sm.label, { color: selected ? st.accent : colors.text }]}>
-          {st.label.toUpperCase()}
-        </Text>
-        <Text style={[sm.desc, { color: selected ? st.accent + 'AA' : colors.textSubtle }]}>
-          {st.desc}
-        </Text>
-      </View>
-      {selected && (
-        <View style={[sm.check, { backgroundColor: st.accent }]}>
-          <Text style={sm.checkMark}>✓</Text>
-        </View>
-      )}
-    </TouchableOpacity>
-  )
-}
-
-const sm = StyleSheet.create({
-  card: {
+  option: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12, borderWidth: 1,
-    paddingVertical: spacing.md,
+    gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    gap: spacing.md,
+    paddingVertical: spacing.sm + 2,
   },
-  emoji: { fontSize: 24 },
-  textGroup: { flex: 1, gap: 2 },
-  label: {
-    fontFamily: fonts.jakarta.bold,
-    fontSize: 13, letterSpacing: 0.8,
+  optionDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  desc: {
-    fontFamily: fonts.jakarta.regular,
-    fontSize: 12, color: colors.textSubtle,
-  },
-  check: {
-    width: 22, height: 22, borderRadius: 11,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  checkMark: {
-    fontFamily: fonts.jakarta.bold,
-    fontSize: 12, color: colors.black,
-  },
-})
-
-function StanceCard({ stance, selected, onPress }: {
-  stance: StanceOption; selected: boolean; onPress: () => void
-}) {
-  const { accent } = stance
-  return (
-    <TouchableOpacity
-      style={[
-        sc.card,
-        selected
-          ? { borderColor: accent, backgroundColor: accent + '14' }
-          : { borderColor: colors.border, backgroundColor: colors.surface },
-      ]}
-      onPress={onPress}
-      activeOpacity={0.75}
-    >
-      <Text style={sc.emoji}>{stance.emoji}</Text>
-      <Text style={[sc.label, { color: selected ? accent : colors.text }]}>
-        {stance.label.toUpperCase()}
-      </Text>
-      <Text style={[sc.desc, { color: selected ? accent + 'AA' : colors.textSubtle }]}>
-        {stance.desc}
-      </Text>
-    </TouchableOpacity>
-  )
-}
-
-const sc = StyleSheet.create({
-  card: {
-    flex: 1, borderRadius: 12, borderWidth: 1,
-    paddingVertical: spacing.lg, paddingHorizontal: spacing.sm,
-    gap: spacing.xs, alignItems: 'center',
-    justifyContent: 'center', minHeight: 105,
-  },
-  emoji: { fontSize: 24, marginBottom: spacing.xs },
-  label: {
-    fontFamily: fonts.jakarta.bold,
-    fontSize: 12, letterSpacing: 0.8, textAlign: 'center',
-  },
-  desc: {
-    fontFamily: fonts.jakarta.regular,
-    fontSize: 11, textAlign: 'center', lineHeight: 15,
+  optionEmoji: { fontSize: 15 },
+  optionLabel: {
+    fontFamily: fonts.jakarta.medium,
+    fontSize: 14,
+    color: colors.textMuted,
   },
 })
 
@@ -395,11 +291,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
       ? (STANCES.find(s => s.id === params.stanceId) ?? STANCES[0])
       : STANCES[0] // default: Surprise Me
   )
-  const [searching, setSearching]   = useState(false)
-  const [expanded,  setExpanded]    = useState<'topic' | 'stance' | null>(null)
-
-  const toggleExpand = (panel: 'topic' | 'stance') =>
-    setExpanded(v => v === panel ? null : panel)
+  const [searching, setSearching] = useState(false)
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
@@ -445,70 +337,29 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Hero */}
-            <Text style={s.title}>ENTER THE{'\n'}ARENA.</Text>
+            {/* Hero title */}
+            <Text style={s.titleSmall}>THE ARENA</Text>
+            <Text style={s.titleLarge}>AWAITS.</Text>
             <Text style={s.subtitle}>PICK A SIDE. MAKE IT COUNT.</Text>
 
-            {/* Filter chip row — compact, requires deliberate tap to change */}
-            <View style={s.chipRow}>
-              <FilterChip
-                emoji={topic.emoji}
-                label={topic.label}
-                accent={colors.lime}
-                open={expanded === 'topic'}
-                onPress={() => toggleExpand('topic')}
+            {/* Dropdowns */}
+            <View style={s.filterRow}>
+              <ChipDropdown
+                selected={topic}
+                options={TOPICS}
+                onSelect={setTopic}
+                accent={topic.accent}
+                zIndex={20}
               />
-              <Text style={s.chipSep}>·</Text>
-              <FilterChip
-                emoji={selectedStance.emoji}
-                label={selectedStance.label}
+              <Text style={s.filterSep}>·</Text>
+              <ChipDropdown
+                selected={selectedStance}
+                options={STANCES}
+                onSelect={setSelectedStance}
                 accent={selectedStance.accent}
-                open={expanded === 'stance'}
-                onPress={() => toggleExpand('stance')}
+                zIndex={10}
               />
             </View>
-
-            {/* Topic expanded panel */}
-            {expanded === 'topic' && (
-              <View style={s.expandedPanel}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={s.pillRow}
-                >
-                  {TOPICS.map(t => (
-                    <TopicPill
-                      key={t.id}
-                      topic={t}
-                      selected={topic.id === t.id}
-                      onPress={() => { setTopic(t); setExpanded(null) }}
-                    />
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-
-            {/* Stance expanded panel */}
-            {expanded === 'stance' && (
-              <View style={s.expandedPanel}>
-                {/* Surprise Me — full-width, default option */}
-                <SurpriseCard
-                  selected={selectedStance.id === 'surprise'}
-                  onPress={() => { setSelectedStance(STANCES[0]); setExpanded(null) }}
-                />
-                {/* Defend + Attack — deliberate side-by-side */}
-                <View style={s.stanceRow}>
-                  {STANCES.slice(1).map(st => (
-                    <StanceCard
-                      key={st.id}
-                      stance={st}
-                      selected={selectedStance.id === st.id}
-                      onPress={() => { setSelectedStance(st); setExpanded(null) }}
-                    />
-                  ))}
-                </View>
-              </View>
-            )}
 
             {/* Rules */}
             <View style={s.rulesSection}>
@@ -524,9 +375,9 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
 
           <View style={s.footer}>
             <Button
-              label="ENTER ARENA"
-              onPress={() => { setExpanded(null); setSearching(true) }}
-              variant="game"
+              label="STEP INTO THE RING"
+              onPress={() => setSearching(true)}
+              variant="primary"
               shadowColor={colors.lime}
             />
           </View>
@@ -562,49 +413,46 @@ const s = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
 
-  // Hero
-  title: {
+  // Hero — two-line staggered: small word then large punch word
+  titleSmall: {
+    fontFamily: fonts.display.bold,
+    fontSize: 22,
+    color: colors.textSubtle,
+    letterSpacing: 2,
+    marginTop: spacing.md,
+    marginBottom: 2,
+  },
+  titleLarge: {
     fontFamily: fonts.display.black,
-    fontSize: 52, lineHeight: 54,
-    color: colors.text, letterSpacing: -2,
-    marginBottom: spacing.sm, marginTop: spacing.md,
+    fontSize: 64,
+    lineHeight: 64,
+    color: colors.text,
+    letterSpacing: -3,
+    marginBottom: spacing.md,
   },
   subtitle: {
     fontFamily: fonts.jakarta.bold,
-    fontSize: 11, color: colors.textSubtle,
-    letterSpacing: 1.4, marginBottom: spacing.xl,
+    fontSize: 11,
+    color: colors.textSubtle,
+    letterSpacing: 1.4,
+    marginBottom: spacing.xxl,
   },
 
-  // Chip row
-  chipRow: {
+  // Dropdowns
+  filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.xxl + spacing.xl,
   },
-  chipSep: {
+  filterSep: {
     fontFamily: fonts.jakarta.regular,
-    fontSize: 14, color: colors.textFaint,
-  },
-
-  // Expanded panels
-  expandedPanel: {
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
-    paddingTop: spacing.xs,
-  },
-  pillRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingBottom: 2,
-  },
-  stanceRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
+    fontSize: 14,
+    color: colors.textFaint,
   },
 
   // Rules
-  rulesSection: { gap: spacing.sm, marginTop: spacing.xl },
+  rulesSection: { gap: spacing.sm },
   rulesHeading: {
     fontFamily: fonts.jakarta.bold,
     fontSize: 10, color: colors.textFaint,

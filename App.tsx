@@ -42,7 +42,7 @@ export type RootStackParamList = {
   Main: undefined;
   TopicScreen: { category: string };
   Debate: { debateId: string; categoryId: string; motion: string; debating: number };
-  JoinDebate: undefined;
+  JoinDebate: { topicId?: string; stanceId?: string } | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

@@ -72,7 +72,7 @@ function tokensFor(
         surface: shadowColor,
         border:  colors.black,
         text:    colors.black,
-        shadow:  colors.black,
+        shadow:  shadowColor + '66', // tinted shadow — visible on dark backgrounds
         hasShadow: true,
         hasBorder: true,
       };

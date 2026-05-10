@@ -45,7 +45,7 @@ export function DebateHeadline({
     <TouchableOpacity style={s.root} onPress={onPress} activeOpacity={0.7}>
       {/* Category label row */}
       <View style={s.labelRow}>
-        <Text style={[s.categoryLabel, { color: categoryAccent }]}>
+        <Text style={[s.categoryLabel, { color: categoryAccent, opacity: 0.45 }]}>
           {emoji}  {categoryName}
         </Text>
       </View>
@@ -68,9 +68,9 @@ export function DebateHeadline({
 
       {/* For / Against counts */}
       <View style={s.statsRow}>
-        <Text style={[s.statFor, { color: colors.lime + '99' }]}>{fmt(agreeCount)} for</Text>
+        <Text style={[s.statFor]}>{fmt(agreeCount)} for</Text>
         <Text style={s.statSep}>·</Text>
-        <Text style={[s.statAgainst, { color: colors.red + '99' }]}>{fmt(disagreeCount)} against</Text>
+        <Text style={[s.statAgainst]}>{fmt(disagreeCount)} against</Text>
         <Text style={s.statSep}>·</Text>
         <Text style={s.statNeutral}>{fmt(unsureCount)} unsure</Text>
       </View>
@@ -144,10 +144,12 @@ const s = StyleSheet.create({
   statFor: {
     fontFamily: fonts.jakarta.semiBold,
     fontSize: 12,
+    color: colors.textMuted
   },
   statAgainst: {
     fontFamily: fonts.jakarta.semiBold,
     fontSize: 12,
+    color: colors.textMuted
   },
   statNeutral: {
     fontFamily: fonts.jakarta.medium,
