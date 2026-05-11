@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View,
   ScrollView,
@@ -7,6 +7,7 @@ import {
   Dimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  RefreshControl,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { colors } from '../constants/colors'
@@ -382,6 +383,14 @@ type Props = {
 }
 
 export default function HomeScreen({ navigation }: Props) {
+  const [refreshing, setRefreshing] = useState(false)
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    // TODO: call the user-feed API here once it's defined
+    setRefreshing(false)
+  }, [])
+
   const handleJoin = (id: string) => {
     const debate = TRENDING.find(d => d.id === id)
     if (!debate) return
@@ -414,6 +423,14 @@ export default function HomeScreen({ navigation }: Props) {
         style={s.scroll}
         contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.lime}
+            colors={[colors.lime]}
+          />
+        }
       >
         <Header />
         <TrendingSection debates={TRENDING} onJoin={handleJoin} />
