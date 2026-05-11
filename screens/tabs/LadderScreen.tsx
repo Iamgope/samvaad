@@ -172,33 +172,38 @@ function Podium({ players }: { players: Player[] }) {
 }
 
 
-function LeaderRow({ player }: { player: Player }) {
+function LeaderRow({ player, isLast }: { player: Player; isLast: boolean }) {
   const winRate = Math.round((player.wins / player.debates) * 100);
 
   return (
-    <View style={styles.leaderWrap}>
-      <View style={styles.leaderCard}>
-        <View style={styles.leaderAvatar}>
-          <Text style={styles.leaderAvatarText}>{player.initials}</Text>
+    <>
+      <TouchableOpacity style={styles.leaderRoot} activeOpacity={0.6}>
+        {/* Stats section */}
+        <View style={styles.leaderStatsRow}>
+          <Text style={styles.leaderMeta}>{player.debates} debates</Text>
+          <View style={styles.leaderDot} />
+          <Text style={styles.leaderMeta}>{winRate}%</Text>
         </View>
 
-        <View style={styles.leaderInfo}>
-          <Text style={styles.leaderName} numberOfLines={1}>{player.name}</Text>
-          <View style={styles.leaderMetaRow}>
-            <Text style={styles.leaderMeta}>{player.debates} debates</Text>
-            <View style={styles.leaderDot} />
-            <Text style={styles.leaderMeta}>{winRate}%</Text>
+        {/* Headline section */}
+        <View style={styles.leaderHeadlineRow}>
+          <View style={styles.leaderAvatar}>
+            <Text style={styles.leaderAvatarText}>{player.initials}</Text>
+          </View>
+          <View style={styles.leaderNameSection}>
+            <Text style={styles.leaderName} numberOfLines={1}>{player.name}</Text>
+          </View>
+          <View style={styles.leaderScoreSection}>
+            <View style={styles.leaderScore}>
+              <Text style={styles.leaderScoreText}>{player.wins}</Text>
+            </View>
+            <Text style={styles.leaderRankLabel}>#{player.rank}</Text>
           </View>
         </View>
+      </TouchableOpacity>
 
-        <View style={styles.leaderScoreSection}>
-          <View style={styles.leaderScore}>
-            <Text style={styles.leaderScoreText}>{player.wins}</Text>
-          </View>
-          <Text style={styles.leaderRankLabel}>#{player.rank}</Text>
-        </View>
-      </View>
-    </View>
+      {!isLast && <View style={styles.leaderRowDivider} />}
+    </>
   );
 }
 
@@ -237,7 +242,7 @@ export default function LadderScreen() {
               <Text style={styles.emptyListText}>Only the podium so far. More to come.</Text>
             </View>
           ) : (
-            restOfList.map((p: Player) => <LeaderRow key={p.rank} player={p} />)
+            restOfList.map((p: Player, idx: number) => <LeaderRow key={p.rank} player={p} isLast={idx === restOfList.length - 1} />)
           )}
         </View>
 
@@ -268,11 +273,13 @@ const styles = StyleSheet.create({
   podiumEmpty: { height: 280, alignItems: 'center', justifyContent: 'center', paddingHorizontal: SCREEN_PADDING },
   podiumEmptyText: { fontFamily: fonts.jakarta.regular, fontSize: 13, color: colors.textSubtle, textAlign: 'center' },
 
-  leaderWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: SCREEN_PADDING, marginBottom: spacing.sm },
-  leaderCard: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.06)' },
+  leaderRoot: { paddingVertical: spacing.md, paddingHorizontal: SCREEN_PADDING },
+  leaderStatsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  leaderRowDivider: { height: 1, backgroundColor: colors.border, marginHorizontal: 20, marginVertical: spacing.md, opacity: 0.4 },
+  leaderHeadlineRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  leaderNameSection: { flex: 1 },
   leaderAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1C2535', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#2A3548' },
   leaderAvatarText: { fontFamily: fonts.display.bold, fontSize: 11, color: colors.textMuted, letterSpacing: 0.5 },
-  leaderInfo: { flex: 1, gap: 3 },
   leaderName: { fontFamily: fonts.jakarta.semiBold, fontSize: 14, color: colors.text },
   leaderMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   leaderMeta: { fontFamily: fonts.jakarta.regular, fontSize: 11, color: colors.textSubtle },
@@ -284,7 +291,7 @@ const styles = StyleSheet.create({
 
   scrollContent: { paddingBottom: spacing.xl },
   podiumSection: { paddingTop: spacing.xl, paddingBottom: spacing.xl },
-  listSection: { paddingHorizontal: SCREEN_PADDING },
+  listSection: {},
   sectionTitle: { fontFamily: fonts.jakarta.semiBold, fontSize: 12, color: colors.textSubtle, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: spacing.md, paddingHorizontal: SCREEN_PADDING },
   emptyList: { paddingVertical: spacing.xxl, alignItems: 'center' },
   emptyListText: { fontFamily: fonts.jakarta.regular, fontSize: 13, color: colors.textSubtle },
