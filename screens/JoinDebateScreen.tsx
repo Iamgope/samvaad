@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useCallback, useState, useRef, useEffect, useMemo } from 'react'
 import {
   View,
   StyleSheet,
@@ -6,18 +6,25 @@ import {
   ScrollView,
   Animated,
   Easing,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { colors } from '../constants/colors'
 import { fonts } from '../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../constants/spacing'
-import { TOPICS } from '../constants/topics'
 import { Text } from '../components/Text'
 import { Button } from '../components/Button'
 import { ChipDropdown } from '../components/ChipDropdown'
 import { Toast } from '../components/Toast'
-import { connectWebSocket, WebSocketClient } from '../services/api'
+import {
+  connectWebSocket,
+  WebSocketClient,
+  fetchCategoryAndRules,
+  ApiError,
+  type DebateCategory,
+} from '../services/api'
 
 // ─── DATA ─────────────────────────────────────────────────────────
 
@@ -27,10 +34,30 @@ const STANCES = [
   { id: 'against',  label: 'Attack',      emoji: '⚔️',  accent: colors.streak },
 ]
 
-const RULES = [
-  'Keep arguments relevant to the motion — tangents are forfeit.',
-  'Debate ideas, not people. Personal attacks end the match.',
-]
+const ALL_CATEGORY_ID = 'all'
+const CATEGORY_ACCENTS = [colors.streak, colors.sky, colors.purple2, colors.lime, '#F472B6', '#FB923C']
+const CATEGORY_EMOJIS  = ['🏛️', '🏆', '🎭', '🤖', '📚', '🎨', '⚖️', '🌍']
+
+type CategoryChip = { id: string; label: string; emoji: string; accent: string }
+
+const ALL_CHIP: CategoryChip = {
+  id: ALL_CATEGORY_ID,
+  label: 'All',
+  emoji: '🌏',
+  accent: colors.lime,
+}
+
+function toCategoryChips(categories: DebateCategory[]): CategoryChip[] {
+  return [
+    ALL_CHIP,
+    ...categories.map((c, i) => ({
+      id: String(c.id),
+      label: c.name,
+      emoji: CATEGORY_EMOJIS[i % CATEGORY_EMOJIS.length],
+      accent: CATEGORY_ACCENTS[i % CATEGORY_ACCENTS.length],
+    })),
+  ]
+}
 
 // ─── RADAR ANIMATION ──────────────────────────────────────────────
 
@@ -153,17 +180,21 @@ const rd = StyleSheet.create({
 
 // ─── SCREEN ───────────────────────────────────────────────────────
 
-type RouteParams = { topicId?: string; stanceId?: string }
+type RouteParams = { categoryId?: string; stanceId?: string }
 type Props = { navigation: any; route?: { params?: RouteParams } }
 
 export default function JoinDebateScreen({ navigation, route }: Props) {
   const params = route?.params
 
-  const [topic, setTopic] = useState(
-    params?.topicId
-      ? (TOPICS.find(t => t.id === params.topicId) ?? TOPICS[0])
-      : TOPICS[0]
-  )
+  const [categories, setCategories] = useState<DebateCategory[]>([])
+  const [rules, setRules] = useState<string[]>([])
+  const [loadingCategories, setLoadingCategories] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+
+  const categoryChips = useMemo(() => toCategoryChips(categories), [categories])
+
+  const [category, setCategory] = useState<CategoryChip>(ALL_CHIP)
   const [selectedStance, setSelectedStance] = useState(
     params?.stanceId
       ? (STANCES.find(s => s.id === params.stanceId) ?? STANCES[0])
@@ -174,6 +205,44 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
   const [queueError, setQueueError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const wsRef = useRef<WebSocketClient | null>(null)
+
+  const loadCategories = useCallback(async () => {
+    try {
+      setFetchError(null)
+      const res = await fetchCategoryAndRules()
+      setCategories(res.categories)
+      setRules(res.rules)
+    } catch (err) {
+      setFetchError(err instanceof ApiError ? err.message : 'Failed to load categories')
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    setLoadingCategories(true)
+    loadCategories().finally(() => { if (!cancelled) setLoadingCategories(false) })
+    return () => { cancelled = true }
+  }, [loadCategories])
+
+  // Reconcile selected category once data arrives — preserve route-param default if it matches.
+  useEffect(() => {
+    if (categories.length === 0) return
+    if (category.id !== ALL_CATEGORY_ID) {
+      const stillExists = categoryChips.find(c => c.id === category.id)
+      if (stillExists) { setCategory(stillExists); return }
+    }
+    if (params?.categoryId) {
+      const match = categoryChips.find(c => c.id === params.categoryId)
+      if (match) setCategory(match)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryChips])
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    await loadCategories()
+    setRefreshing(false)
+  }, [loadCategories])
 
   const closeSocket = () => {
     wsRef.current?.close()
@@ -226,10 +295,12 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
         console.log('[WS] error =', err)
       })
 
-      // TODO: replace with real topic/category IDs once topic picker is wired to /debate/topics/
-      const topicIdNum = Number(topic.id)
+      // TODO: send topic_id once a topic picker exists (sourced from /debate/topics/)
+      const categoryIdNum = Number(category.id)
       const data: Record<string, number | string> = {}
-      if (topic.id !== 'all' && Number.isFinite(topicIdNum)) data.topic_id = topicIdNum
+      if (category.id !== ALL_CATEGORY_ID && Number.isFinite(categoryIdNum)) {
+        data.category_id = categoryIdNum
+      }
       const side = stanceToSide(selectedStance.id)
       if (side) data.pro_or_con = side
 
@@ -274,7 +345,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
           <RadarScan />
           <Text style={s.searchingTitle}>FINDING{'\n'}YOUR MATCH.</Text>
           <Text style={s.searchingMeta}>
-            {topic.emoji}  {topic.label}  ·  {selectedStance.emoji}  {selectedStance.label}
+            {category.emoji}  {category.label}  ·  {selectedStance.emoji}  {selectedStance.label}
           </Text>
           <TouchableOpacity
             style={s.cancelBtn}
@@ -292,6 +363,14 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
             contentContainerStyle={s.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={colors.lime}
+                colors={[colors.lime]}
+              />
+            }
           >
             {/* Hero title */}
             <Text style={s.titleSmall}>THE ARENA</Text>
@@ -301,10 +380,10 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
             {/* Dropdowns */}
             <View style={s.filterRow}>
               <ChipDropdown
-                selected={topic}
-                options={TOPICS}
-                onSelect={setTopic}
-                accent={topic.accent}
+                selected={category}
+                options={categoryChips}
+                onSelect={setCategory}
+                accent={category.accent}
                 zIndex={20}
               />
               <Text style={s.filterSep}>·</Text>
@@ -320,7 +399,13 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
             {/* Rules */}
             <View style={s.rulesSection}>
               <Text style={s.rulesHeading}>GROUND RULES</Text>
-              {RULES.map((rule, i) => (
+              {loadingCategories && rules.length === 0 ? (
+                <ActivityIndicator color={colors.lime} style={s.rulesLoader} />
+              ) : fetchError && rules.length === 0 ? (
+                <Text style={s.ruleText} tone="danger">{fetchError}</Text>
+              ) : rules.length === 0 ? (
+                <Text style={s.ruleText} tone="muted">No rules available.</Text>
+              ) : rules.map((rule, i) => (
                 <View key={i} style={s.ruleRow}>
                   <Text style={s.ruleDot}>—</Text>
                   <Text style={s.ruleText}>{rule}</Text>
@@ -468,5 +553,9 @@ const s = StyleSheet.create({
   queueError: {
     marginTop: spacing.sm,
     textAlign: 'center',
+  },
+  rulesLoader: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.xs,
   },
 })

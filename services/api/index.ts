@@ -5,3 +5,4 @@ export { WebSocketClient, connectWebSocket, WS_BASE_URL } from './ws';
 export type { WebSocketClientOptions } from './ws';
 export * from './auth';
 export * from './topics';
+export * from './categories';
