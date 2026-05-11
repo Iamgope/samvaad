@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   View,
   ScrollView,
@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   Animated,
   Image,
+  ActivityIndicator,
+  ImageBackground,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { colors } from '../constants/colors'
@@ -13,20 +15,25 @@ import { fonts } from '../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../constants/spacing'
 import { Text } from '../components/Text'
 import { DebateListRow } from '../components/DebateListRow'
+import { fetchTopics, mediaUrl, type CategoryGroup, type Topic, ApiError } from '../services/api'
 
-type CategoryId = 'politics' | 'sports' | 'lit' | 'philosophy'
+// ─── INTERNAL TYPES ───────────────────────────────────────────────
 
-type Category = {
-  id: CategoryId
+const EXPLORE_ID = '__explore__'
+
+type CategoryView = {
+  id: string                    // category name from API, or EXPLORE_ID
   name: string
-  icon: any
+  description: string
+  iconUri: string | null
+  backgroundUri: string | null
   accent: string
   bannerColor: string
   debatesLive: number
 }
 
 type DebateItem = {
-  id: string
+  id: number
   emoji: string
   motion: string
   debating: number
@@ -36,63 +43,71 @@ type DebateItem = {
   isNew?: boolean
   endsIn?: string
   xpReward: number
+  iconUri: string | null
+  backgroundUri: string | null
 }
 
-// ─── DATA ─────────────────────────────────────────────────────────
+// ─── PALETTES & MOCK FIELDS ───────────────────────────────────────
 
-const CATEGORIES: Category[] = [
-  {
-    id: 'politics',
-    name: 'Politics',
-    icon: require('../assets/politics_icon.png'),
-    accent: colors.streak,
-    bannerColor: '#8B2500',
-    debatesLive: 43,
-  },
-  {
-    id: 'sports',
-    name: 'Sports',
-    icon: require('../assets/sports_icon.png'),
-    accent: '#38BDF8',
-    bannerColor: '#062233',
-    debatesLive: 67,
-  },
-  {
-    id: 'lit',
-    name: 'Culture',
-    icon: require('../assets/art_icon.png'),
-    accent: colors.purple2,
-    bannerColor: '#1E1060',
-    debatesLive: 28,
-  },
-]
+const ACCENT_PALETTE = [colors.streak, '#38BDF8', colors.purple2, colors.lime, '#F472B6', '#FB923C']
+const BANNER_PALETTE = ['#8B2500', '#062233', '#1E1060', '#163300', '#4A0E2E', '#3A1A00']
+const EMOJI_PALETTE  = ['🏛️', '🗳️', '📋', '📱', '⚖️', '🏏', '📺', '🎨', '💰', '📖', '📽️', '🎬', '🤖', '🧠', '🙏']
 
-const DEBATES: Record<string, DebateItem[]> = {
-  politics: [
-    { id: 'p1', emoji: '🏛️', motion: 'Should India remove religion-based laws?',      debating: 12400, forVotes: 7632, againstVotes: 5412, categoryTag: 'Governance',  xpReward: 120 },
-    { id: 'p2', emoji: '🗳️', motion: 'Is NOTA a meaningful political statement?',       debating: 4200,  forVotes: 2100, againstVotes: 2100, categoryTag: 'Democracy',   isNew: true, xpReward: 55 },
-    { id: 'p3', emoji: '📋', motion: 'Should voting be mandatory in India?',            debating: 6800,  forVotes: 4200, againstVotes: 2600, categoryTag: 'Civics',      xpReward: 80 },
-    { id: 'p4', emoji: '📱', motion: 'Can democracy survive social media?',             debating: 3900,  forVotes: 1800, againstVotes: 2100, categoryTag: 'Tech & Pol',  endsIn: '2h', xpReward: 45 },
-    { id: 'p5', emoji: '⚖️', motion: 'Should India adopt a uniform civil code?',        debating: 9100,  forVotes: 5200, againstVotes: 3900, categoryTag: 'Law',         xpReward: 95 },
-  ],
-  sports: [
-    { id: 's1', emoji: '🏏', motion: 'Should cricket be added to the Olympics?',        debating: 8247,  forVotes: 5910, againstVotes: 2290, categoryTag: 'Cricket',     xpReward: 85 },
-    { id: 's2', emoji: '📺', motion: 'Should social media algorithms be regulated?',    debating: 12100, forVotes: 6600, againstVotes: 5500, categoryTag: 'Tech & Society', xpReward: 65 },
-    { id: 's3', emoji: '🎨', motion: 'Is AI art real art?',                             debating: 8300,  forVotes: 3320, againstVotes: 4980, categoryTag: 'Culture & Tech', xpReward: 75 },
-    { id: 's4', emoji: '🏏', motion: 'Introduce a 40-over format in…',                  debating: 15200, forVotes: 9880, againstVotes: 5320, categoryTag: 'Sports',      xpReward: 50 },
-    { id: 's5', emoji: '💰', motion: 'Is money ruining the spirit of sport?',           debating: 4900,  forVotes: 2700, againstVotes: 2200, categoryTag: 'Sports',      isNew: true, xpReward: 60 },
-  ],
-  lit: [
-    { id: 'l1', emoji: '📖', motion: 'Are translations betraying the originals?',       debating: 4100,  forVotes: 1820, againstVotes: 2280, categoryTag: 'Literature',  xpReward: 60 },
-    { id: 'l2', emoji: '📽️', motion: 'Is literary fiction becoming irrelevant?',        debating: 2800,  forVotes: 1400, againstVotes: 1400, categoryTag: 'Culture',     isNew: true, xpReward: 40 },
-    { id: 'l3', emoji: '🎬', motion: 'Do we glorify violence in cinema too much?',      debating: 4300,  forVotes: 2600, againstVotes: 1700, categoryTag: 'Cinema',      xpReward: 55 },
-    { id: 'l4', emoji: '🤖', motion: 'Should AI-generated art be shown in galleries?',  debating: 5100,  forVotes: 2200, againstVotes: 2900, categoryTag: 'AI & Art',    endsIn: '6h', xpReward: 70 },
-  ],
-  philosophy: [
-    { id: 'ph1', emoji: '🤖', motion: 'Will AI make humans irrelevant?',               debating: 8700,  forVotes: 4500, againstVotes: 4200, categoryTag: 'Tech & Phil', xpReward: 90 },
-    { id: 'ph2', emoji: '🧠', motion: 'Is free will an illusion?',                     debating: 6200,  forVotes: 3100, againstVotes: 3100, categoryTag: 'Philosophy',  isNew: true, xpReward: 70 },
-    { id: 'ph3', emoji: '🙏', motion: 'Can morality exist without religion?',          debating: 5400,  forVotes: 2900, againstVotes: 2500, categoryTag: 'Ethics',      xpReward: 65 },
-  ],
+// Stable mock data per topic id so the screen doesn't reshuffle on re-render.
+function mockFieldsFor(topic: Topic, categoryName: string): DebateItem {
+  const id = topic.id
+  const forVotes     = ((id * 137) % 8000) + 500
+  const againstVotes = ((id * 91)  % 7000) + 500
+  const debating     = forVotes + againstVotes + ((id * 53) % 4000)
+  const xpReward     = ((id % 5) + 1) * 20
+  const isNew        = id % 7 === 0
+  const endsIn       = id % 5 === 0 ? `${(id % 8) + 1}h` : undefined
+  const emoji        = EMOJI_PALETTE[id % EMOJI_PALETTE.length]
+
+  return {
+    id,
+    emoji,
+    motion: topic.title,
+    debating,
+    forVotes,
+    againstVotes,
+    categoryTag: categoryName,
+    isNew,
+    endsIn,
+    xpReward,
+    iconUri: mediaUrl(topic.icon),
+    backgroundUri: mediaUrl(topic.background_image),
+  }
+}
+
+function categoryViewFromApi(
+  name: string,
+  group: CategoryGroup,
+  index: number,
+): CategoryView {
+  return {
+    id: name,
+    name,
+    description: group.description,
+    iconUri: mediaUrl(group.icon),
+    backgroundUri: mediaUrl(group.background_image),
+    accent: ACCENT_PALETTE[index % ACCENT_PALETTE.length],
+    bannerColor: BANNER_PALETTE[index % BANNER_PALETTE.length],
+    debatesLive: group.topics.length,
+  }
+}
+
+function exploreCategory(totalTopics: number): CategoryView {
+  return {
+    id: EXPLORE_ID,
+    name: 'Explore',
+    description: 'All debates across every category',
+    iconUri: null,
+    backgroundUri: null,
+    accent: colors.lime,
+    bannerColor: '#1A1F1A',
+    debatesLive: totalTopics,
+  }
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────
@@ -124,21 +139,21 @@ function LiveBadge() {
 
 function BannerHeader({
   cat,
+  pills,
   activeCategoryId,
   onBack,
   onCategoryChange,
 }: {
-  cat: Category
-  activeCategoryId: CategoryId
+  cat: CategoryView
+  pills: CategoryView[]
+  activeCategoryId: string
   onBack: () => void
-  onCategoryChange: (id: CategoryId) => void
+  onCategoryChange: (id: string) => void
 }) {
-  return (
-    <View style={[s.banner, { backgroundColor: cat.bannerColor }]}>
-      {/* Subtle inner glow at bottom of banner */}
+  const bannerContent = (
+    <>
       <View style={[s.bannerGlow, { backgroundColor: cat.accent }]} />
 
-      {/* Top row: back + live */}
       <View style={s.bannerTopRow}>
         <TouchableOpacity style={s.backBtn} onPress={onBack} activeOpacity={0.7}>
           <Text style={s.backArrow}>←</Text>
@@ -146,22 +161,26 @@ function BannerHeader({
         <LiveBadge />
       </View>
 
-      {/* Title + icon row */}
       <View style={s.bannerTitleRow}>
         <View style={s.bannerTitleBlock}>
           <Text style={s.bannerTitle}>{cat.name}</Text>
-          <Text style={s.bannerSubtitle}>{cat.debatesLive} debates happening now</Text>
+          <Text style={s.bannerSubtitle}>
+            {cat.id === EXPLORE_ID
+              ? `${cat.debatesLive} debates across all categories`
+              : `${cat.debatesLive} debates happening now`}
+          </Text>
         </View>
-        <Image source={cat.icon} style={s.bannerIcon} resizeMode="contain" />
+        {cat.iconUri && (
+          <Image source={{ uri: cat.iconUri }} style={s.bannerIcon} resizeMode="contain" />
+        )}
       </View>
 
-      {/* Category switcher pills */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={s.pillsRow}
       >
-        {CATEGORIES.map(c => {
+        {pills.map(c => {
           const active = c.id === activeCategoryId
           return (
             <TouchableOpacity
@@ -182,6 +201,25 @@ function BannerHeader({
           )
         })}
       </ScrollView>
+    </>
+  )
+
+  if (cat.backgroundUri) {
+    return (
+      <ImageBackground
+        source={{ uri: cat.backgroundUri }}
+        style={[s.banner, { backgroundColor: cat.bannerColor }]}
+        imageStyle={s.bannerBgImage}
+      >
+        <View style={s.bannerOverlay} />
+        {bannerContent}
+      </ImageBackground>
+    )
+  }
+
+  return (
+    <View style={[s.banner, { backgroundColor: cat.bannerColor }]}>
+      {bannerContent}
     </View>
   )
 }
@@ -195,7 +233,7 @@ function FeaturedCard({
 }: {
   debate: DebateItem
   accent: string
-  onJoin: (id: string) => void
+  onJoin: (id: number) => void
 }) {
   const total      = debate.forVotes + debate.againstVotes
   const forPct     = (debate.forVotes / total) * 100
@@ -205,7 +243,6 @@ function FeaturedCard({
 
   return (
     <View style={[s.featuredCard, { borderColor: accent + '55', shadowColor: accent }]}>
-      {/* Top row */}
       <View style={s.featuredTopRow}>
         <View style={s.vsLine}>
           <View style={s.vsLineDash} />
@@ -218,10 +255,8 @@ function FeaturedCard({
         </View>
       </View>
 
-      {/* Motion */}
       <Text style={s.featuredMotion} numberOfLines={3}>{debate.motion}</Text>
 
-      {/* Vote boxes */}
       <View style={s.voteRow}>
         <View style={[s.voteBox, s.voteBoxFor]}>
           <Text style={s.voteLabel} tone="accent">For</Text>
@@ -254,7 +289,6 @@ function FeaturedCard({
         </View>
       </View>
 
-      {/* Debating row */}
       <View style={s.debatingRow}>
         <View style={s.avatarStack}>
           <View style={[s.stackAvatar, { backgroundColor: colors.streak,  left: 0  }]} />
@@ -266,7 +300,6 @@ function FeaturedCard({
         </Text>
       </View>
 
-      {/* CTA */}
       <TouchableOpacity style={s.joinBtn} onPress={() => onJoin(debate.id)} activeOpacity={0.85}>
         <Text style={s.joinBtnText}>Join Debate →</Text>
       </TouchableOpacity>
@@ -283,24 +316,85 @@ type Props = {
 }
 
 export default function TopicScreen({ navigation, route }: Props) {
-  const [activeCategoryId, setActiveCategoryId] = useState<CategoryId>(
-    route.params?.category ?? 'sports'
+  const [groups, setGroups] = useState<Record<string, CategoryGroup> | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [activeCategoryId, setActiveCategoryId] = useState<string>(
+    route.params?.category ?? EXPLORE_ID
   )
 
-  const cat    = CATEGORIES.find(c => c.id === activeCategoryId) ?? CATEGORIES[0]
-  const debates = DEBATES[activeCategoryId] ?? []
-  const [featured, ...rest] = debates
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    fetchTopics()
+      .then(data => {
+        if (cancelled) return
+        setGroups(data)
+      })
+      .catch(err => {
+        if (cancelled) return
+        setError(err instanceof ApiError ? err.message : 'Failed to load topics')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [])
 
-  const handleJoin = (id: string) => {
-    const debate = debates.find(d => d.id === id)
+  const { pills, activeCategory, debates } = useMemo(() => {
+    if (!groups) {
+      return { pills: [] as CategoryView[], activeCategory: null as CategoryView | null, debates: [] as DebateItem[] }
+    }
+
+    const names = Object.keys(groups)
+    const categoryViews = names.map((name, i) => categoryViewFromApi(name, groups[name], i))
+    const totalTopics = names.reduce((acc, n) => acc + groups[n].topics.length, 0)
+    const explore = exploreCategory(totalTopics)
+    const allPills = [explore, ...categoryViews]
+
+    const active = allPills.find(c => c.id === activeCategoryId) ?? explore
+
+    const items: DebateItem[] =
+      active.id === EXPLORE_ID
+        ? names.flatMap(n => groups[n].topics.map(t => mockFieldsFor(t, n)))
+        : (groups[active.name]?.topics ?? []).map(t => mockFieldsFor(t, active.name))
+
+    return { pills: allPills, activeCategory: active, debates: items }
+  }, [groups, activeCategoryId])
+
+  const handleJoin = (debateId: number) => {
+    const debate = debates.find(d => d.id === debateId)
     if (!debate) return
     navigation.navigate('Debate', {
-      debateId: id,
-      categoryId: activeCategoryId,
+      debateId,
+      categoryId: debate.categoryTag,
       motion: debate.motion,
       debating: debate.debating,
     })
   }
+
+  if (loading) {
+    return (
+      <SafeAreaView style={s.safe} edges={['top']}>
+        <View style={s.center}>
+          <ActivityIndicator color={colors.lime} />
+        </View>
+      </SafeAreaView>
+    )
+  }
+
+  if (error || !activeCategory) {
+    return (
+      <SafeAreaView style={s.safe} edges={['top']}>
+        <View style={s.center}>
+          <Text style={s.errorText} tone="danger">{error ?? 'No topics available'}</Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
+  const [featured, ...rest] = debates
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -310,42 +404,42 @@ export default function TopicScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <BannerHeader
-          cat={cat}
+          cat={activeCategory}
+          pills={pills}
           activeCategoryId={activeCategoryId}
           onBack={() => navigation.goBack()}
           onCategoryChange={setActiveCategoryId}
         />
 
-        {/* Featured debate */}
         {featured && (
-          <FeaturedCard debate={featured} accent={cat.accent} onJoin={handleJoin} />
+          <FeaturedCard debate={featured} accent={activeCategory.accent} onJoin={handleJoin} />
         )}
 
-        {/* Debate list */}
-        <View style={s.listSection}>
-          <Text style={s.listSectionLabel}>DEBATE LIST</Text>
-          <View style={s.listContainer}>
-            {rest.map((d, i) => (
-              <React.Fragment key={d.id}>
-                <DebateListRow
-                  emoji={d.emoji}
-                  motion={d.motion}
-                  forVotes={d.forVotes}
-                  againstVotes={d.againstVotes}
-                  debating={d.debating}
-                  categoryTag={d.categoryTag}
-                  accent={cat.accent}
-                  onJoin={() => handleJoin(d.id)}
-                />
-                {i < rest.length - 1 && <View style={s.listDivider} />}
-              </React.Fragment>
-            ))}
+        {rest.length > 0 && (
+          <View style={s.listSection}>
+            <Text style={s.listSectionLabel}>DEBATE LIST</Text>
+            <View style={s.listContainer}>
+              {rest.map((d, i) => (
+                <React.Fragment key={d.id}>
+                  <DebateListRow
+                    emoji={d.emoji}
+                    motion={d.motion}
+                    forVotes={d.forVotes}
+                    againstVotes={d.againstVotes}
+                    debating={d.debating}
+                    categoryTag={d.categoryTag}
+                    accent={activeCategory.accent}
+                    onJoin={() => handleJoin(d.id)}
+                  />
+                  {i < rest.length - 1 && <View style={s.listDivider} />}
+                </React.Fragment>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
-        {/* Bottom CTA */}
         <TouchableOpacity style={s.randomBtn} activeOpacity={0.85}>
-          <Text style={s.randomBtnText}>Find Random Opponent in {cat.name} →</Text>
+          <Text style={s.randomBtnText}>Find Random Opponent in {activeCategory.name} →</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -358,6 +452,8 @@ const s = StyleSheet.create({
   safe:          { flex: 1, backgroundColor: colors.black },
   scroll:        { flex: 1 },
   scrollContent: { paddingBottom: 40 },
+  center:        { flex: 1, alignItems: 'center', justifyContent: 'center', padding: SCREEN_PADDING },
+  errorText:     { textAlign: 'center' },
 
   // ── Banner ──
   banner: {
@@ -366,6 +462,11 @@ const s = StyleSheet.create({
     paddingHorizontal: SCREEN_PADDING,
     overflow: 'hidden',
     position: 'relative',
+  },
+  bannerBgImage: { opacity: 0.35 },
+  bannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   bannerGlow: {
     position: 'absolute',
