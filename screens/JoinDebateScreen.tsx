@@ -16,6 +16,8 @@ import { TOPICS } from '../constants/topics'
 import { Text } from '../components/Text'
 import { Button } from '../components/Button'
 import { ChipDropdown } from '../components/ChipDropdown'
+import { Toast } from '../components/Toast'
+import { connectWebSocket, WebSocketClient } from '../services/api'
 
 // ─── DATA ─────────────────────────────────────────────────────────
 
@@ -168,15 +170,93 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
       : STANCES[0] // default: Surprise Me
   )
   const [searching, setSearching] = useState(false)
+  const [connecting, setConnecting] = useState(false)
+  const [queueError, setQueueError] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  const wsRef = useRef<WebSocketClient | null>(null)
+
+  const closeSocket = () => {
+    wsRef.current?.close()
+    wsRef.current = null
+  }
+
+  useEffect(() => closeSocket, [])
+
+  const stanceToSide = (id: string): 'pro' | 'con' | null => {
+    if (id === 'for') return 'pro'
+    if (id === 'against') return 'con'
+    return null
+  }
+
+  const handleStepIntoRing = async () => {
+    setQueueError(null)
+    setConnecting(true)
+    try {
+      const client = await connectWebSocket('/ws/debate/')
+      wsRef.current = client
+
+      client.on('message', (msg) => {
+        console.log('[WS] message =', msg)
+        if (!msg || typeof msg !== 'object') return
+        const m = msg as { type?: string; message?: string; data?: unknown }
+
+        if (m.type === 'error') {
+          if (typeof m.message === 'string' && m.message.length > 0) setToast(m.message)
+          setConnecting(false)
+          return
+        }
+
+        if (m.type === 'queue.waiting') {
+          setConnecting(false)
+          setSearching(true)
+          return
+        }
+
+        if (m.type === 'queue.matched') {
+          // TODO: navigate to Debate screen with match data once it's built
+          setConnecting(false)
+          return
+        }
+      })
+      client.on('close', (info) => {
+        console.log('[WS] closed =', info)
+        wsRef.current = null
+      })
+      client.on('error', (err) => {
+        console.log('[WS] error =', err)
+      })
+
+      // TODO: replace with real topic/category IDs once topic picker is wired to /debate/topics/
+      const topicIdNum = Number(topic.id)
+      const data: Record<string, number | string> = {}
+      if (topic.id !== 'all' && Number.isFinite(topicIdNum)) data.topic_id = topicIdNum
+      const side = stanceToSide(selectedStance.id)
+      if (side) data.pro_or_con = side
+
+      client.send({ type: 'join_queue', data })
+    } catch (err) {
+      console.log('[WS] connect failed =', err)
+      setQueueError('Could not connect to matchmaking. Please try again.')
+      setConnecting(false)
+      closeSocket()
+    }
+  }
+
+  const handleCancelSearch = () => {
+    closeSocket()
+    setSearching(false)
+    setConnecting(false)
+  }
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+      <Toast message={toast} variant="error" onHide={() => setToast(null)} />
 
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity
           style={s.backBtn}
-          onPress={() => { if (searching) setSearching(false); else navigation.goBack() }}
+          onPress={() => { if (searching || connecting) handleCancelSearch(); else navigation.goBack() }}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           activeOpacity={0.7}
         >
@@ -198,7 +278,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
           </Text>
           <TouchableOpacity
             style={s.cancelBtn}
-            onPress={() => setSearching(false)}
+            onPress={handleCancelSearch}
             activeOpacity={0.7}
           >
             <Text style={s.cancelLabel}>Cancel search</Text>
@@ -252,10 +332,17 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
           <View style={s.footer}>
             <Button
               label="STEP INTO THE RING"
-              onPress={() => setSearching(true)}
+              onPress={handleStepIntoRing}
               variant="primary"
               shadowColor={colors.lime}
+              isLoading={connecting}
+              disabled={connecting}
             />
+            {queueError && (
+              <Text variant="caption" tone="danger" style={s.queueError}>
+                {queueError}
+              </Text>
+            )}
           </View>
         </>
       )}
@@ -377,5 +464,9 @@ const s = StyleSheet.create({
   cancelLabel: {
     fontFamily: fonts.jakarta.semiBold,
     fontSize: 13, color: colors.textMuted,
+  },
+  queueError: {
+    marginTop: spacing.sm,
+    textAlign: 'center',
   },
 })
