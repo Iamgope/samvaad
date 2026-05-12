@@ -12,6 +12,11 @@ export type AuthResponse = AuthTokens & {
   is_new_user?: boolean;
 };
 
+type ApiEnvelope<T> = {
+  message?: string;
+  data: T;
+};
+
 // ── Internal ─────────────────────────────────────────────────────────────────
 
 async function storeTokens(t: AuthTokens): Promise<void> {
@@ -26,19 +31,19 @@ export async function sendOtp(phone: string): Promise<void> {
 }
 
 export async function verifyOtp(phone: string, code: string): Promise<AuthResponse> {
-  const res = await api.post<AuthResponse>('/authentication/otp/verify', { phone, code });
-  await storeTokens(res);
-  return res;
+  const res = await api.post<ApiEnvelope<AuthResponse>>('/authentication/otp/verify', { phone, code });
+  await storeTokens(res.data);
+  return res.data;
 }
 
 // ── Google ───────────────────────────────────────────────────────────────────
 
 export async function signInWithGoogle(idToken: string): Promise<AuthResponse> {
-  const res = await api.post<AuthResponse>('/authentication/oauth/google/callback/', {
+  const res = await api.post<ApiEnvelope<AuthResponse>>('/authentication/oauth/google/callback/', {
     id_token: idToken,
   });
-  await storeTokens(res);
-  return res;
+  await storeTokens(res.data);
+  return res.data;
 }
 
 // ── Onboarding ───────────────────────────────────────────────────────────────

@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
 import { colors } from '../constants/colors';
@@ -12,10 +11,11 @@ import { spacing } from '../constants/spacing';
 import { Text } from '../components/Text';
 import { Button } from '../components/Button';
 import { GoogleLogo } from '../components/GoogleLogo';
-import { signInWithGoogle, ApiError } from '../services/api';
+import { signInWithGoogle, ApiError, registerDeviceAsync } from '../services/api';
 
-// Required so the OAuth browser tab closes cleanly after redirect
-WebBrowser.maybeCompleteAuthSession();
+GoogleSignin.configure({
+  webClientId: '377669594538-g1cdo3e8uk3lfcrgdqden8s9mnipkm11.apps.googleusercontent.com',
+});
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -25,36 +25,39 @@ export default function LoginScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [_request, response, promptAsync] = Google.useAuthRequest({
-    iosClientId: '',
-    androidClientId: '',
-    webClientId: '',
-  });
-
-  useEffect(() => {
-    if (response?.type === 'error') {
-      setError('Google sign-in failed. Please try again.');
-      return;
-    }
-    if (response?.type !== 'success') return;
-
-    const idToken = response.authentication?.idToken;
-    if (!idToken) {
-      setError('No ID token returned from Google. Please try again.');
-      return;
-    }
-
-    handleGoogleToken(idToken);
-  }, [response]);
-
-  async function handleGoogleToken(idToken: string) {
-    setLoading(true);
+  async function handleGoogleSignIn() {
     setError(null);
+    setLoading(true);
     try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const result = await GoogleSignin.signIn();
+
+      if (result.type !== 'success') return;
+
+      const idToken = result.data.idToken;
+      if (!idToken) {
+        setError('No ID token returned from Google. Please try again.');
+        return;
+      }
+
       const res = await signInWithGoogle(idToken);
+      registerDeviceAsync();
       navigation.navigate(res.is_new_user ? 'OnboardingFlow' : 'Main');
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
+    } catch (err: any) {
+      console.log('[GOOGLE] sign-in error =', { code: err?.code, message: err?.message, raw: err });
+      if (err?.code === statusCodes.SIGN_IN_CANCELLED) return;
+      if (err?.code === statusCodes.IN_PROGRESS) return;
+      if (err?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        setError('Google Play Services not available on this device.');
+        return;
+      }
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else if (err?.code || err?.message) {
+        setError(`Google sign-in failed: ${err?.code ?? ''} ${err?.message ?? ''}`.trim());
+      } else {
+        setError('Something went wrong. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -91,7 +94,7 @@ export default function LoginScreen({ navigation }: Props) {
         <Button
           variant="pillBrand"
           label="Sign in with Google"
-          onPress={() => { setError(null); promptAsync(); }}
+          onPress={handleGoogleSignIn}
           shadowColor={colors.purple2}
           leadingIcon={<GoogleLogo size={18} />}
           isLoading={loading}

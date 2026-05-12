@@ -455,4 +455,18 @@ const screen = StyleSheet.create({
     top: -9999,
     opacity: 0,
   },
+  logoutBtn: {
+    marginTop: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.red,
+  },
+  logoutText: {
+    fontFamily: fonts.jakarta.semiBold,
+    fontSize: 14,
+    color: colors.red,
+    letterSpacing: 0.3,
+  },
 });
