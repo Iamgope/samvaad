@@ -11,9 +11,11 @@ type Props = {
   categoryName: string
   categoryAccent: string
   categoryIcon?: any
-  agreeCount: number
-  disagreeCount: number
-  unsureCount: number
+  agreeCount?: number
+  disagreeCount?: number
+  unsureCount?: number
+  /** Custom footer node — replaces the default for/against/unsure stats row. */
+  footer?: React.ReactNode
   headlineSize?: number
   onPress?: () => void
 }
@@ -36,10 +38,12 @@ export function DebateHeadline({
   agreeCount,
   disagreeCount,
   unsureCount,
+  footer,
   headlineSize = 20,
   onPress,
 }: Props) {
   const emoji = CATEGORY_EMOJI[categoryName.toLowerCase()] ?? '💬'
+  const hasStats = agreeCount !== undefined && disagreeCount !== undefined && unsureCount !== undefined
 
   return (
     <TouchableOpacity style={s.root} onPress={onPress} activeOpacity={0.7}>
@@ -66,14 +70,17 @@ export function DebateHeadline({
         </View>
       </View>
 
-      {/* For / Against counts */}
-      <View style={s.statsRow}>
-        <Text style={[s.statFor]}>{fmt(agreeCount)} for</Text>
-        <Text style={s.statSep}>·</Text>
-        <Text style={[s.statAgainst]}>{fmt(disagreeCount)} against</Text>
-        <Text style={s.statSep}>·</Text>
-        <Text style={s.statNeutral}>{fmt(unsureCount)} unsure</Text>
-      </View>
+      {footer ? (
+        <View style={s.footerSlot}>{footer}</View>
+      ) : hasStats ? (
+        <View style={s.statsRow}>
+          <Text style={[s.statFor]}>{fmt(agreeCount)} for</Text>
+          <Text style={s.statSep}>·</Text>
+          <Text style={[s.statAgainst]}>{fmt(disagreeCount)} against</Text>
+          <Text style={s.statSep}>·</Text>
+          <Text style={s.statNeutral}>{fmt(unsureCount)} unsure</Text>
+        </View>
+      ) : null}
     </TouchableOpacity>
   )
 }
@@ -140,6 +147,9 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
     paddingTop: spacing.md,
+  },
+  footerSlot: {
+    paddingTop: spacing.sm,
   },
   statFor: {
     fontFamily: fonts.jakarta.semiBold,
