@@ -30,6 +30,7 @@ import OnboardingFlowScreen from './screens/OnboardingFlowScreen';
 import TopicScreen from './screens/TopicScreen';
 import DebateScreen from './screens/DebateScreen';
 import JoinDebateScreen from './screens/JoinDebateScreen';
+import EditProfileScreen, { type EditableProfile } from './screens/EditProfileScreen';
 import { TabNavigator } from './navigation/TabNavigator';
 import { colors } from './constants/colors';
 
@@ -43,6 +44,10 @@ export type RootStackParamList = {
   TopicScreen: { category: string };
   Debate: { debateId: string; categoryId: string; motion: string; debating: number };
   JoinDebate: { topicId?: string; stanceId?: string } | undefined;
+  EditProfile: {
+    initial: EditableProfile;
+    onSave: (next: EditableProfile) => void;
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -97,6 +102,7 @@ export default function App() {
             <Stack.Screen name="TopicScreen" component={TopicScreen} />
             <Stack.Screen name="Debate" component={DebateScreen} />
             <Stack.Screen name="JoinDebate" component={JoinDebateScreen} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </View>

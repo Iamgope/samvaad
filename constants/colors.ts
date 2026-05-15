@@ -33,7 +33,15 @@ export const colors = {
   purple2: '#8B5CF6',
   purple3: '#2D1B6E',
   streak:  '#FF6B35',  // politics / orange
+  gold:    '#FFC107',  // coin / treasure
   sky:     '#38BDF8',  // sports / sky blue
+
+  // Rating tier palette (Codeforces-style). Used to color rating chips,
+  // tier labels, and any other tier-keyed UI.
+  tierNovice:  '#94A3B8',  // slate gray
+  tierSkilled: '#4ADE80',  // green
+  tierExpert:  '#22D3EE',  // cyan
+  tierMaster:  '#F59E0B',  // amber / gold
 
   // Deprecated — kept so nothing breaks before a full sweep
   text2: '#8B93A9',

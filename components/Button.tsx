@@ -23,7 +23,22 @@ const HEIGHTS = { lg: 56, md: 48, sm: 40 };
 const CHIP_SIZE = { lg: 36, md: 32, sm: 28 };
 
 type Size = 'lg' | 'md' | 'sm';
-export type ButtonVariant = 'primary' | 'action' | 'outline' | 'ghost' | 'text' | 'game';
+export type ButtonVariant = 'primary' | 'action' | 'outline' | 'ghost' | 'text' | 'game' | 'pill' | 'pillBrand' | 'ticket';
+
+const PILL_HEIGHT = 38;
+const PILL_UNDER  = 4;
+const TICKET_NOTCH = 10;
+const TICKET_PER_SIDE = 4;
+
+function darken(hex: string, amount = 0.45): string {
+  const c = hex.replace('#', '');
+  if (c.length !== 6) return hex;
+  const r = Math.max(0, Math.round(parseInt(c.slice(0, 2), 16) * (1 - amount)));
+  const g = Math.max(0, Math.round(parseInt(c.slice(2, 4), 16) * (1 - amount)));
+  const b = Math.max(0, Math.round(parseInt(c.slice(4, 6), 16) * (1 - amount)));
+  const toHex = (n: number) => n.toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
 
 export type ButtonProps = {
   label: string;
@@ -38,6 +53,7 @@ export type ButtonProps = {
   trailingIcon?: React.ReactNode;
   size?: Size;
   style?: ViewStyle;
+  notchColor?: string;
 };
 
 type Tokens = {
@@ -122,6 +138,33 @@ function tokensFor(
         hasShadow: false,
         hasBorder: false,
       };
+    case 'pill':
+      return {
+        surface: colors.surface,
+        border:  'rgba(255,255,255,0.22)',
+        text:    colors.text,
+        shadow:  'rgba(255,255,255,0.40)',
+        hasShadow: true,
+        hasBorder: true,
+      };
+    case 'pillBrand':
+      return {
+        surface: colors.text,
+        border:  colors.black,
+        text:    colors.black,
+        shadow:  darken(shadowColor, 0.4),
+        hasShadow: true,
+        hasBorder: true,
+      };
+    case 'ticket':
+      return {
+        surface: colors.text,
+        border:  'transparent',
+        text:    colors.black,
+        shadow:  shadowColor,
+        hasShadow: true,
+        hasBorder: false,
+      };
   }
 }
 
@@ -138,6 +181,7 @@ export function Button({
   trailingIcon,
   size = 'lg',
   style,
+  notchColor = colors.black,
 }: ButtonProps) {
   const press = useRef(new Animated.Value(0)).current;
   const fade  = useRef(new Animated.Value(1)).current;
@@ -199,6 +243,141 @@ export function Button({
             <Text style={[s.arrowInline, { color: shadowColor }]}>→</Text>
           )}
           {trailingIcon && <View style={s.iconRight}>{trailingIcon}</View>}
+        </Animated.View>
+      </Pressable>
+    );
+  }
+
+  if (variant === 'ticket') {
+    const h = HEIGHTS[size];
+    const notchDot = {
+      width: TICKET_NOTCH,
+      height: TICKET_NOTCH,
+      borderRadius: TICKET_NOTCH / 2,
+      backgroundColor: notchColor,
+    } as const;
+    const dots = Array.from({ length: TICKET_PER_SIDE }, (_, i) => i);
+    const perforationTrack = (
+      orientation: 'horizontal' | 'vertical',
+      side: 'top' | 'bottom' | 'left' | 'right',
+    ) => (
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          ...(orientation === 'horizontal'
+            ? {
+                left: 0,
+                right: 0,
+                height: TICKET_NOTCH,
+                [side]: -TICKET_NOTCH / 2,
+                flexDirection: 'row',
+              }
+            : {
+                top: 0,
+                bottom: 0,
+                width: TICKET_NOTCH,
+                [side]: -TICKET_NOTCH / 2,
+                flexDirection: 'column',
+              }),
+          alignItems: 'center',
+          justifyContent: 'space-around',
+        }}
+      >
+        {dots.map(i => <View key={i} style={notchDot} />)}
+      </View>
+    );
+    return (
+      <Pressable
+        onPress={isInteractable ? onPress : undefined}
+        onPressIn={isInteractable ? sink : undefined}
+        onPressOut={isInteractable ? rise : undefined}
+        style={[
+          { paddingRight: SHADOW_OFFSET, paddingBottom: SHADOW_OFFSET, overflow: 'visible' },
+          style,
+        ]}
+      >
+        {/* offset lime shadow — solid rectangle so it doesn't introduce its
+            own cutouts in the visible rim. The white face on top still has
+            the full notch silhouette. */}
+        <View
+          style={{
+            position: 'absolute',
+            top: SHADOW_OFFSET,
+            left: SHADOW_OFFSET,
+            right: 0,
+            bottom: 0,
+            borderRadius: RADIUS,
+            backgroundColor: v.shadow,
+          }}
+        />
+
+        {/* top ticket — white face that collapses onto the shadow on press */}
+        <Animated.View
+          style={{
+            height: h,
+            backgroundColor: v.surface,
+            borderRadius: RADIUS,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 28,
+            transform: [{ translateX: press }, { translateY: press }],
+          }}
+        >
+          {perforationTrack('vertical', 'left')}
+          {perforationTrack('vertical', 'right')}
+          {leadingIcon && <View style={s.iconLeft}>{leadingIcon}</View>}
+          <Text
+            style={[s.label, { color: v.text, letterSpacing: 0.2 }]}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+          {trailingIcon && !isLoading && (
+            <View style={s.iconRight}>{trailingIcon}</View>
+          )}
+          {isLoading && (
+            <ActivityIndicator color={v.text} style={s.iconRight} />
+          )}
+        </Animated.View>
+      </Pressable>
+    );
+  }
+
+  if (variant === 'pill' || variant === 'pillBrand') {
+    return (
+      <Pressable
+        onPress={isInteractable ? onPress : undefined}
+        onPressIn={isInteractable ? sink : undefined}
+        onPressOut={isInteractable ? rise : undefined}
+        style={[s.pillWrap, style]}
+      >
+        <View
+          style={[
+            s.pillBase,
+            { backgroundColor: v.shadow, borderColor: v.shadow },
+          ]}
+        />
+        <Animated.View
+          style={[
+            s.pillTop,
+            {
+              backgroundColor: v.surface,
+              borderColor: v.border,
+              borderWidth: v.hasBorder ? 1.5 : 0,
+              transform: [{ translateY: press }],
+            },
+          ]}
+        >
+          {leadingIcon && <View style={s.pillIcon}>{leadingIcon}</View>}
+          <Text style={[s.pillLabel, { color: v.text }]} numberOfLines={1}>
+            {label}
+          </Text>
+          {trailingIcon && !isLoading && (
+            <View style={s.pillIconRight}>{trailingIcon}</View>
+          )}
+          {isLoading && <ActivityIndicator color={v.text} style={s.pillIconRight} />}
         </Animated.View>
       </Pressable>
     );
@@ -354,5 +533,37 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
+  },
+  pillWrap: {
+    height: PILL_HEIGHT + PILL_UNDER,
+    borderRadius: 999,
+  },
+  pillBase: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: PILL_UNDER,
+    bottom: 0,
+    borderRadius: 999,
+  },
+  pillTop: {
+    height: PILL_HEIGHT,
+    borderRadius: 999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    gap: 6,
+  },
+  pillIcon: {
+    marginRight: 2,
+  },
+  pillLabel: {
+    fontFamily: fonts.display.bold,
+    fontSize: 14,
+    letterSpacing: -0.1,
+  },
+  pillIconRight: {
+    marginLeft: 4,
   },
 });

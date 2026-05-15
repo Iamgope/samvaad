@@ -81,6 +81,7 @@ export default function LoginScreen({ navigation }: Props) {
 
       <View style={s.footer}>
         <Button
+          variant="pillBrand"
           label="Sign in with Phone"
           onPress={() => navigation.navigate('Phone')}
           shadowColor={colors.lime}
@@ -88,6 +89,7 @@ export default function LoginScreen({ navigation }: Props) {
         />
 
         <Button
+          variant="pillBrand"
           label="Sign in with Google"
           onPress={() => { setError(null); promptAsync(); }}
           shadowColor={colors.purple2}

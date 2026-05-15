@@ -36,10 +36,11 @@ export default function OnboardingScreen({ navigation }: Props) {
 
       <View style={s.footer}>
         <Button
+          variant='ticket'
           label="Get Started"
           onPress={() => navigation.replace('Login')}
           arrow
-          shadowColor={colors.textSubtle}
+          shadowColor={colors.purple2}
           style={s.ctaWrap}
         />
       </View>

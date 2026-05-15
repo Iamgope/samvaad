@@ -5,6 +5,7 @@ export const spacing = {
   lg:  16,
   xl:  24,
   xxl: 32,
+  xxxl: 64
 } as const;
 
 export const SCREEN_PADDING = spacing.lg;
