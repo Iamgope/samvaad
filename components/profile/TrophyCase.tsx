@@ -23,34 +23,25 @@ export function TrophyCase({
   badges: Badge[];
   onSeeAll: () => void;
 }) {
-  const earned = badges.filter(b => b.earned);
   const visible = badges.slice(0, 4);
 
   return (
     <View>
       <View style={styles.head}>
-        <View>
-          <Text variant="titleLg">Trophy Case</Text>
-          <Text variant="caption" tone="subtle">
-            {earned.length} earned · {badges.length - earned.length} to go
-          </Text>
-        </View>
-        <TouchableOpacity onPress={onSeeAll} activeOpacity={0.7}>
-          <Text variant="labelSm" tone="muted">{badges.length}</Text>
+        <Text variant="titleLg">Trophy Case</Text>
+        <TouchableOpacity style={styles.seeAll} onPress={onSeeAll} activeOpacity={0.7}>
+          <Text variant="labelSm" tone="muted">View all</Text>
+          <ChevronRightIcon size={12} color={colors.textFaint} />
         </TouchableOpacity>
       </View>
       <View style={styles.grid}>
         {visible.map(b => <TrophyTile key={b.key} badge={b} />)}
       </View>
-      <TouchableOpacity style={styles.allBtn} onPress={onSeeAll} activeOpacity={0.6}>
-        <Text variant="bodyMd">All trophies</Text>
-        <ChevronRightIcon size={14} color={colors.textFaint} />
-      </TouchableOpacity>
     </View>
   );
 }
 
-function TrophyTile({ badge }: { badge: Badge }) {
+export function TrophyTile({ badge }: { badge: Badge }) {
   return (
     <View style={styles.tile}>
       {badge.earned && badge.image ? (
@@ -79,9 +70,14 @@ const styles = StyleSheet.create({
   head: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingHorizontal: SCREEN_PADDING,
     marginBottom: spacing.md,
+  },
+  seeAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   grid: {
     flexDirection: 'row',
@@ -109,15 +105,5 @@ const styles = StyleSheet.create({
   },
   tileLabel: {
     textAlign: 'center',
-  },
-  allBtn: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: SCREEN_PADDING,
-    paddingVertical: spacing.md,
-    marginTop: spacing.lg,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.06)',
   },
 });

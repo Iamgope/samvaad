@@ -11,14 +11,16 @@ import { colors } from '../../constants/colors';
 import { spacing, SCREEN_PADDING } from '../../constants/spacing';
 import { Text } from '../../components/Text';
 import { Button } from '../../components/Button';
+import { IconButton } from '../../components/IconButton';
 import {
-  ChevronRightIcon, CoinIcon, EditIcon, ShareIcon, StarIcon,
+  CoinIcon, EditIcon, MoreVerticalIcon, ShareIcon, StarIcon,
 } from '../../components/Icons';
 import { TIERS, TIER_COLOR, getTierInfo } from '../../constants/tiers';
 import { pickSquareImage } from '../../utils/imagePicker';
 import { ShareCard, shareProfileCard } from '../../components/profile/ShareCard';
 import { TrophyCase, type Badge } from '../../components/profile/TrophyCase';
 import { DebateHistory, type Match } from '../../components/profile/DebateHistory';
+import { MoreMenuModal, type MoreMenuAction } from '../../components/profile/MoreMenuModal';
 
 const DEFAULT_AVATAR = require('../../assets/defaultprofilepic.png');
 
@@ -72,10 +74,12 @@ function ProfileHero({
   profile,
   avatarUri,
   onPickAvatar,
+  onOpenMenu,
 }: {
   profile: ProfileData;
   avatarUri: string | null;
   onPickAvatar: () => void;
+  onOpenMenu?: () => void;
 }) {
   const { current } = getTierInfo(profile.rating);
   const tierColor = TIER_COLOR[current.key] ?? colors.text;
@@ -90,6 +94,18 @@ function ProfileHero({
         colors={[tierColor + topAlpha, colors.black + '00']}
         style={hero.gradient}
       />
+
+      {onOpenMenu && (
+        <View style={hero.kebab}>
+          <IconButton
+            size="md"
+            icon={<MoreVerticalIcon size={18} color={colors.text} />}
+            onPress={onOpenMenu}
+            accent={colors.text}
+            transparent
+          />
+        </View>
+      )}
 
       <View style={hero.content}>
         <View style={hero.heroRow}>
@@ -157,6 +173,12 @@ const hero = StyleSheet.create({
     left: 0,
     right: 0,
     height: 260,
+  },
+  kebab: {
+    position: 'absolute',
+    top: spacing.md,
+    right: SCREEN_PADDING,
+    zIndex: 10,
   },
   content: {
     paddingHorizontal: SCREEN_PADDING,
@@ -319,49 +341,6 @@ const ab = StyleSheet.create({
   btn: { flex: 1 },
 });
 
-// ─── SETTINGS ─────────────────────────────────────────────────────
-
-function SettingsRow({
-  label, danger, onPress, last,
-}: { label: string; danger?: boolean; onPress?: () => void; last?: boolean }) {
-  return (
-    <TouchableOpacity
-      style={[set.row, !last && set.rowDivider]}
-      activeOpacity={0.6}
-      onPress={onPress}
-    >
-      <Text variant="bodyMd" tone={danger ? 'danger' : 'default'}>{label}</Text>
-      <ChevronRightIcon size={14} color={danger ? colors.red : colors.textFaint} />
-    </TouchableOpacity>
-  );
-}
-
-function SettingsGroup({ children }: { children: React.ReactNode }) {
-  return <View style={set.group}>{children}</View>;
-}
-
-const set = StyleSheet.create({
-  group: {
-    marginHorizontal: SCREEN_PADDING,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md + 2,
-  },
-  rowDivider: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
-  },
-});
-
 // ─── SECTION SPACING ──────────────────────────────────────────────
 
 function Section({ children, gap = spacing.xl }: { children: React.ReactNode; gap?: number }) {
@@ -376,6 +355,7 @@ export default function ProfileScreen({
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [profile, setProfile] = useState<ProfileData>(initialProfile);
   const [avatarUri, setAvatarUri] = useState<string | null>(initialProfile.avatarUri ?? null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const shareCardRef = useRef<View>(null);
 
   const goToEdit = () => {
@@ -393,17 +373,6 @@ export default function ProfileScreen({
     });
   };
 
-  const confirmDelete = () => {
-    Alert.alert(
-      'Request account deletion',
-      'This sends a request to support. Your account stays active until reviewed.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Request', style: 'destructive' },
-      ],
-    );
-  };
-
   const confirmLogout = () => {
     Alert.alert('Log out?', 'You can sign back in anytime.', [
       { text: 'Cancel', style: 'cancel' },
@@ -418,10 +387,21 @@ export default function ProfileScreen({
 
   const handleShareProfile = () => shareProfileCard(shareCardRef, profile.name);
 
+  const menuActions: MoreMenuAction[] = [
+    { key: 'privacy', label: 'Privacy policy', onPress: () => navigation.navigate('PrivacyPolicy') },
+    { key: 'help',    label: 'Help & support', onPress: () => navigation.navigate('HelpSupport') },
+    { key: 'logout',  label: 'Log out',        danger: true, onPress: confirmLogout },
+  ];
+
   return (
     <SafeAreaView style={screen.safe} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={screen.scroll}>
-        <ProfileHero profile={profile} avatarUri={avatarUri} onPickAvatar={handlePickAvatar} />
+        <ProfileHero
+          profile={profile}
+          avatarUri={avatarUri}
+          onPickAvatar={handlePickAvatar}
+          onOpenMenu={profile.isOwn ? () => setMenuOpen(true) : undefined}
+        />
 
         <Section gap={spacing.xl}>
           <StatRow profile={profile} />
@@ -434,27 +414,24 @@ export default function ProfileScreen({
         )}
 
         <Section>
-          <TrophyCase badges={profile.badges} onSeeAll={() => {}} />
+          <TrophyCase
+            badges={profile.badges}
+            onSeeAll={() => navigation.navigate('AllTrophies', { badges: profile.badges })}
+          />
         </Section>
 
         <Section>
           <DebateHistory matches={profile.matches} isOwn={profile.isOwn} />
         </Section>
 
-        {profile.isOwn && (
-          <Section>
-            <Text variant="titleSm" style={screen.sectionTitle}>Account</Text>
-            <SettingsGroup>
-              <SettingsRow label="Privacy policy" />
-              <SettingsRow label="Help & support" />
-              <SettingsRow label="Log out" danger onPress={confirmLogout} />
-              <SettingsRow label="Request account deletion" danger onPress={confirmDelete} last />
-            </SettingsGroup>
-          </Section>
-        )}
-
         <View style={{ height: spacing.xxl * 2 }} />
       </ScrollView>
+
+      <MoreMenuModal
+        visible={menuOpen}
+        actions={menuActions}
+        onClose={() => setMenuOpen(false)}
+      />
 
       <View style={screen.shareCapture} pointerEvents="none">
         <ShareCard
@@ -472,10 +449,6 @@ export default function ProfileScreen({
 const screen = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.black },
   scroll: { paddingBottom: spacing.xl },
-  sectionTitle: {
-    paddingHorizontal: SCREEN_PADDING,
-    marginBottom: spacing.sm,
-  },
   shareCapture: {
     position: 'absolute',
     left: -9999,

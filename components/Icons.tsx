@@ -169,6 +169,16 @@ export function StarIcon({ size = 12, color = colors.text }: IconProps) {
   );
 }
 
+export function MoreVerticalIcon({ size = 18, color = colors.text, strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M4 6 H20"  stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <Path d="M4 12 H20" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <Path d="M4 18 H20" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 export function CoinIcon({ size = 13, color = colors.text }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

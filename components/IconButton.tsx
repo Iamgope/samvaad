@@ -12,6 +12,7 @@ export type IconButtonProps = {
   size?: Size;
   accent?: string;
   disabled?: boolean;
+  transparent?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -21,6 +22,7 @@ export function IconButton({
   size = 'md',
   accent = colors.textSubtle,
   disabled = false,
+  transparent = false,
   style,
 }: IconButtonProps) {
   const dim = DIMENSIONS[size];
@@ -42,7 +44,7 @@ export function IconButton({
       <TouchableOpacity
         onPress={disabled ? undefined : onPress}
         activeOpacity={0.8}
-        style={[s.face, { backgroundColor: accent + '22' }]}
+        style={[s.face, !transparent && { backgroundColor: accent + '22' }]}
       >
         {icon}
       </TouchableOpacity>

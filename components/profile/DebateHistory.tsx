@@ -82,7 +82,10 @@ export function DebateHistory({
           return (
             <View
               key={m.id}
-              style={i !== filtered.length - 1 ? styles.rowDivider : undefined}
+              style={[
+                styles.rowWrap,
+                i !== filtered.length - 1 ? styles.rowDivider : undefined,
+              ]}
             >
               <DebateHeadline
                 motion={m.motion}
@@ -90,14 +93,12 @@ export function DebateHistory({
                 categoryName={t.label}
                 categoryAccent={colors.textMuted}
                 headlineSize={15}
-                footer={
-                  <View style={[styles.outcome, isWin ? styles.outcomeWin : styles.outcomeLoss]}>
-                    <Text variant="labelSm" style={{ color: isWin ? '#7FE0AA' : '#E08A8A' }}>
-                      {isWin ? 'WIN' : 'LOSS'}
-                    </Text>
-                  </View>
-                }
               />
+              <View style={[styles.outcomeChip, isWin ? styles.outcomeWin : styles.outcomeLoss]}>
+                <Text style={[styles.outcomeText, { color: isWin ? '#7FE0AA' : '#E08A8A' }]}>
+                  {isWin ? 'WIN' : 'LOSS'}
+                </Text>
+              </View>
             </View>
           );
         })
@@ -117,24 +118,39 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   filterSlot: { minWidth: 130 },
+  rowWrap: {
+    position: 'relative',
+  },
   rowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(255,255,255,0.06)',
   },
-  outcome: {
-    alignSelf: 'flex-start',
+  outcomeChip: {
+    position: 'absolute',
+    top: spacing.lg,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 8,
     borderWidth: 1,
+    borderBottomWidth: 2,
+  },
+  outcomeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.6,
   },
   outcomeWin: {
     backgroundColor: 'rgba(127, 224, 170, 0.10)',
     borderColor: 'rgba(127, 224, 170, 0.35)',
+    borderBottomColor: 'rgba(127, 224, 170, 0.65)',
   },
   outcomeLoss: {
     backgroundColor: 'rgba(224, 138, 138, 0.10)',
     borderColor: 'rgba(224, 138, 138, 0.35)',
+    borderBottomColor: 'rgba(224, 138, 138, 0.65)',
   },
   empty: {
     paddingVertical: spacing.xl,
