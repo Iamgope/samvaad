@@ -1,6 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, StyleSheet, ScrollView, TouchableOpacity, Alert, Image,
+  View, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,6 +21,7 @@ import { ShareCard, shareProfileCard } from '../../components/profile/ShareCard'
 import { TrophyCase, type Badge } from '../../components/profile/TrophyCase';
 import { DebateHistory, type Match } from '../../components/profile/DebateHistory';
 import { MoreMenuModal, type MoreMenuAction } from '../../components/profile/MoreMenuModal';
+import { fetchUserProfile, type UserProfile } from '../../services/api';
 
 const DEFAULT_AVATAR = require('../../assets/defaultprofilepic.png');
 
@@ -274,7 +275,7 @@ function StatRow({ profile }: { profile: ProfileData }) {
   const items = [
     { label: 'Debates', value: String(profile.debates) },
     { label: 'Wins',    value: String(profile.wins) },
-    { label: 'Streak',  value: profile.streak > 0 ? String(profile.streak) : '—' },
+    { label: 'Streak',  value: String(profile.streak) },
     { label: 'Win %',   value: String(winRate) },
   ];
   return (
@@ -349,6 +350,27 @@ function Section({ children, gap = spacing.xl }: { children: React.ReactNode; ga
 
 // ─── SCREEN ───────────────────────────────────────────────────────
 
+function mergeApiProfile(base: ProfileData, api: UserProfile): ProfileData {
+  const { first_name, last_name, username } = api.user;
+  const fullName = [first_name, last_name].filter(Boolean).join(' ').trim();
+  const initials = [first_name, last_name]
+    .filter(Boolean)
+    .map(p => p[0]?.toUpperCase() ?? '')
+    .join('')
+    .slice(0, 2);
+  return {
+    ...base,
+    name: fullName || base.name,
+    handle: username ? `@${username}` : base.handle,
+    initials: initials || base.initials,
+    bio: api.bio,
+    rating: api.elo_rating,
+    debates: api.total_debates,
+    wins: api.wins,
+    streak: api.streak,
+  };
+}
+
 export default function ProfileScreen({
   profile: initialProfile = MOCK_PROFILE,
 }: { profile?: ProfileData }) {
@@ -356,7 +378,34 @@ export default function ProfileScreen({
   const [profile, setProfile] = useState<ProfileData>(initialProfile);
   const [avatarUri, setAvatarUri] = useState<string | null>(initialProfile.avatarUri ?? null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const shareCardRef = useRef<View>(null);
+
+  const loadProfile = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
+    if (mode === 'initial') setLoading(true);
+    else setRefreshing(true);
+    setError(null);
+    try {
+      const data = await fetchUserProfile();
+      console.log(data)
+      setProfile(p => mergeApiProfile(p, data));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load profile');
+    } finally {
+      if (mode === 'initial') setLoading(false);
+      else setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadProfile('initial');
+  }, [loadProfile]);
+
+  const onRefresh = useCallback(() => {
+    void loadProfile('refresh');
+  }, [loadProfile]);
 
   const goToEdit = () => {
     navigation.navigate('EditProfile', {
@@ -393,9 +442,43 @@ export default function ProfileScreen({
     { key: 'logout',  label: 'Log out',        danger: true, onPress: confirmLogout },
   ];
 
+  if (loading) {
+    return (
+      <SafeAreaView style={screen.safe} edges={['top']}>
+        <View style={screen.centered}>
+          <ActivityIndicator color={colors.lime} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={screen.safe} edges={['top']}>
+        <View style={screen.centered}>
+          <Text variant="bodyMd" tone="danger" style={screen.errorText}>{error}</Text>
+          <TouchableOpacity onPress={() => loadProfile('initial')} style={screen.retryBtn} activeOpacity={0.8}>
+            <Text variant="labelMd" style={{ color: colors.lime }}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={screen.safe} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={screen.scroll}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={screen.scroll}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.lime}
+            colors={[colors.lime]}
+          />
+        }
+      >
         <ProfileHero
           profile={profile}
           avatarUri={avatarUri}
@@ -455,18 +538,21 @@ const screen = StyleSheet.create({
     top: -9999,
     opacity: 0,
   },
-  logoutBtn: {
-    marginTop: spacing.xl,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.red,
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: SCREEN_PADDING,
   },
-  logoutText: {
-    fontFamily: fonts.jakarta.semiBold,
-    fontSize: 14,
-    color: colors.red,
-    letterSpacing: 0.3,
+  errorText: {
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  retryBtn: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.lime,
   },
 });
