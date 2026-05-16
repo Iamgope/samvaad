@@ -21,7 +21,7 @@ import { ShareCard, shareProfileCard } from '../../components/profile/ShareCard'
 import { TrophyCase, type Badge } from '../../components/profile/TrophyCase';
 import { DebateHistory, type Match } from '../../components/profile/DebateHistory';
 import { MoreMenuModal, type MoreMenuAction } from '../../components/profile/MoreMenuModal';
-import { fetchUserProfile, fetchMyDebates, mediaUrl, type UserProfile, type DebateSummary } from '../../services/api';
+import { fetchUserProfile, fetchMyDebates, mediaUrl, logout, type UserProfile, type DebateSummary } from '../../services/api';
 
 const DEFAULT_AVATAR = require('../../assets/defaultprofilepic.png');
 
@@ -474,7 +474,18 @@ export default function ProfileScreen({
   const confirmLogout = () => {
     Alert.alert('Log out?', 'You can sign back in anytime.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Log out', style: 'destructive' },
+      {
+        text: 'Log out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await logout();
+          } catch {
+            // tokens are cleared in logout()'s finally; ignore network errors
+          }
+          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+        },
+      },
     ]);
   };
 
