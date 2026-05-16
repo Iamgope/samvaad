@@ -1,5 +1,5 @@
 import { api } from './client';
-import { BASE_URL } from './config';
+import { BASE_URL, rewriteDevHost } from './config';
 
 export type TopicCategory = {
   id: number;
@@ -40,6 +40,6 @@ export async function fetchTopics(): Promise<Record<string, CategoryGroup>> {
 
 export function mediaUrl(path: string | null | undefined): string | null {
   if (!path) return null;
-  if (/^https?:\/\//.test(path)) return path;
+  if (/^https?:\/\//.test(path)) return rewriteDevHost(path);
   return `${BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`;
 }

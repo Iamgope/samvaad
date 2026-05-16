@@ -21,7 +21,7 @@ import { ShareCard, shareProfileCard } from '../../components/profile/ShareCard'
 import { TrophyCase, type Badge } from '../../components/profile/TrophyCase';
 import { DebateHistory, type Match } from '../../components/profile/DebateHistory';
 import { MoreMenuModal, type MoreMenuAction } from '../../components/profile/MoreMenuModal';
-import { fetchUserProfile, fetchMyDebates, type UserProfile, type DebateSummary } from '../../services/api';
+import { fetchUserProfile, fetchMyDebates, mediaUrl, type UserProfile, type DebateSummary } from '../../services/api';
 
 const DEFAULT_AVATAR = require('../../assets/defaultprofilepic.png');
 
@@ -439,6 +439,7 @@ export default function ProfileScreen({
       ]);
       const matches = mapDebatesToMatches(apiDebates, apiProfile.user.id);
       setProfile(p => ({ ...mergeApiProfile(p, apiProfile), matches }));
+      setAvatarUri(mediaUrl(apiProfile.profile_pic));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load profile');
     } finally {

@@ -10,10 +10,17 @@ type RequestOptions = {
   headers?: Record<string, string>;
 };
 
-async function buildHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
+function isFormData(body: unknown): body is FormData {
+  return typeof FormData !== 'undefined' && body instanceof FormData;
+}
+
+async function buildHeaders(
+  extra?: Record<string, string>,
+  contentType: string | null = 'application/json',
+): Promise<Record<string, string>> {
   const accessToken = await tokens.getAccess();
   return {
-    'Content-Type': 'application/json',
+    ...(contentType && { 'Content-Type': contentType }),
     'X-App-Version': APP_VERSION,
     ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
     ...extra,
@@ -26,15 +33,24 @@ async function doFetch(
   options: RequestOptions,
   tokenOverride?: string,
 ): Promise<Response> {
-  const headers = await buildHeaders({
-    ...options.headers,
-    ...(tokenOverride && { Authorization: `Bearer ${tokenOverride}` }),
-  });
+  const usingFormData = isFormData(options.body);
+  const headers = await buildHeaders(
+    {
+      ...options.headers,
+      ...(tokenOverride && { Authorization: `Bearer ${tokenOverride}` }),
+    },
+    usingFormData ? null : 'application/json',
+  );
 
   return fetch(`${BASE_URL}${path}`, {
     method,
     headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    body:
+      options.body === undefined
+        ? undefined
+        : usingFormData
+          ? (options.body as FormData)
+          : JSON.stringify(options.body),
   });
 }
 

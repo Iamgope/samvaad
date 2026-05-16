@@ -62,6 +62,7 @@ export default function EditProfileScreen() {
         name: trimmedName,
         username: cleanedHandle,
         bio: trimmedBio,
+        profilePicUri: avatarUri,
       });
       onSave({
         name: trimmedName,
