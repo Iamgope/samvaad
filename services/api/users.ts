@@ -27,3 +27,13 @@ export async function fetchUserProfile(): Promise<UserProfile> {
   const res = await api.get<ApiResponse>('/users/getProfile/');
   return res.data.user;
 }
+
+export type UpdateProfilePayload = {
+  name: string;
+  username: string;
+  bio: string | null;
+};
+
+export async function updateUserProfile(payload: UpdateProfilePayload): Promise<void> {
+  await api.post('/users/getProfile/', payload);
+}

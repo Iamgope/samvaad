@@ -13,6 +13,7 @@ import { Button } from '../components/Button';
 import { IconButton } from '../components/IconButton';
 import { ChevronLeftIcon, EditIcon } from '../components/Icons';
 import { pickSquareImage } from '../utils/imagePicker';
+import { updateUserProfile } from '../services/api';
 import type { RootStackParamList } from '../App';
 
 const DEFAULT_AVATAR = require('../assets/defaultprofilepic.png');
@@ -37,26 +38,43 @@ export default function EditProfileScreen() {
   const [handle, setHandle] = useState(initial.handle.replace(/^@/, ''));
   const [bio, setBio] = useState(initial.bio ?? '');
   const [avatarUri, setAvatarUri] = useState<string | null>(initial.avatarUri);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const cleanedHandle = handle.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
   const handleInvalid = cleanedHandle.length === 0;
   const nameInvalid = name.trim().length === 0;
-  const canSave = !nameInvalid && !handleInvalid;
+  const canSave = !nameInvalid && !handleInvalid && !saving;
 
   const handlePickAvatar = async () => {
     const uri = await pickSquareImage();
     if (uri) setAvatarUri(uri);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!canSave) return;
-    onSave({
-      name: name.trim(),
-      handle: `@${cleanedHandle}`,
-      bio: bio.trim() || null,
-      avatarUri,
-    });
-    navigation.goBack();
+    const trimmedName = name.trim();
+    const trimmedBio = bio.trim() || null;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await updateUserProfile({
+        name: trimmedName,
+        username: cleanedHandle,
+        bio: trimmedBio,
+      });
+      onSave({
+        name: trimmedName,
+        handle: `@${cleanedHandle}`,
+        bio: trimmedBio,
+        avatarUri,
+      });
+      navigation.goBack();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Could not save changes');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const avatarSource = avatarUri ? { uri: avatarUri } : DEFAULT_AVATAR;
@@ -139,9 +157,15 @@ export default function EditProfileScreen() {
 
           <View style={{ height: spacing.xl }} />
 
+          {saveError && (
+            <Text variant="bodySm" tone="danger" style={s.saveError}>
+              {saveError}
+            </Text>
+          )}
+
           <Button
             variant="pillBrand"
-            label="Save changes"
+            label={saving ? 'Saving…' : 'Save changes'}
             onPress={handleSave}
             disabled={!canSave}
             shadowColor={colors.limeMuted}
@@ -257,6 +281,10 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: colors.black,
+  },
+  saveError: {
+    textAlign: 'center',
+    marginBottom: spacing.sm,
   },
 });
 

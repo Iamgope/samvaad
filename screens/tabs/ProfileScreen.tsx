@@ -389,7 +389,6 @@ export default function ProfileScreen({
     setError(null);
     try {
       const data = await fetchUserProfile();
-      console.log(data)
       setProfile(p => mergeApiProfile(p, data));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load profile');
