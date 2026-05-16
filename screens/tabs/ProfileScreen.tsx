@@ -21,7 +21,7 @@ import { ShareCard, shareProfileCard } from '../../components/profile/ShareCard'
 import { TrophyCase, type Badge } from '../../components/profile/TrophyCase';
 import { DebateHistory, type Match } from '../../components/profile/DebateHistory';
 import { MoreMenuModal, type MoreMenuAction } from '../../components/profile/MoreMenuModal';
-import { fetchUserProfile, type UserProfile } from '../../services/api';
+import { fetchUserProfile, fetchMyDebates, type UserProfile, type DebateSummary } from '../../services/api';
 
 const DEFAULT_AVATAR = require('../../assets/defaultprofilepic.png');
 
@@ -350,6 +350,51 @@ function Section({ children, gap = spacing.xl }: { children: React.ReactNode; ga
 
 // ─── SCREEN ───────────────────────────────────────────────────────
 
+function formatAgo(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 0 || Number.isNaN(ms)) return 'just now';
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days}d`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks}w`;
+  const months = Math.floor(days / 30);
+  return `${months}mo`;
+}
+
+function topicKeyFor(name: string): Match['topic'] {
+  const n = name.toLowerCase();
+  if (n === 'politics') return 'politics';
+  if (n === 'sports') return 'sports';
+  return 'culture';
+}
+
+function mapDebatesToMatches(debates: DebateSummary[], myId: number): Match[] {
+  return debates
+    .filter(d => d.status === 'COMPLETED')
+    .map((d): Match => {
+      const meIsPro = d.user_pro.id === myId;
+      const opponent = meIsPro ? d.user_con : d.user_pro;
+      const outcome: Match['outcome'] = d.winner?.id === myId ? 'win' : 'loss';
+      const when = d.completed_at ?? d.started_at;
+      return {
+        id: String(d.id),
+        motion: d.topic.title,
+        opponentName: opponent.username,
+        opponentInit: opponent.username.slice(0, 2).toUpperCase(),
+        format: 'clash',
+        topic: topicKeyFor(d.topic.category.name),
+        outcome,
+        agoLabel: formatAgo(when),
+      };
+    });
+}
+
 function mergeApiProfile(base: ProfileData, api: UserProfile): ProfileData {
   const { first_name, last_name, username } = api.user;
   const fullName = [first_name, last_name].filter(Boolean).join(' ').trim();
@@ -388,8 +433,12 @@ export default function ProfileScreen({
     else setRefreshing(true);
     setError(null);
     try {
-      const data = await fetchUserProfile();
-      setProfile(p => mergeApiProfile(p, data));
+      const [apiProfile, apiDebates] = await Promise.all([
+        fetchUserProfile(),
+        fetchMyDebates(),
+      ]);
+      const matches = mapDebatesToMatches(apiDebates, apiProfile.user.id);
+      setProfile(p => ({ ...mergeApiProfile(p, apiProfile), matches }));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load profile');
     } finally {

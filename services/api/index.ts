@@ -8,3 +8,4 @@ export * from './topics';
 export * from './categories';
 export * from './devices';
 export * from './users';
+export * from './debates';
