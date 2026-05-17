@@ -20,7 +20,7 @@ import { pickSquareImage } from '../../utils/imagePicker';
 import { ShareCard, shareProfileCard } from '../../components/profile/ShareCard';
 import { TrophyCase, type Badge } from '../../components/profile/TrophyCase';
 import { DebateHistory, type Match } from '../../components/profile/DebateHistory';
-import { MoreMenuModal, type MoreMenuAction } from '../../components/profile/MoreMenuModal';
+import { MoreMenuModal, type MoreMenuAction } from '../../components/MoreMenuModal';
 
 const DEFAULT_AVATAR = require('../../assets/defaultprofilepic.png');
 
@@ -49,7 +49,7 @@ const MOCK_PROFILE: ProfileData = {
   handle:   '@aman',
   initials: 'AG',
   bio:      'Reading more than I write. Trying to argue better.',
-  rating:   1647,
+  rating:   2047,
   wins:     94,
   debates:  142,
   streak:   6,

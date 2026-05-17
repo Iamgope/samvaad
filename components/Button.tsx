@@ -1,13 +1,16 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   Animated,
+  Easing,
   View,
   StyleSheet,
   ViewStyle,
   ActivityIndicator,
   Text,
+  type LayoutChangeEvent,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 
@@ -23,7 +26,7 @@ const HEIGHTS = { lg: 56, md: 48, sm: 40 };
 const CHIP_SIZE = { lg: 36, md: 32, sm: 28 };
 
 type Size = 'lg' | 'md' | 'sm';
-export type ButtonVariant = 'primary' | 'action' | 'outline' | 'ghost' | 'text' | 'game' | 'pill' | 'pillBrand' | 'ticket';
+export type ButtonVariant = 'primary' | 'action' | 'outline' | 'ghost' | 'text' | 'game' | 'pill' | 'pillBrand' | 'ticket' | 'steel';
 
 const PILL_HEIGHT = 38;
 const PILL_UNDER  = 4;
@@ -165,6 +168,16 @@ function tokensFor(
         hasShadow: true,
         hasBorder: false,
       };
+    case 'steel':
+      // Steel has its own dedicated render path and ignores these tokens.
+      return {
+        surface: '#9097A8',
+        border:  'transparent',
+        text:    '#15192A',
+        shadow:  'transparent',
+        hasShadow: false,
+        hasBorder: false,
+      };
   }
 }
 
@@ -227,6 +240,17 @@ export function Button({
       }).start();
     }
   };
+
+  if (variant === 'steel') {
+    return (
+      <SteelButton
+        label={label}
+        onPress={isInteractable ? onPress : undefined}
+        size={size}
+        style={style}
+      />
+    );
+  }
 
   if (variant === 'text') {
     return (
@@ -483,6 +507,97 @@ export function Button({
   );
 }
 
+// ─── Steel — metallic CTA with a slow sword-shine sweep ───────────
+//
+// Toned-down: softer gradient, lower-peak sheen, longer pause between sweeps.
+
+function SteelButton({
+  label,
+  onPress,
+  size = 'lg',
+  style,
+}: {
+  label: string;
+  onPress?: () => void;
+  size?: Size;
+  style?: ViewStyle;
+}) {
+  const shine = useRef(new Animated.Value(0)).current;
+  const press = useRef(new Animated.Value(0)).current;
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shine, {
+          toValue: 1,
+          duration: 1600,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.delay(3500),
+        Animated.timing(shine, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.delay(200),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [shine]);
+
+  const SHINE_WIDTH = 100;
+  const translateX = shine.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-SHINE_WIDTH, Math.max(width + SHINE_WIDTH, 400)],
+  });
+  const scale = press.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.985],
+  });
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={() =>
+        Animated.timing(press, { toValue: 1, duration: 80, useNativeDriver: true }).start()
+      }
+      onPressOut={() =>
+        Animated.spring(press, { toValue: 0, tension: 400, friction: 18, useNativeDriver: true }).start()
+      }
+      onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
+      style={style}
+    >
+      <Animated.View style={[s.steelOuter, { height: HEIGHTS[size], transform: [{ scale }] }]}>
+        <LinearGradient
+          colors={['#F4F6FA', '#CFD4DF', '#A0A7B6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={s.steelFace}
+        >
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              s.steelSheenWrap,
+              {
+                width: SHINE_WIDTH,
+                transform: [{ translateX }, { rotate: '20deg' }],
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.5)', 'rgba(255,255,255,0)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={s.steelSheen}
+            />
+          </Animated.View>
+
+          <Text style={s.steelLabel}>{label}</Text>
+        </LinearGradient>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 export function DebateActionButton({
   icon,
   ...props
@@ -565,5 +680,33 @@ const s = StyleSheet.create({
   },
   pillIconRight: {
     marginLeft: 4,
+  },
+
+  // ── Steel ──
+  steelOuter: {
+    overflow: 'hidden',
+    borderRadius: 6,
+  },
+  steelFace: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  steelSheenWrap: {
+    position: 'absolute',
+    top: -30,
+    bottom: -30,
+  },
+  steelSheen: {
+    flex: 1,
+    width: '100%',
+  },
+  steelLabel: {
+    fontFamily: fonts.display.bold,
+    fontSize: 15,
+    color: '#1A1F2C',
+    letterSpacing: -0.1,
   },
 });

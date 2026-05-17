@@ -34,6 +34,7 @@ import EditProfileScreen, { type EditableProfile } from './screens/EditProfileSc
 import AllTrophiesScreen from './screens/AllTrophiesScreen';
 import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
 import HelpSupportScreen from './screens/HelpSupportScreen';
+import DebateDetailScreen from './screens/DebateDetailScreen';
 import type { Badge } from './components/profile/TrophyCase';
 import { TabNavigator } from './navigation/TabNavigator';
 import { colors } from './constants/colors';
@@ -55,6 +56,22 @@ export type RootStackParamList = {
   AllTrophies: { badges: Badge[] };
   PrivacyPolicy: undefined;
   HelpSupport: undefined;
+  DebateDetail: {
+    debateId: string
+    categoryId: string
+    categoryName: string
+    categoryAccent: string
+    motion: string
+    context?: string
+    agreeCount: number
+    disagreeCount: number
+    unsureCount: number
+    whyDebate: string
+    proTitle: string
+    proBody: string
+    conTitle: string
+    conBody: string
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -113,6 +130,7 @@ export default function App() {
             <Stack.Screen name="AllTrophies" component={AllTrophiesScreen} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
             <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+            <Stack.Screen name="DebateDetail" component={DebateDetailScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </View>

@@ -8,6 +8,9 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Circle, Line, Path } from 'react-native-svg'
+import { useNavigation } from '@react-navigation/native'
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import type { RootStackParamList } from '../../App'
 import { colors } from '../../constants/colors'
 import { fonts } from '../../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../../constants/spacing'
@@ -34,44 +37,79 @@ type Debate = {
   unsureCount: number
   isNew?: boolean
   endsIn?: string
+  whyDebate: string
+  proTitle: string
+  proBody: string
+  conTitle: string
+  conBody: string
 }
 
 const ALL_DEBATES: Debate[] = [
   {
     id: 'd1', category: 'politics',
     motion: 'Is democracy the best form of government?',
-    context: 'Transfer of power controversies in Bengal elections sparked fresh debate.',
+    context: 'Transfer of power controversies in recent Bengal elections sparked a fresh wave of debate across the country. Allegations of booth capture, lopsided media coverage, and last-minute defections have left even long-time supporters questioning whether the process still works as advertised.',
     agreeCount: 2100, disagreeCount: 1400, unsureCount: 600,
+    whyDebate: 'Democracy is widely treated as the global default, yet outcomes — gridlock, populist capture, sliding voter trust — keep raising the question of whether the model still delivers fair representation.',
+    proTitle: 'Power belongs to the people',
+    proBody: 'Democracy is the only system that holds leaders accountable through elections, enshrines individual rights, and adapts peacefully to change.',
+    conTitle: 'Mob rule over merit',
+    conBody: 'Elected majorities can suppress minorities, short voting cycles discourage long-term policy, and money often controls outcomes more than public will.',
   },
   {
     id: 'd2', category: 'politics',
     motion: 'Should India remove religion-based laws?',
-    context: 'A debate that resurfaces every election cycle with increasing intensity.',
+    context: 'Personal laws in India still differ across religions for marriage, inheritance, and adoption. The Uniform Civil Code conversation has resurfaced in every election cycle with rising intensity, splitting both legal scholars and the political class.',
     agreeCount: 3800, disagreeCount: 2600, unsureCount: 900,
+    whyDebate: 'Different communities live under different personal-law regimes, which raises the question of equality before the law versus the protection of religious freedoms — a fault line at the heart of recent political battles.',
+    proTitle: 'One nation, one law',
+    proBody: 'A uniform civil code would put every citizen under the same family, marriage, and inheritance rules, reinforcing equality and removing structural unfairness.',
+    conTitle: 'Pluralism is a feature, not a bug',
+    conBody: "India's strength lies in accommodating different communities. Forcing a single code risks erasing minority traditions and inflaming fresh communal tensions.",
   },
   {
     id: 'd3', category: 'sports',
     motion: 'Should cricket be added to the Olympics?',
-    context: 'The ICC has been lobbying the IOC for two decades.',
+    context: 'The ICC has been lobbying the IOC for two decades. With Los Angeles 2028 opening the door to a short-format cricket event, boards, broadcasters, and players are weighing in on whether the sport should accept.',
     agreeCount: 5900, disagreeCount: 2300, unsureCount: 700, isNew: true,
+    whyDebate: 'Cricket commands billion-strong audiences but the Olympics has long resisted formats it sees as logistically heavy. Reopening the door reignites old questions about scheduling, prestige, and who benefits.',
+    proTitle: 'A global stage for a global sport',
+    proBody: 'Olympic inclusion would push cricket into non-Commonwealth markets and unlock funding, infrastructure, and visibility for second-tier cricketing nations.',
+    conTitle: 'Wrong format, wrong moment',
+    conBody: "Calendars are already overcrowded, boards won't pause their domestic leagues, and a hurried T20 tournament risks watering down both Olympic and cricketing prestige.",
   },
   {
     id: 'd4', category: 'sports',
     motion: 'Should athletes be political role models?',
-    context: 'Several cricketers backed opposing parties ahead of IPL, dividing fans.',
+    context: 'Several cricketers backed opposing parties ahead of the IPL, dividing fans and pundits. Sponsors quietly distanced themselves, franchise owners scrambled, and players associations are now drafting fresh guidelines on political speech.',
     agreeCount: 980, disagreeCount: 1600, unsureCount: 520, endsIn: '3h',
+    whyDebate: 'Athletes command massive audiences and cultural influence. Whether that platform comes with civic responsibilities — or whether mixing sport with politics alienates fans and endangers players — is hotly contested.',
+    proTitle: 'Platform equals responsibility',
+    proBody: 'Athletes who speak out have historically moved public opinion on civil rights, equality, and justice. Staying silent is itself a political choice that props up the status quo.',
+    conTitle: 'Stick to sport',
+    conBody: 'Fans come to sport for shared joy, not political division. Athletes risk their safety and livelihoods, and their influence rarely translates into meaningful policy change.',
   },
   {
     id: 'd5', category: 'culture',
     motion: 'Do we glorify violence in cinema too much?',
-    context: 'Back-to-back blockbusters this season pushed graphic content to new extremes.',
+    context: "Back-to-back blockbusters this season pushed graphic content to new extremes, and streaming algorithms keep surfacing the bloodiest cuts to the top of every watch-next rail. State censor boards have flagged scenes that would have been cut outright a decade ago.",
     agreeCount: 1800, disagreeCount: 900, unsureCount: 340, isNew: true,
+    whyDebate: 'Box-office data shows audiences flock to violent films, yet researchers and parents worry about desensitisation, especially as streaming puts this content in front of younger viewers with no friction.',
+    proTitle: 'Art imitates a violent world',
+    proBody: 'Cinema reflects reality. Sanitising violence strips stories of truth, stakes, and empathy — audiences are capable of distinguishing fiction from a call to action.',
+    conTitle: 'Screen violence shapes behaviour',
+    conBody: 'Repeated exposure normalises brutality, reduces empathy, and provides a template for real-world aggression — especially in adolescents still developing moral frameworks.',
   },
   {
     id: 'd6', category: 'culture',
     motion: 'Are translations betraying the originals?',
-    context: 'With global streaming boom, dubbing vs subtitling debate has reignited.',
+    context: 'With the global streaming boom and a surge in translated literature, the dubbing-vs-subtitling and faithful-vs-localised arguments have reignited across both film and publishing circles.',
     agreeCount: 1200, disagreeCount: 1800, unsureCount: 400,
+    whyDebate: 'Translation has turned into a mass-market product, reigniting the old argument: how much of an "original" survives the move to a new language, audience, and cultural context?',
+    proTitle: 'Translation is reinvention, not theft',
+    proBody: 'A skilled translator carries voice, rhythm, and cultural context across. Without them, world cinema and literature would simply not exist beyond a tiny elite.',
+    conTitle: 'Something is always lost',
+    conBody: "Subtleties of metaphor, dialect, and rhyme rarely survive intact. Many translations smooth over difficulty in ways that flatten the writer's original intent.",
   },
 ]
 
@@ -168,10 +206,31 @@ function PillRow({
 // ─── MAIN SCREEN ───────────────────────────────────────────────────
 
 export default function SearchScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const [selectedPill, setSelectedPill] = useState<PillId>('explore')
   const [query, setQuery] = useState('')
 
   const findCategory = (id: CategoryId) => CATEGORIES.find(c => c.id === id)!
+
+  const handleDebatePress = (d: Debate) => {
+    const cat = findCategory(d.category)
+    navigation.navigate('DebateDetail', {
+      debateId: d.id,
+      categoryId: d.category,
+      categoryName: cat.name,
+      categoryAccent: cat.accent,
+      motion: d.motion,
+      context: d.context,
+      agreeCount: d.agreeCount,
+      disagreeCount: d.disagreeCount,
+      unsureCount: d.unsureCount,
+      whyDebate: d.whyDebate,
+      proTitle: d.proTitle,
+      proBody: d.proBody,
+      conTitle: d.conTitle,
+      conBody: d.conBody,
+    })
+  }
 
   const visibleDebates = useMemo(() => {
     let list: Debate[]
@@ -232,6 +291,7 @@ export default function SearchScreen() {
                   disagreeCount={d.disagreeCount}
                   unsureCount={d.unsureCount}
                   headlineSize={17}
+                  onPress={() => handleDebatePress(d)}
                 />
                 {i < visibleDebates.length - 1 && <View style={s.divider} />}
               </View>

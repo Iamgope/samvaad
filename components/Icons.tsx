@@ -119,6 +119,42 @@ export function EditIcon({
   );
 }
 
+export function FlagIcon({
+  size = 16,
+  color = colors.text,
+  strokeWidth = 1.8,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 22V4 M4 4c6 0 7 3 13 3v9c-6 0-7-3-13-3"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+export function EyeOffIcon({
+  size = 16,
+  color = colors.text,
+  strokeWidth = 1.8,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M3 3l18 18 M10.6 6.1A10.4 10.4 0 0112 6c5 0 9 4 10 6-0.5 1-1.6 2.7-3.3 4.2 M6.3 7.6C4.1 9.1 2.6 11 2 12c1 2 5 6 10 6 1.7 0 3.3-.5 4.8-1.3 M9.9 9.9a3 3 0 004.2 4.2"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 export function ShareIcon({
   size = 14,
   color = colors.text,

@@ -54,6 +54,11 @@ type CuratedDebate = {
   unsureCount: number
   isNew?: boolean
   endsIn?: string
+  whyDebate: string
+  proTitle: string
+  proBody: string
+  conTitle: string
+  conBody: string
 }
 
 // ─── DATA ─────────────────────────────────────────────────────────
@@ -101,16 +106,26 @@ const CURATED: CuratedDebate[] = [
   {
     id: 'c1', category: 'politics',
     motion: 'Is democracy the best form of government?',
-    context: 'Transfer of power controversies in Bengal elections sparked a fresh wave of debate.',
+    context: 'Transfer of power controversies in the recent Bengal elections sparked a fresh wave of debate across the country. Allegations of booth capture, lopsided media coverage, and last-minute defections have left even long-time supporters questioning whether the process still works. International observers have weighed in on both sides, and a wave of opinion columns has reignited an older question about whether liberal democracy is a destination — or just one stop on a longer journey.',
     debating: 6100, forVotes: 3800, againstVotes: 2300,
     agreeCount: 2100, disagreeCount: 1400, unsureCount: 600,
+    whyDebate: 'While democracy is celebrated as the gold standard of governance, critics argue it can be gridlocked, manipulated, or captured by populism — leaving many questioning whether it delivers on its promise of fair representation.',
+    proTitle: 'Power belongs to the people',
+    proBody: 'Democracy is the only system that holds leaders accountable through elections, enshrines individual rights, and adapts peacefully to change.',
+    conTitle: 'Mob rule over merit',
+    conBody: 'Elected majorities can suppress minorities, short-term voting cycles discourage long-term policy, and money often controls outcomes more than public will.',
   },
   {
     id: 'c2', category: 'lit',
     motion: 'Do we glorify violence in cinema too much?',
-    context: 'Back-to-back blockbusters this season pushed graphic content to new extremes.',
+    context: "Back-to-back blockbusters this season pushed graphic content to new extremes, and streaming algorithms keep surfacing the bloodiest cuts to the top of every watch-next rail. Several state censor boards have flagged scenes that would have been cut outright a decade ago, while filmmakers argue the rating system itself has gone soft. Theatre owners report bigger turnouts for action-heavy fare even as parents' groups petition platforms to tighten age-gating. The conversation has spilled out of film criticism and into living rooms.",
     debating: 4300, forVotes: 2800, againstVotes: 1500, isNew: true,
     agreeCount: 1800, disagreeCount: 900, unsureCount: 340,
+    whyDebate: 'Box-office data shows audiences flock to violent films, yet researchers and parents worry about desensitisation, especially as streaming puts this content in front of younger viewers with no friction.',
+    proTitle: 'Art imitates a violent world',
+    proBody: 'Cinema reflects reality. Sanitising violence strips stories of truth, stakes, and empathy — audiences are capable of distinguishing fiction from a call to action.',
+    conTitle: 'Screen violence shapes behaviour',
+    conBody: 'Repeated exposure normalises brutality, reduces empathy, and provides a template for real-world aggression — especially in adolescents still developing moral frameworks.',
   },
   {
     id: 'c3', category: 'sports',
@@ -118,6 +133,11 @@ const CURATED: CuratedDebate[] = [
     context: "Several cricketers backed opposing parties ahead of IPL, dividing fans and pundits.",
     debating: 3800, forVotes: 1600, againstVotes: 2200, endsIn: '3h',
     agreeCount: 980, disagreeCount: 1600, unsureCount: 520,
+    whyDebate: "Athletes command massive audiences and cultural influence. Whether that platform comes with civic responsibilities — or whether mixing sport and politics alienates fans and endangers players — is hotly contested.",
+    proTitle: 'Platform equals responsibility',
+    proBody: 'Athletes who speak out have historically moved public opinion on civil rights, equality, and justice. Staying silent is itself a political choice that props up the status quo.',
+    conTitle: 'Stick to sport',
+    conBody: 'Fans come to sport for shared joy, not political division. Athletes risk their safety and livelihoods, and their influence rarely translates into meaningful policy change.',
   },
 ]
 
@@ -400,11 +420,22 @@ export default function HomeScreen({ navigation }: Props) {
   const handleCuratedPress = (id: string) => {
     const debate = CURATED.find(d => d.id === id)
     if (!debate) return
-    navigation.navigate('Debate', {
+    const cat = findCategory(debate.category)
+    navigation.navigate('DebateDetail', {
       debateId: id,
       categoryId: debate.category,
+      categoryName: cat.name,
+      categoryAccent: cat.accent,
       motion: debate.motion,
-      debating: debate.debating,
+      context: debate.context,
+      agreeCount: debate.agreeCount,
+      disagreeCount: debate.disagreeCount,
+      unsureCount: debate.unsureCount,
+      whyDebate: debate.whyDebate,
+      proTitle: debate.proTitle,
+      proBody: debate.proBody,
+      conTitle: debate.conTitle,
+      conBody: debate.conBody,
     })
   }
 
