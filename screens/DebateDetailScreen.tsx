@@ -11,7 +11,6 @@ import {
   type TextStyle,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-import { LinearGradient } from 'expo-linear-gradient'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../App'
 import { colors } from '../constants/colors'
@@ -23,6 +22,7 @@ import { Button } from '../components/Button'
 import { MoreMenuModal } from '../components/MoreMenuModal'
 import { FlagIcon, EyeOffIcon, ShareIcon, ThumbUpIcon, ThumbDownIcon } from '../components/Icons'
 import { DebateShareCard, shareDebateCard } from '../components/DebateShareCard'
+import { DebateHeroCard } from '../components/DebateHeroCard'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DebateDetail'>
 
@@ -109,34 +109,15 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         {/* ── Full-bleed hero (placeholder — artwork TBD) ── */}
-        <View style={[s.hero, { backgroundColor: categoryAccent + '22' }]}>
-          <View style={s.heroPlaceholder}>
-            <Text style={s.heroPlaceholderText}>Hero artwork placeholder</Text>
-          </View>
-          <LinearGradient
-            colors={['transparent', 'rgba(12,15,22,0.6)', 'rgba(12,15,22,0.98)']}
-            locations={[0, 0.5, 1]}
-            style={s.heroScrim}
-            pointerEvents="none"
-          />
-
-          <View
-            style={[
-              s.heroTag,
-              {
-                backgroundColor: categoryAccent + '33',
-                borderColor: categoryAccent + '50',
-                borderBottomColor: categoryAccent,
-              },
-            ]}
-          >
-            <Text style={[s.heroTagText, { color: categoryAccent }]}>{categoryName}</Text>
-          </View>
-
-          <View style={s.heroFooter}>
-            <Text style={s.heroMotion}>{motion}</Text>
-          </View>
-        </View>
+        <DebateHeroCard
+          motion={motion}
+          categoryName={categoryName}
+          categoryAccent={categoryAccent}
+          height={HERO_HEIGHT}
+          borderRadius={0}
+          motionSize={24}
+          style={s.hero}
+        />
 
         {/* ── Split card ── */}
         <View style={s.card}>
@@ -461,58 +442,10 @@ const s = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // ── Hero ──
+  // ── Hero ── full-bleed: cancel the screen padding and add bottom spacing
   hero: {
-    height: HERO_HEIGHT,
     marginHorizontal: -SCREEN_PADDING,
     marginBottom: spacing.lg,
-    overflow: 'hidden',
-    backgroundColor: colors.surface,
-  },
-  heroScrim: {
-    ...StyleSheet.absoluteFillObject,
-    top: '35%',
-  },
-  heroPlaceholder: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroPlaceholderText: {
-    fontFamily: fonts.jakarta.semiBold,
-    fontSize: 12,
-    color: colors.textSubtle,
-    letterSpacing: 0.4,
-  },
-  heroTag: {
-    position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderBottomWidth: 2,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  heroTagText: {
-    fontFamily: fonts.jakarta.semiBold,
-    fontSize: 12,
-    letterSpacing: 0.1,
-  },
-  heroFooter: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: SCREEN_PADDING,
-    paddingBottom: spacing.lg,
-  },
-  heroMotion: {
-    fontFamily: fonts.display.black,
-    fontSize: 24,
-    lineHeight: 30,
-    color: colors.text,
-    letterSpacing: -0.6,
   },
 
   // ── Split card ──

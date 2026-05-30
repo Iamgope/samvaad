@@ -14,7 +14,7 @@ import { fonts } from '../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../constants/spacing'
 import { Text } from '../components/Text'
 import { DebateHeadline } from '../components/DebateHeadline'
-import { DebateCard } from '../components/DebateCard'
+import { DebateHeroCard } from '../components/DebateHeroCard'
 import { CategoryCard } from '../components/CategoryCard'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
@@ -146,6 +146,8 @@ const CURATED: CuratedDebate[] = [
 const findCategory = (id: CategoryId): Category =>
   CATEGORIES.find(c => c.id === id) ?? CATEGORIES[0]
 
+const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}K` : `${n}`)
+
 // ─── HEADER ───────────────────────────────────────────────────────
 
 function Header() {
@@ -254,18 +256,26 @@ function TrendingSection({
           scrollEventThrottle={16}
           contentContainerStyle={s.trendingScrollContent}
         >
-          {looped.map((d, i) => (
-            <DebateCard
-              key={`${d.id}-${i}`}
-              motion={d.motion}
-              debating={d.debating}
-              forVotes={d.forVotes}
-              againstVotes={d.againstVotes}
-              categoryAccent={findCategory(d.category).accent}
-              style={{ width: TRENDING_CARD_WIDTH }}
-              onPress={() => onJoin(d.id)}
-            />
-          ))}
+          {looped.map((d, i) => {
+            const cat = findCategory(d.category)
+            const total = d.forVotes + d.againstVotes
+            const forPct = total > 0 ? Math.round((d.forVotes / total) * 100) : 50
+            return (
+              <DebateHeroCard
+                key={`${d.id}-${i}`}
+                motion={d.motion}
+                categoryName={cat.name}
+                categoryAccent={cat.accent}
+                style={{ width: TRENDING_CARD_WIDTH }}
+                onPress={() => onJoin(d.id)}
+                footer={
+                  <Text style={s.trendingMeta}>
+                    {fmt(d.debating)} debating · {forPct}% for
+                  </Text>
+                }
+              />
+            )
+          })}
         </ScrollView>
         <View pointerEvents="none" style={s.pagerOverlay}>
           {debates.map((d, i) => (
@@ -493,6 +503,12 @@ const s = StyleSheet.create({
   // ── Trending ──
   trendingSection:      { marginBottom: spacing.xl },
   trendingScrollContent: { paddingHorizontal: SCREEN_PADDING, gap: spacing.sm },
+  trendingMeta: {
+    fontFamily: fonts.jakarta.medium,
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
   pagerOverlay: {
     position: 'absolute',
     left: 0,
