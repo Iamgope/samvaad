@@ -1,5 +1,7 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
+  Animated,
+  Pressable,
   View,
   ScrollView,
   StyleSheet,
@@ -19,7 +21,7 @@ import { Text } from '../components/Text'
 import { IconButton } from '../components/IconButton'
 import { Button } from '../components/Button'
 import { MoreMenuModal } from '../components/MoreMenuModal'
-import { FlagIcon, EyeOffIcon, ShareIcon } from '../components/Icons'
+import { FlagIcon, EyeOffIcon, ShareIcon, ThumbUpIcon, ThumbDownIcon } from '../components/Icons'
 import { DebateShareCard, shareDebateCard } from '../components/DebateShareCard'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DebateDetail'>
@@ -35,8 +37,8 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
     context,
     categoryName,
     categoryAccent,
-    agreeCount,
-    disagreeCount,
+    agreeCount: initialAgreeCount,
+    disagreeCount: initialDisagreeCount,
     whyDebate,
     proTitle,
     proBody,
@@ -48,9 +50,27 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const shareCardRef = useRef<View>(null)
 
+  const [agreeCount, setAgreeCount] = useState(initialAgreeCount)
+  const [disagreeCount, setDisagreeCount] = useState(initialDisagreeCount)
+  const [userVote, setUserVote] = useState<'for' | 'against' | null>(null)
+
   const decided = agreeCount + disagreeCount
   const forPct = decided > 0 ? Math.round((agreeCount / decided) * 100) : 50
   const againstPct = 100 - forPct
+
+  const handleVote = (side: 'for' | 'against') => {
+    if (userVote === side) {
+      setUserVote(null)
+      if (side === 'for') setAgreeCount(c => Math.max(0, c - 1))
+      else setDisagreeCount(c => Math.max(0, c - 1))
+    } else {
+      if (userVote === 'for') setAgreeCount(c => Math.max(0, c - 1))
+      else if (userVote === 'against') setDisagreeCount(c => Math.max(0, c - 1))
+      setUserVote(side)
+      if (side === 'for') setAgreeCount(c => c + 1)
+      else setDisagreeCount(c => c + 1)
+    }
+  }
 
   const handleShare = () => shareDebateCard(shareCardRef, motion)
 
@@ -179,12 +199,33 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
 
       {/* ── Fixed bottom CTA ── */}
       <View style={[s.ctaBar, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-        <Button
-          label="Start Debate"
-          variant="steel"
-          size="md"
-          onPress={() => navigation.navigate('JoinDebate', { categoryAccent, motion })}
-        />
+        <View style={s.voteSection}>
+          <VoteIconButton
+            voted={userVote === 'for'}
+            onPress={() => handleVote('for')}
+            label="For"
+            renderIcon={(active) => (
+              <ThumbUpIcon size={24} filled={active} color={active ? colors.text : colors.textSubtle} />
+            )}
+          />
+          <VoteIconButton
+            voted={userVote === 'against'}
+            onPress={() => handleVote('against')}
+            label="Against"
+            renderIcon={(active) => (
+              <ThumbDownIcon size={24} filled={active} color={active ? colors.text : colors.textSubtle} />
+            )}
+          />
+        </View>
+        <View style={s.ctaDivider} />
+        <View style={s.startSection}>
+          <Button
+            label="Start Debate"
+            variant="steel"
+            size="md"
+            onPress={() => navigation.navigate('JoinDebate', { categoryAccent, motion })}
+          />
+        </View>
       </View>
 
       <MoreMenuModal
@@ -221,6 +262,55 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
         />
       </View>
     </SafeAreaView>
+  )
+}
+
+// ─── Vote icon button ─────────────────────────────────────────────
+
+function VoteIconButton({
+  voted,
+  renderIcon,
+  label,
+  onPress,
+}: {
+  voted: boolean
+  renderIcon: (active: boolean) => React.ReactNode
+  label: string
+  onPress: () => void
+}) {
+  const scale = useRef(new Animated.Value(1)).current
+  const prevVotedRef = useRef(voted)
+
+  useEffect(() => {
+    const wasVoted = prevVotedRef.current
+    prevVotedRef.current = voted
+
+    if (voted && !wasVoted) {
+      Animated.sequence([
+        Animated.spring(scale, { toValue: 1.22, useNativeDriver: true, tension: 600, friction: 5 }),
+        Animated.spring(scale, { toValue: 1,    useNativeDriver: true, tension: 300, friction: 12 }),
+      ]).start()
+    }
+  }, [voted]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={8}
+      onPressIn={() =>
+        Animated.spring(scale, { toValue: 0.88, useNativeDriver: true, tension: 600, friction: 20 }).start()
+      }
+      onPressOut={() => {
+        if (!voted) {
+          Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 400, friction: 15 }).start()
+        }
+      }}
+    >
+      <Animated.View style={[s.voteButton, voted && s.voteButtonActive, { transform: [{ scale }] }]}>
+        {renderIcon(voted)}
+        <Text style={[s.voteLabel, voted && s.voteLabelActive]}>{label}</Text>
+      </Animated.View>
+    </Pressable>
   )
 }
 
@@ -576,6 +666,46 @@ const s = StyleSheet.create({
     backgroundColor: colors.black,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  voteSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  voteButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    width: 52,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'transparent',
+  },
+  voteButtonActive: {
+    backgroundColor: colors.surface2,
+    borderColor: colors.borderStrong,
+  },
+  voteLabel: {
+    fontFamily: fonts.jakarta.bold,
+    fontSize: 9,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: colors.textSubtle,
+  },
+  voteLabelActive: {
+    color: colors.text,
+  },
+  ctaDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 36,
+    backgroundColor: colors.border,
+  },
+  startSection: {
+    flex: 1,
   },
 
 })
