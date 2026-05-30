@@ -36,6 +36,7 @@ import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
 import HelpSupportScreen from './screens/HelpSupportScreen';
 import DebateDetailScreen from './screens/DebateDetailScreen'
 import DebateChatScreen from './screens/DebateChatScreen';
+import NotificationsScreen from './screens/NotificationsScreen';
 import type { Badge } from './components/profile/TrophyCase';
 import { TabNavigator } from './navigation/TabNavigator';
 import { colors } from './constants/colors';
@@ -57,6 +58,7 @@ export type RootStackParamList = {
   AllTrophies: { badges: Badge[] };
   PrivacyPolicy: undefined;
   HelpSupport: undefined;
+  Notifications: undefined;
   DebateChat: {
     debateId: string
     motion: string
@@ -140,6 +142,7 @@ export default function App() {
             <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
             <Stack.Screen name="DebateDetail" component={DebateDetailScreen} />
             <Stack.Screen name="DebateChat" component={DebateChatScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </View>

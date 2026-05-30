@@ -252,11 +252,6 @@ export default function SearchScreen() {
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
-      {/* Header */}
-      <View style={s.header}>
-        <Text style={s.title}>Search</Text>
-      </View>
-
       {/* Search bar */}
       <View style={s.searchWrap}>
         <SearchBar value={query} onChange={setQuery} />
@@ -313,20 +308,9 @@ const s = StyleSheet.create({
     paddingBottom: 32,
   },
 
-  header: {
-    paddingHorizontal: SCREEN_PADDING,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-  },
-  title: {
-    fontFamily: fonts.display.black,
-    fontSize: 32,
-    color: colors.text,
-    letterSpacing: -0.8,
-  },
-
   searchWrap: {
     paddingHorizontal: SCREEN_PADDING,
+    marginTop: spacing.sm,
     marginBottom: spacing.md,
   },
   searchBar: {

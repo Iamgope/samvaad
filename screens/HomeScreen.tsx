@@ -16,6 +16,7 @@ import { Text } from '../components/Text'
 import { DebateHeadline } from '../components/DebateHeadline'
 import { DebateHeroCard } from '../components/DebateHeroCard'
 import { CategoryCard } from '../components/CategoryCard'
+import { BellIcon } from '../components/Icons'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const TRENDING_CARD_WIDTH = SCREEN_WIDTH - SCREEN_PADDING * 2
@@ -150,12 +151,13 @@ const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}K` : `${n}`)
 
 // ─── HEADER ───────────────────────────────────────────────────────
 
-function Header() {
+function Header({ onBellPress, hasUnread }: { onBellPress: () => void; hasUnread?: boolean }) {
   return (
     <View style={s.header}>
-      <Text style={s.headerTitle}>Home</Text>
-      <TouchableOpacity style={s.bellBtn} activeOpacity={0.7}>
-        <Text style={s.bellIcon}>🔔</Text>
+      <Text style={s.wordmark}>Samvaad<Text style={s.wordmarkDot}>.</Text></Text>
+      <TouchableOpacity style={s.bellBtn} activeOpacity={0.7} onPress={onBellPress} hitSlop={8}>
+        <BellIcon size={22} color={colors.text} />
+        {hasUnread && <View style={s.bellDot} />}
       </TouchableOpacity>
     </View>
   )
@@ -240,7 +242,7 @@ function TrendingSection({
   return (
     <View style={s.trendingSection}>
       <View style={s.sectionHeaderRow}>
-        <Text variant="titleMd">Trending Debates</Text>
+        <Text style={s.sectionLabel}>Trending Debates</Text>
       </View>
       <View>
         <ScrollView
@@ -321,16 +323,12 @@ const ACTIONS = [
     emoji:    '⚔️',
     title:    'Join a Debate',
     subtitle: 'Enter live public debates',
-    accent:   '#38BDF8',
-    primary:  true,
   },
   {
     key:      'persona',
     emoji:    '🎭',
     title:    'Debate Personas',
     subtitle: 'Argue the other side',
-    accent:   colors.purple2,
-    primary:  false,
   },
 ]
 
@@ -342,13 +340,7 @@ function ActionSection({ onPress }: { onPress: (key: string) => void }) {
         {ACTIONS.map(a => (
           <TouchableOpacity
             key={a.key}
-            style={[
-              s.actionCard,
-              {
-                borderColor:     a.accent + '60',
-                backgroundColor: a.accent + '12',
-              },
-            ]}
+            style={s.actionCard}
             onPress={() => onPress(a.key)}
             activeOpacity={0.8}
           >
@@ -378,7 +370,7 @@ function ForYouSection({
   return (
     <View style={s.forYouSection}>
       <View style={s.forYouHeader}>
-        <Text variant="titleMd">For you</Text>
+        <Text style={s.sectionLabel}>For you</Text>
         <Text variant="bodySm" tone="muted">Curated picks</Text>
       </View>
       {debates.map((d, i) => {
@@ -456,7 +448,7 @@ export default function HomeScreen({ navigation }: Props) {
         contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Header />
+        <Header onBellPress={() => navigation.navigate('Notifications')} hasUnread />
         <TrendingSection debates={TRENDING} onJoin={handleJoin} />
         <ExploreTopics onPress={handleCategoryPress} />
         <ActionSection onPress={(key) => { if (key === 'join') navigation.navigate('JoinDebate') }} />
@@ -482,14 +474,27 @@ const s = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.lg,
   },
-  headerTitle: {
+  wordmark: {
     fontFamily: fonts.display.black,
-    fontSize: 32,
+    fontSize: 24,
     color: colors.text,
-    letterSpacing: -0.8,
+    letterSpacing: -0.6,
+  },
+  wordmarkDot: {
+    color: colors.lime,
   },
   bellBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  bellIcon: { fontSize: 18 },
+  bellDot: {
+    position: 'absolute',
+    top: 8,
+    right: 9,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.lime,
+    borderWidth: 1.5,
+    borderColor: colors.black,
+  },
 
   // ── Section header (shared) ──
   sectionHeaderRow: {
@@ -556,6 +561,8 @@ const s = StyleSheet.create({
     flex: 1,
     borderRadius: 16,
     borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface2,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.lg,
     alignItems: 'center',
