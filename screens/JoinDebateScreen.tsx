@@ -151,16 +151,21 @@ const rd = StyleSheet.create({
 
 // ─── SCREEN ───────────────────────────────────────────────────────
 
-type RouteParams = { topicId?: string; stanceId?: string }
+type RouteParams = { topicId?: string; stanceId?: string; categoryAccent?: string; motion?: string }
 type Props = { navigation: any; route?: { params?: RouteParams } }
+
+// Real debate topics (everything except the generic "All" filter).
+const CONCRETE_TOPICS = TOPICS.filter(t => t.id !== 'all')
 
 export default function JoinDebateScreen({ navigation, route }: Props) {
   const params = route?.params
 
+  // Preselect from an explicit topicId, else from an incoming category accent
+  // (e.g. arriving from a specific debate), else the default.
   const [topic, setTopic] = useState(
-    params?.topicId
-      ? (TOPICS.find(t => t.id === params.topicId) ?? TOPICS[0])
-      : TOPICS[0]
+    (params?.topicId && TOPICS.find(t => t.id === params.topicId)) ||
+    (params?.categoryAccent && TOPICS.find(t => t.accent === params.categoryAccent)) ||
+    TOPICS[0]
   )
   const [selectedStance, setSelectedStance] = useState(
     params?.stanceId
@@ -168,6 +173,31 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
       : STANCES[0] // default: Surprise Me
   )
   const [searching, setSearching] = useState(false)
+
+  useEffect(() => {
+    if (!searching) return
+    const resolvedSide = selectedStance.id === 'surprise'
+      ? (Math.random() < 0.5 ? 'for' : 'against')
+      : selectedStance.id as 'for' | 'against'
+
+    // The topic is revealed once you're matched — so "All" lands on a concrete
+    // topic here, and the arena themes off that topic's colour.
+    const resolvedTopic = topic.id === 'all'
+      ? CONCRETE_TOPICS[Math.floor(Math.random() * CONCRETE_TOPICS.length)]
+      : topic
+
+    const t = setTimeout(() => {
+      navigation.replace('DebateChat', {
+        debateId:      'mock-debate-1',
+        motion:        params?.motion ?? resolvedTopic.label,
+        userSide:      resolvedSide,
+        opponentName:  'Arjun S.',
+        categoryAccent: params?.categoryAccent ?? resolvedTopic.accent,
+      })
+    }, 3000)
+
+    return () => clearTimeout(t)
+  }, [searching])
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>

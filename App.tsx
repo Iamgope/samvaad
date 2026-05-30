@@ -34,7 +34,8 @@ import EditProfileScreen, { type EditableProfile } from './screens/EditProfileSc
 import AllTrophiesScreen from './screens/AllTrophiesScreen';
 import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
 import HelpSupportScreen from './screens/HelpSupportScreen';
-import DebateDetailScreen from './screens/DebateDetailScreen';
+import DebateDetailScreen from './screens/DebateDetailScreen'
+import DebateChatScreen from './screens/DebateChatScreen';
 import type { Badge } from './components/profile/TrophyCase';
 import { TabNavigator } from './navigation/TabNavigator';
 import { colors } from './constants/colors';
@@ -48,7 +49,7 @@ export type RootStackParamList = {
   Main: undefined;
   TopicScreen: { category: string };
   Debate: { debateId: string; categoryId: string; motion: string; debating: number };
-  JoinDebate: { topicId?: string; stanceId?: string } | undefined;
+  JoinDebate: { topicId?: string; stanceId?: string; categoryAccent?: string; motion?: string } | undefined;
   EditProfile: {
     initial: EditableProfile;
     onSave: (next: EditableProfile) => void;
@@ -56,6 +57,13 @@ export type RootStackParamList = {
   AllTrophies: { badges: Badge[] };
   PrivacyPolicy: undefined;
   HelpSupport: undefined;
+  DebateChat: {
+    debateId: string
+    motion: string
+    userSide: 'for' | 'against'
+    opponentName: string
+    categoryAccent: string
+  };
   DebateDetail: {
     debateId: string
     categoryId: string
@@ -131,6 +139,7 @@ export default function App() {
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
             <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
             <Stack.Screen name="DebateDetail" component={DebateDetailScreen} />
+            <Stack.Screen name="DebateChat" component={DebateChatScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </View>

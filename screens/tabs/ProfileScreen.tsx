@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import {
-  View, StyleSheet, ScrollView, TouchableOpacity, Alert, Image,
+  View, StyleSheet, ScrollView, TouchableOpacity, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +10,7 @@ import type { RootStackParamList } from '../../App';
 import { colors } from '../../constants/colors';
 import { spacing, SCREEN_PADDING } from '../../constants/spacing';
 import { Text } from '../../components/Text';
+import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/Button';
 import { IconButton } from '../../components/IconButton';
 import {
@@ -110,15 +111,13 @@ function ProfileHero({
       <View style={hero.content}>
         <View style={hero.heroRow}>
           <View style={hero.avatarWrap}>
-            <View style={hero.avatarShadow} />
-            <TouchableOpacity
-              style={[hero.avatar, { borderColor: tierColor }]}
+            <Avatar
+              size={92}
+              source={avatarSource}
+              initials={profile.initials}
+              borderColor={tierColor}
               onPress={profile.isOwn ? onPickAvatar : undefined}
-              activeOpacity={profile.isOwn ? 0.85 : 1}
-              disabled={!profile.isOwn}
-            >
-              <Image source={avatarSource} style={hero.avatarImage} resizeMode="cover" />
-            </TouchableOpacity>
+            />
             {profile.isOwn && (
               <TouchableOpacity style={hero.avatarEdit} onPress={onPickAvatar} activeOpacity={0.8}>
                 <EditIcon size={12} color={colors.black} />
@@ -200,32 +199,6 @@ const hero = StyleSheet.create({
   avatarWrap: {
     width: 92 + 4,
     height: 92 + 4,
-  },
-  avatarShadow: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
-    width: 92,
-    height: 92,
-    borderRadius: 16,
-    backgroundColor: colors.black,
-  },
-  avatar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 92,
-    height: 92,
-    borderRadius: 16,
-    backgroundColor: colors.surface2,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
   },
   avatarEdit: {
     position: 'absolute',
