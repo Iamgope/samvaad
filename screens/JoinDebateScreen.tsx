@@ -13,9 +13,13 @@ import { colors } from '../constants/colors'
 import { fonts } from '../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../constants/spacing'
 import { TOPICS } from '../constants/topics'
+import { TIER_COLOR } from '../constants/tiers'
 import { Text } from '../components/Text'
 import { Button } from '../components/Button'
 import { ChipDropdown } from '../components/ChipDropdown'
+import { Avatar } from '../components/Avatar'
+
+const DEFAULT_AVATAR = require('../assets/defaultprofilepic.png')
 
 // ─── DATA ─────────────────────────────────────────────────────────
 
@@ -30,122 +34,214 @@ const RULES = [
   'Debate ideas, not people. Personal attacks end the match.',
 ]
 
-// ─── RADAR ANIMATION ──────────────────────────────────────────────
+// ─── VS LOCK ANIMATION ────────────────────────────────────────────
 
-const RADAR_SIZE = 240
+const CARD_W = 132
+const CARD_H = 182
 
-function RadarScan() {
-  const sweep = useRef(new Animated.Value(0)).current
-  const p1    = useRef(new Animated.Value(0)).current
-  const p2    = useRef(new Animated.Value(0)).current
-  const p3    = useRef(new Animated.Value(0)).current
+// Placeholder — swap for real profile context once wired up
+const MOCK_USER = { name: 'Aman G.', initials: 'AG', rating: 2047, tier: 'master' as const }
+
+type VsLockProps = { topic: (typeof TOPICS)[0]; stance: (typeof STANCES)[0] }
+
+function VsLock({ topic, stance }: VsLockProps) {
+  const slideLeft  = useRef(new Animated.Value(-220)).current
+  const slideRight = useRef(new Animated.Value(220)).current
+  const vsScale    = useRef(new Animated.Value(0)).current
+  const scanLine   = useRef(new Animated.Value(0)).current
+  const borderGlow = useRef(new Animated.Value(0.25)).current
 
   useEffect(() => {
-    Animated.loop(
-      Animated.timing(sweep, {
-        toValue: 1, duration: 2800,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    ).start()
-
-    const pulse = (anim: Animated.Value, delay: number) =>
+    Animated.parallel([
+      Animated.spring(slideLeft,  { toValue: 0, useNativeDriver: true, tension: 70, friction: 12 }),
+      Animated.spring(slideRight, { toValue: 0, useNativeDriver: true, tension: 70, friction: 12 }),
+      Animated.sequence([
+        Animated.delay(260),
+        Animated.spring(vsScale, { toValue: 1, useNativeDriver: true, tension: 150, friction: 7 }),
+      ]),
+    ]).start(() => {
       Animated.loop(
         Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(anim, {
-            toValue: 1, duration: 2400,
-            easing: Easing.out(Easing.quad),
-            useNativeDriver: true,
-          }),
-          Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
+          Animated.timing(vsScale, { toValue: 1.08, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(vsScale, { toValue: 1.00, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         ])
       ).start()
+    })
 
-    pulse(p1, 0)
-    pulse(p2, 800)
-    pulse(p3, 1600)
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(scanLine, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(scanLine, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.delay(500),
+      ])
+    ).start()
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(borderGlow, { toValue: 0.9, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(borderGlow, { toValue: 0.2, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start()
 
     return () => {
-      sweep.stopAnimation()
-      p1.stopAnimation()
-      p2.stopAnimation()
-      p3.stopAnimation()
+      [slideLeft, slideRight, vsScale, scanLine, borderGlow].forEach(a => a.stopAnimation())
     }
   }, [])
 
-  const sweepDeg = sweep.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  })
-
-  const ringStyle = (anim: Animated.Value) => ({
-    position: 'absolute' as const,
-    width: RADAR_SIZE, height: RADAR_SIZE,
-    borderRadius: RADAR_SIZE / 2,
-    borderWidth: 1, borderColor: colors.lime,
-    opacity: anim.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 0.5, 0] }),
-    transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.05, 1] }) }],
-  })
+  const scanY     = scanLine.interpolate({ inputRange: [0, 1], outputRange: [0, CARD_H] })
+  const tierColor = TIER_COLOR[MOCK_USER.tier] ?? colors.text
 
   return (
-    <View style={rd.container}>
-      {[0.33, 0.62, 1].map((scale, i) => (
-        <View
-          key={i}
-          style={{
-            position: 'absolute',
-            width: RADAR_SIZE * scale, height: RADAR_SIZE * scale,
-            borderRadius: (RADAR_SIZE * scale) / 2,
-            borderWidth: 1,
-            borderColor: colors.lime + ['14', '1A', '22'][i],
-          }}
-        />
-      ))}
-      <Animated.View style={ringStyle(p1)} />
-      <Animated.View style={ringStyle(p2)} />
-      <Animated.View style={ringStyle(p3)} />
-      <Animated.View
-        style={[
-          StyleSheet.absoluteFill,
-          { alignItems: 'center', justifyContent: 'center' },
-          { transform: [{ rotate: sweepDeg }] },
-        ]}
-      >
-        <View style={rd.sweepLine} />
-        <View style={rd.sweepTrail} />
+    <View style={vl.row}>
+
+      {/* ── Left card — YOU ── */}
+      <Animated.View style={[vl.outer, {
+        borderColor:       colors.border,
+        borderBottomColor: tierColor + '99',
+        transform: [{ translateX: slideLeft }],
+      }]}>
+        <View style={vl.inner}>
+          <View style={vl.cardTop}>
+            <Text style={vl.eyebrow}>YOU</Text>
+            <Avatar size={52} source={DEFAULT_AVATAR} borderColor={colors.borderStrong} offset={3} />
+            <View style={vl.nameBlock}>
+              <Text style={vl.playerName} numberOfLines={1}>{MOCK_USER.name}</Text>
+              <View style={vl.tierChip}>
+                <Text style={vl.tierLabel}>{MOCK_USER.tier.toUpperCase()}</Text>
+                <Text style={vl.ratingDot}>·</Text>
+                <Text style={vl.ratingText}>{MOCK_USER.rating}</Text>
+              </View>
+            </View>
+          </View>
+          <View style={vl.footer}>
+            <Text style={vl.footerEmoji}>{stance.emoji}</Text>
+            <Text style={[vl.footerLabel, { color: stance.accent }]} numberOfLines={1}>
+              {stance.label.toUpperCase()}
+            </Text>
+          </View>
+        </View>
       </Animated.View>
-      <View style={rd.centerDot} />
+
+      {/* ── VS badge ── */}
+      <Animated.View style={[vl.vsWrap, { transform: [{ scale: vsScale }] }]}>
+        <Text style={vl.vsText}>VS</Text>
+      </Animated.View>
+
+      {/* ── Right card — OPPONENT ── */}
+      <Animated.View style={[vl.outer, {
+        borderColor:       colors.border,
+        borderBottomColor: colors.lime + '88',
+        transform: [{ translateX: slideRight }],
+      }]}>
+        <View style={[vl.inner, { overflow: 'hidden' }]}>
+          <Animated.View
+            style={[StyleSheet.absoluteFill, vl.glowBorder, { borderColor: colors.lime, opacity: borderGlow }]}
+            pointerEvents="none"
+          />
+          <Animated.View
+            style={[vl.scanBar, { transform: [{ translateY: scanY }] }]}
+            pointerEvents="none"
+          />
+          <View style={vl.cardTop}>
+            <Text style={[vl.eyebrow, { color: colors.textFaint }]}>OPPONENT</Text>
+            <Avatar
+              size={52}
+              initials="?"
+              borderColor={colors.borderStrong}
+              backgroundColor={colors.surface2}
+              textColor={colors.textFaint}
+              offset={3}
+            />
+            <View style={vl.nameBlock}>
+              <Text style={[vl.playerName, { color: colors.textFaint }]}>· · ·</Text>
+              <View style={vl.tierChip}>
+                <Text style={[vl.tierLabel, { color: colors.textFaint }]}>SEARCHING</Text>
+              </View>
+            </View>
+          </View>
+          <View style={vl.footer}>
+            <Text style={vl.footerEmoji}>{topic.emoji}</Text>
+            <Text style={[vl.footerLabel, { color: colors.textSubtle }]} numberOfLines={1}>
+              {topic.label.toUpperCase()}
+            </Text>
+          </View>
+        </View>
+      </Animated.View>
+
     </View>
   )
 }
 
-const rd = StyleSheet.create({
-  container: {
-    width: RADAR_SIZE, height: RADAR_SIZE,
-    alignItems: 'center', justifyContent: 'center',
+const vl = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+
+  // CategoryCard-style outer shell: thick tactile bottom border + drop shadow
+  outer: {
+    width: CARD_W, height: CARD_H,
+    borderRadius: 16,
+    borderWidth: 1.5, borderBottomWidth: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 3, height: 4 },
+    shadowOpacity: 0.55, shadowRadius: 0,
+    elevation: 6,
   },
-  sweepLine: {
-    position: 'absolute',
-    left: RADAR_SIZE / 2, top: RADAR_SIZE / 2 - 1,
-    width: RADAR_SIZE / 2, height: 1.5,
-    backgroundColor: colors.lime, opacity: 0.9,
-    transformOrigin: 'left center',
+  inner: {
+    flex: 1,
+    borderRadius: 13,
+    backgroundColor: colors.surface,
+    justifyContent: 'space-between',
   },
-  sweepTrail: {
-    position: 'absolute',
-    left: RADAR_SIZE / 2, top: RADAR_SIZE / 2 - 1,
-    width: RADAR_SIZE / 2, height: 3,
-    backgroundColor: colors.lime + '30',
-    transformOrigin: 'left center',
+  glowBorder: { borderRadius: 13, borderWidth: 1.5 },
+
+  cardTop: {
+    alignItems: 'center',
+    paddingTop: 13, paddingHorizontal: 10,
+    gap: 7,
   },
-  centerDot: {
-    position: 'absolute',
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: colors.lime,
-    shadowColor: colors.lime,
-    shadowOpacity: 1, shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 },
+  eyebrow: {
+    fontFamily: fonts.jakarta.bold,
+    fontSize: 8.5, letterSpacing: 2.2,
+    color: colors.textSubtle,
+  },
+  nameBlock: { alignItems: 'center', gap: 5 },
+  playerName: {
+    fontFamily: fonts.jakarta.semiBold,
+    fontSize: 12.5, color: colors.text, letterSpacing: -0.2,
+  },
+  tierChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    paddingHorizontal: 7, paddingVertical: 3,
+    borderRadius: 5,
+    backgroundColor: colors.surface2,
+  },
+  tierLabel: { fontFamily: fonts.jakarta.bold, fontSize: 7.5, letterSpacing: 0.8, color: colors.textMuted },
+  ratingDot:  { fontFamily: fonts.jakarta.bold, fontSize: 8, color: colors.textFaint },
+  ratingText: { fontFamily: fonts.jakarta.bold, fontSize: 8.5, color: colors.textMuted },
+
+  footer: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    justifyContent: 'center',
+    paddingVertical: 9, paddingHorizontal: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  footerEmoji: { fontSize: 11 },
+  footerLabel: {
+    fontFamily: fonts.jakarta.bold,
+    fontSize: 8, letterSpacing: 0.8, flexShrink: 1,
+  },
+
+  vsWrap: { width: 40, alignItems: 'center', justifyContent: 'center' },
+  vsText: {
+    fontFamily: fonts.display.black,
+    fontSize: 28, color: colors.lime, letterSpacing: -1.5,
+    textShadowColor: colors.lime, textShadowRadius: 16,
+    textShadowOffset: { width: 0, height: 0 },
+  },
+
+  scanBar: {
+    position: 'absolute', left: 0, right: 0, height: 2,
+    backgroundColor: colors.lime, opacity: 0.4,
   },
 })
 
@@ -221,8 +317,8 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
       {searching ? (
         /* ── Searching state ── */
         <View style={s.searchingContainer}>
-          <RadarScan />
           <Text style={s.searchingTitle}>FINDING{'\n'}YOUR MATCH.</Text>
+          <VsLock topic={topic} stance={selectedStance} />
           <Text style={s.searchingMeta}>
             {topic.emoji}  {topic.label}  ·  {selectedStance.emoji}  {selectedStance.label}
           </Text>
@@ -283,8 +379,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
             <Button
               label="STEP INTO THE RING"
               onPress={() => setSearching(true)}
-              variant="primary"
-              shadowColor={colors.lime}
+              variant="steel"
             />
           </View>
         </>

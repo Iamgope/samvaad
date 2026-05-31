@@ -353,7 +353,7 @@ export default function TopicScreen({ navigation, route }: Props) {
       </ScrollView>
 
       {/* ── Fixed bottom CTA ── */}
-      <View style={[s.ctaBar, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+      <View style={[s.ctaBar, { paddingBottom: Math.max(insets.bottom + spacing.sm, spacing.lg) }]}>
         <Button
           label={`Find a ${cat.name} opponent`}
           variant="steel"
