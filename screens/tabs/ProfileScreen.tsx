@@ -289,7 +289,7 @@ function ActionButtons({ onEdit, onShare }: { onEdit: () => void; onShare: () =>
         variant="pillBrand"
         label="Share profile"
         onPress={onShare}
-        shadowColor={colors.limeMuted}
+        shadowColor={colors.textMuted}
         leadingIcon={<ShareIcon size={14} color={colors.black} />}
         style={ab.btn}
       />
@@ -297,7 +297,7 @@ function ActionButtons({ onEdit, onShare }: { onEdit: () => void; onShare: () =>
         variant="pillBrand"
         label="Edit"
         onPress={onEdit}
-        shadowColor={colors.purple}
+        shadowColor={colors.textMuted}
         leadingIcon={<EditIcon size={14} color={colors.black} />}
         style={ab.btn}
       />
