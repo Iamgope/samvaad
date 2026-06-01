@@ -38,32 +38,32 @@ const INITIAL: Notif[] = [
   {
     id: 'n1', emoji: '⚔️', accent: colors.streak,
     title: 'Your turn to argue',
-    body: 'Arjun V. replied in “Should India remove religion-based laws?”',
-    time: '2m', read: false,
+    body: 'Arjun V. replied in "Should India remove religion-based laws?"',
+    time: '2m ago', read: false,
   },
   {
     id: 'n2', emoji: '🔥', accent: colors.red,
     title: 'Your debate is trending',
-    body: '“Is money ruining the spirit of sport?” crossed 5K participants.',
-    time: '1h', read: false,
+    body: '"Is money ruining the spirit of sport?" crossed 5K participants.',
+    time: '1h ago', read: false,
   },
   {
     id: 'n3', emoji: '🏆', accent: colors.gold,
     title: 'You won a debate',
-    body: 'You beat Riya M. on “Should cricket be added to the Olympics?” — +24 rating.',
-    time: '3h', read: false,
+    body: 'You beat Riya M. on "Should cricket be added to the Olympics?" +24 rating.',
+    time: '3h ago', read: false,
   },
   {
     id: 'n4', emoji: '🗳️', accent: colors.sky,
     title: 'Result is in',
     body: 'The motion you voted on closed 58% for. See how it ended.',
-    time: 'Yesterday', read: true,
+    time: '1 day ago', read: true,
   },
   {
     id: 'n5', emoji: '🎭', accent: colors.purple2,
     title: 'New persona unlocked',
-    body: 'You can now argue as “The Contrarian” in practice debates.',
-    time: '2d', read: true,
+    body: 'You can now argue as "The Contrarian" in practice debates.',
+    time: '2 days ago', read: true,
   },
 ]
 
@@ -71,22 +71,20 @@ export default function NotificationsScreen() {
   const navigation = useNavigation()
   const [items, setItems] = useState<Notif[]>(INITIAL)
 
-  const unread = items.filter(n => !n.read).length
+  const unread = items.filter(n => !n.read)
+  const read   = items.filter(n => n.read)
 
   const animate = () =>
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
 
-  const markRead = (id: string) =>
+  const markRead = (id: string) => {
+    animate()
     setItems(list => list.map(n => (n.id === id ? { ...n, read: true } : n)))
+  }
 
   const markAllRead = () => {
     animate()
     setItems(list => list.map(n => ({ ...n, read: true })))
-  }
-
-  const dismiss = (id: string) => {
-    animate()
-    setItems(list => list.filter(n => n.id !== id))
   }
 
   const clearAll = () => {
@@ -96,75 +94,93 @@ export default function NotificationsScreen() {
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
-      {/* Header */}
+
+      {/* ── Header ── */}
       <View style={s.header}>
-        <IconButton
-          size="md"
-          icon={<ChevronLeftIcon size={18} color={colors.text} />}
-          accent={colors.text}
-          onPress={() => navigation.goBack()}
-        />
+        <View style={s.headerTop}>
+          <IconButton
+            size="md"
+            icon={<ChevronLeftIcon size={18} color={colors.text} />}
+            accent={colors.text}
+            onPress={() => navigation.goBack()}
+          />
+          <TouchableOpacity onPress={clearAll} disabled={items.length === 0} hitSlop={8}>
+            <Text style={[s.clearAll, items.length === 0 && s.clearAllDisabled]}>
+              Clear all
+            </Text>
+          </TouchableOpacity>
+        </View>
         <Text style={s.headerTitle}>Notifications</Text>
-        <TouchableOpacity onPress={clearAll} disabled={items.length === 0} hitSlop={8}>
-          <Text style={[s.clearAll, items.length === 0 && s.clearAllDisabled]}>Clear all</Text>
-        </TouchableOpacity>
       </View>
 
       {items.length === 0 ? (
+
         <View style={s.empty}>
-          <View style={s.emptyIcon}>
-            <BellIcon size={30} color={colors.textSubtle} />
-          </View>
-          <Text style={s.emptyTitle}>You're all caught up</Text>
-          <Text style={s.emptyBody}>New replies, results, and milestones will show up here.</Text>
+          <BellIcon size={26} color={colors.textFaint} />
+          <Text style={s.emptyTitle}>All caught up</Text>
+          <Text style={s.emptyBody}>
+            New replies, results, and milestones will show up here.
+          </Text>
         </View>
+
       ) : (
-        <ScrollView
-          contentContainerStyle={s.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Sub-row: unread count + mark all read */}
-          <View style={s.subRow}>
-            <Text style={s.subCount}>
-              {unread > 0 ? `${unread} unread` : 'All read'}
-            </Text>
-            {unread > 0 && (
-              <TouchableOpacity onPress={markAllRead} hitSlop={8}>
-                <Text style={s.markAll}>Mark all as read</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+        <ScrollView contentContainerStyle={s.list} showsVerticalScrollIndicator={false}>
 
-          {items.map(n => (
-            <TouchableOpacity
-              key={n.id}
-              style={[s.row, !n.read && s.rowUnread]}
-              activeOpacity={0.7}
-              onPress={() => markRead(n.id)}
-            >
-              <View style={[s.badge, { backgroundColor: n.accent + '22' }]}>
-                <Text style={s.badgeEmoji}>{n.emoji}</Text>
-              </View>
-
-              <View style={s.rowBody}>
-                <View style={s.rowTop}>
-                  <Text style={s.rowTitle} numberOfLines={1}>{n.title}</Text>
-                  <Text style={s.rowTime}>{n.time}</Text>
-                </View>
-                <Text style={s.rowText} numberOfLines={2}>{n.body}</Text>
-              </View>
-
-              {!n.read ? (
-                <View style={s.unreadDot} />
-              ) : (
-                <TouchableOpacity onPress={() => dismiss(n.id)} hitSlop={8} style={s.dismiss}>
-                  <Text style={s.dismissText}>✕</Text>
+          {/* ── Unread ── */}
+          {unread.length > 0 && (
+            <>
+              <View style={s.sectionRow}>
+                <Text style={s.sectionLabel}>NEW</Text>
+                <TouchableOpacity onPress={markAllRead} hitSlop={8}>
+                  <Text style={s.markAll}>Mark all as read</Text>
                 </TouchableOpacity>
-              )}
-            </TouchableOpacity>
-          ))}
+              </View>
+
+              {unread.map((n, i) => (
+                <TouchableOpacity
+                  key={n.id}
+                  style={[s.row, i < unread.length - 1 && s.rowDivider]}
+                  activeOpacity={0.6}
+                  onPress={() => markRead(n.id)}
+                >
+                  <View style={[s.icon, { backgroundColor: n.accent + '40', borderRadius: i % 2 === 0 ? 21 : 10 }]} />
+                  <View style={s.body}>
+                    <Text style={s.notifTitle}>{n.title}</Text>
+                    <Text style={s.notifBody}>{n.body}</Text>
+                    <Text style={s.notifTime}>{n.time}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+
+          {/* ── Read ── */}
+          {read.length > 0 && (
+            <>
+              <Text style={[s.sectionLabel, unread.length > 0 && s.sectionGap]}>
+                EARLIER
+              </Text>
+
+              {read.map((n, i) => (
+                <TouchableOpacity
+                  key={n.id}
+                  style={[s.row, s.rowRead, i < read.length - 1 && s.rowDivider]}
+                  activeOpacity={0.5}
+                >
+                  <View style={[s.icon, { backgroundColor: n.accent + '22', borderRadius: i % 2 === 0 ? 21 : 10 }]} />
+                  <View style={s.body}>
+                    <Text style={s.notifTitleRead}>{n.title}</Text>
+                    <Text style={s.notifBodyRead}>{n.body}</Text>
+                    <Text style={s.notifTime}>{n.time}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+
         </ScrollView>
       )}
+
     </SafeAreaView>
   )
 }
@@ -174,17 +190,21 @@ const s = StyleSheet.create({
 
   // ── Header ──
   header: {
+    paddingHorizontal: SCREEN_PADDING,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+  },
+  headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SCREEN_PADDING,
-    paddingVertical: spacing.md,
+    marginBottom: spacing.md,
   },
   headerTitle: {
-    fontFamily: fonts.display.bold,
-    fontSize: 18,
+    fontFamily: fonts.display.black,
+    fontSize: 32,
     color: colors.text,
-    letterSpacing: -0.3,
+    letterSpacing: -1,
   },
   clearAll: {
     fontFamily: fonts.jakarta.semiBold,
@@ -194,94 +214,80 @@ const s = StyleSheet.create({
   clearAllDisabled: { color: colors.textFaint },
 
   // ── List ──
-  scrollContent: {
+  list: {
     paddingHorizontal: SCREEN_PADDING,
     paddingBottom: spacing.xxl,
   },
-  subRow: {
+  sectionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  sectionLabel: {
+    fontFamily: fonts.jakarta.bold,
+    fontSize: 10,
+    color: colors.textFaint,
+    letterSpacing: 1.5,
     marginBottom: spacing.xs,
   },
-  subCount: {
-    fontFamily: fonts.jakarta.extraBold,
-    fontSize: 11,
-    letterSpacing: 1.2,
-    color: colors.textSubtle,
-    textTransform: 'uppercase',
-  },
+  sectionGap: { marginTop: spacing.xl },
   markAll: {
     fontFamily: fonts.jakarta.semiBold,
-    fontSize: 13,
-    color: colors.lime,
+    fontSize: 12,
+    color: colors.textSubtle,
   },
 
   // ── Row ──
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: spacing.md,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius: 14,
-    marginBottom: spacing.xs,
   },
-  rowUnread: {
-    backgroundColor: colors.surface,
+  rowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  badge: {
+  rowRead: { opacity: 0.55 },
+
+  icon: {
     width: 42,
     height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
     flexShrink: 0,
+    marginTop: 2,
   },
-  badgeEmoji: { fontSize: 19 },
-  rowBody: { flex: 1, gap: 3 },
-  rowTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  rowTitle: {
-    flex: 1,
+  // ── Notification text (3-line stack) ──
+  body: { flex: 1, gap: 2 },
+  notifTitle: {
     fontFamily: fonts.jakarta.bold,
     fontSize: 14,
     color: colors.text,
+    lineHeight: 20,
   },
-  rowTime: {
-    fontFamily: fonts.jakarta.medium,
-    fontSize: 11,
-    color: colors.textSubtle,
-  },
-  rowText: {
-    fontFamily: fonts.jakarta.regular,
-    fontSize: 12.5,
-    lineHeight: 17,
-    color: colors.textMuted,
-  },
-  unreadDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    backgroundColor: colors.lime,
-    flexShrink: 0,
-  },
-  dismiss: {
-    width: 22,
-    height: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  dismissText: {
-    fontFamily: fonts.jakarta.medium,
+  notifTitleRead: {
+    fontFamily: fonts.jakarta.semiBold,
     fontSize: 14,
+    color: colors.textSubtle,
+    lineHeight: 20,
+  },
+  notifBody: {
+    fontFamily: fonts.jakarta.regular,
+    fontSize: 13,
+    color: colors.textMuted,
+    lineHeight: 18,
+  },
+  notifBodyRead: {
+    fontFamily: fonts.jakarta.regular,
+    fontSize: 13,
+    color: colors.textSubtle,
+    lineHeight: 18,
+  },
+  notifTime: {
+    fontFamily: fonts.jakarta.regular,
+    fontSize: 11,
     color: colors.textFaint,
+    marginTop: 2,
   },
 
   // ── Empty ──
@@ -289,31 +295,20 @@ const s = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: SCREEN_PADDING,
-    paddingBottom: 80,
     gap: spacing.sm,
-  },
-  emptyIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
+    paddingBottom: 80,
   },
   emptyTitle: {
     fontFamily: fonts.display.bold,
-    fontSize: 17,
-    color: colors.text,
+    fontSize: 16,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
   },
   emptyBody: {
     fontFamily: fonts.jakarta.regular,
     fontSize: 13,
     lineHeight: 19,
-    color: colors.textMuted,
+    color: colors.textSubtle,
     textAlign: 'center',
     maxWidth: 260,
   },
