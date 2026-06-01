@@ -8,7 +8,6 @@ import {
   Easing,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import Svg, { Path } from 'react-native-svg'
 import { colors } from '../constants/colors'
 import { fonts } from '../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../constants/spacing'
@@ -16,8 +15,10 @@ import { TOPICS } from '../constants/topics'
 import { TIER_COLOR } from '../constants/tiers'
 import { Text } from '../components/Text'
 import { Button } from '../components/Button'
+import { IconButton } from '../components/IconButton'
 import { ChipDropdown } from '../components/ChipDropdown'
 import { Avatar } from '../components/Avatar'
+import { ChevronLeftIcon } from '../components/Icons'
 
 const DEFAULT_AVATAR = require('../assets/defaultprofilepic.png')
 
@@ -29,20 +30,35 @@ const STANCES = [
   { id: 'against',  label: 'Attack',      emoji: '⚔️',  accent: colors.streak },
 ]
 
-const RULES = [
-  'Keep arguments relevant to the motion — tangents are forfeit.',
-  'Debate ideas, not people. Personal attacks end the match.',
+const FORMAT_ROUNDS = [
+  {
+    round: '01',
+    title: 'Opening',
+    body: 'State your case. You go first. No preamble needed, just your argument.',
+  },
+  {
+    round: '02',
+    title: 'Rebuttal',
+    body: "Address your opponent's points directly. Tangents are forfeit.",
+  },
 ]
+
+const ETIQUETTE = [
+  'Attack arguments, not people.',
+  'One strong point beats three weak ones.',
+  'Concede what you must. It earns more respect.',
+]
+
+type TopicEntry = (typeof TOPICS)[0]
 
 // ─── VS LOCK ANIMATION ────────────────────────────────────────────
 
 const CARD_W = 132
 const CARD_H = 182
 
-// Placeholder — swap for real profile context once wired up
 const MOCK_USER = { name: 'Aman G.', initials: 'AG', rating: 2047, tier: 'master' as const }
 
-type VsLockProps = { topic: (typeof TOPICS)[0]; stance: (typeof STANCES)[0] }
+type VsLockProps = { topic: TopicEntry; stance: (typeof STANCES)[0] }
 
 function VsLock({ topic, stance }: VsLockProps) {
   const slideLeft  = useRef(new Animated.Value(-220)).current
@@ -175,7 +191,6 @@ function VsLock({ topic, stance }: VsLockProps) {
 const vl = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
 
-  // CategoryCard-style outer shell: thick tactile bottom border + drop shadow
   outer: {
     width: CARD_W, height: CARD_H,
     borderRadius: 16,
@@ -247,18 +262,24 @@ const vl = StyleSheet.create({
 
 // ─── SCREEN ───────────────────────────────────────────────────────
 
-type RouteParams = { topicId?: string; stanceId?: string; categoryAccent?: string; motion?: string }
+type RouteParams = {
+  topicId?: string
+  stanceId?: string
+  categoryAccent?: string
+  motion?: string
+}
 type Props = { navigation: any; route?: { params?: RouteParams } }
 
-// Real debate topics (everything except the generic "All" filter).
 const CONCRETE_TOPICS = TOPICS.filter(t => t.id !== 'all')
 
 export default function JoinDebateScreen({ navigation, route }: Props) {
   const params = route?.params
 
-  // Preselect from an explicit topicId, else from an incoming category accent
-  // (e.g. arriving from a specific debate), else the default.
-  const [topic, setTopic] = useState(
+  // If a specific motion was passed, we're in topic-locked mode
+  const isTopicMode = !!params?.motion
+  const isCategoryLocked = !!params?.categoryAccent
+
+  const [topic, setTopic] = useState<TopicEntry>(
     (params?.topicId && TOPICS.find(t => t.id === params.topicId)) ||
     (params?.categoryAccent && TOPICS.find(t => t.accent === params.categoryAccent)) ||
     TOPICS[0]
@@ -266,9 +287,14 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
   const [selectedStance, setSelectedStance] = useState(
     params?.stanceId
       ? (STANCES.find(s => s.id === params.stanceId) ?? STANCES[0])
-      : STANCES[0] // default: Surprise Me
+      : STANCES[0]
   )
   const [searching, setSearching] = useState(false)
+
+  // Resolved whenever a category accent is passed (topic mode or category mode)
+  const lockedTopic: TopicEntry | null = isCategoryLocked
+    ? (TOPICS.find(t => t.accent === params?.categoryAccent) ?? null)
+    : null
 
   useEffect(() => {
     if (!searching) return
@@ -276,18 +302,16 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
       ? (Math.random() < 0.5 ? 'for' : 'against')
       : selectedStance.id as 'for' | 'against'
 
-    // The topic is revealed once you're matched — so "All" lands on a concrete
-    // topic here, and the arena themes off that topic's colour.
     const resolvedTopic = topic.id === 'all'
       ? CONCRETE_TOPICS[Math.floor(Math.random() * CONCRETE_TOPICS.length)]
       : topic
 
     const t = setTimeout(() => {
       navigation.replace('DebateChat', {
-        debateId:      'mock-debate-1',
-        motion:        params?.motion ?? resolvedTopic.label,
-        userSide:      resolvedSide,
-        opponentName:  'Arjun S.',
+        debateId:       'mock-debate-1',
+        motion:         params?.motion ?? resolvedTopic.label,
+        userSide:       resolvedSide,
+        opponentName:   'Arjun S.',
         categoryAccent: params?.categoryAccent ?? resolvedTopic.accent,
       })
     }, 3000)
@@ -295,23 +319,22 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
     return () => clearTimeout(t)
   }, [searching])
 
+  const handleBack = () => {
+    if (searching) setSearching(false)
+    else navigation.goBack()
+  }
+
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
 
-      {/* Header */}
+      {/* ── Header ── */}
       <View style={s.header}>
-        <TouchableOpacity
-          style={s.backBtn}
-          onPress={() => { if (searching) setSearching(false); else navigation.goBack() }}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          activeOpacity={0.7}
-        >
-          <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-            <Path d="M19 12H5M5 12l7-7M5 12l7 7"
-              stroke={colors.text} strokeWidth={2.2}
-              strokeLinecap="round" strokeLinejoin="round" />
-          </Svg>
-        </TouchableOpacity>
+        <IconButton
+          size="md"
+          icon={<ChevronLeftIcon size={18} color={colors.text} />}
+          accent={colors.text}
+          onPress={handleBack}
+        />
       </View>
 
       {searching ? (
@@ -320,7 +343,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
           <Text style={s.searchingTitle}>FINDING{'\n'}YOUR MATCH.</Text>
           <VsLock topic={topic} stance={selectedStance} />
           <Text style={s.searchingMeta}>
-            {topic.emoji}  {topic.label}  ·  {selectedStance.emoji}  {selectedStance.label}
+            {(lockedTopic ?? topic).emoji}{'  '}{(lockedTopic ?? topic).label}{'  ·  '}{selectedStance.emoji}{'  '}{selectedStance.label}
           </Text>
           <TouchableOpacity
             style={s.cancelBtn}
@@ -339,40 +362,91 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Hero title */}
-            <Text style={s.titleSmall}>THE ARENA</Text>
-            <Text style={s.titleLarge}>AWAITS.</Text>
-            <Text style={s.subtitle}>PICK A SIDE. MAKE IT COUNT.</Text>
+            {isTopicMode ? (
+              /* ── Topic-locked mode ── */
+              <>
+                <Text style={s.titleSmall}>DEBATING</Text>
+                <Text style={s.motionHeadline}>{params!.motion!}</Text>
 
-            {/* Dropdowns */}
-            <View style={s.filterRow}>
-              <ChipDropdown
-                selected={topic}
-                options={TOPICS}
-                onSelect={setTopic}
-                accent={topic.accent}
-                zIndex={20}
-              />
-              <Text style={s.filterSep}>·</Text>
-              <ChipDropdown
-                selected={selectedStance}
-                options={STANCES}
-                onSelect={setSelectedStance}
-                accent={selectedStance.accent}
-                zIndex={10}
-              />
-            </View>
+                <View style={s.filterRow}>
+                  <View pointerEvents="none" style={s.categoryDisabled}>
+                    <ChipDropdown
+                      selected={topic}
+                      options={TOPICS}
+                      onSelect={() => {}}
+                      accent={topic.accent}
+                      zIndex={1}
+                    />
+                  </View>
+                  <Text style={s.filterSep}>·</Text>
+                  <ChipDropdown
+                    selected={selectedStance}
+                    options={STANCES}
+                    onSelect={setSelectedStance}
+                    accent={selectedStance.accent}
+                    zIndex={10}
+                  />
+                </View>
+              </>
+            ) : (
+              /* ── Random arena mode (category-locked or fully free) ── */
+              <>
+                {isCategoryLocked && lockedTopic && (
+                  <>
+                    <Text style={s.titleSmall}>DEBATING</Text>
+                    <Text style={s.motionHeadline}>{lockedTopic.label}</Text>
+                  </>
+                )}
+                <View style={[s.filterRow, !isCategoryLocked && { marginTop: spacing.md }]}>
+                  <View
+                    pointerEvents={isCategoryLocked ? 'none' : 'auto'}
+                    style={isCategoryLocked ? s.categoryDisabled : undefined}
+                  >
+                    <ChipDropdown
+                      selected={topic}
+                      options={TOPICS}
+                      onSelect={setTopic}
+                      accent={topic.accent}
+                      zIndex={20}
+                    />
+                  </View>
+                  <Text style={s.filterSep}>·</Text>
+                  <ChipDropdown
+                    selected={selectedStance}
+                    options={STANCES}
+                    onSelect={setSelectedStance}
+                    accent={selectedStance.accent}
+                    zIndex={10}
+                  />
+                </View>
+              </>
+            )}
 
-            {/* Rules */}
-            <View style={s.rulesSection}>
-              <Text style={s.rulesHeading}>GROUND RULES</Text>
-              {RULES.map((rule, i) => (
-                <View key={i} style={s.ruleRow}>
-                  <Text style={s.ruleDot}>—</Text>
-                  <Text style={s.ruleText}>{rule}</Text>
+            {/* ── Format rounds (always shown) ── */}
+            <View style={s.formatSection}>
+              <Text style={s.formatHeading}>FORMAT</Text>
+              {FORMAT_ROUNDS.map(r => (
+                <View key={r.round} style={s.formatRow}>
+                  <Text style={s.formatNum}>{r.round}</Text>
+                  <View style={s.formatBody}>
+                    <Text style={s.formatTitle}>{r.title.toUpperCase()}</Text>
+                    <Text style={s.formatText}>{r.body}</Text>
+                  </View>
                 </View>
               ))}
             </View>
+
+            {/* ── Etiquette ── */}
+            <View style={s.etiquetteSection}>
+              <Text style={s.etiquetteHeading}>ETIQUETTE</Text>
+              {ETIQUETTE.map((rule, i) => (
+                <View key={i} style={s.etiquetteRow}>
+                  <Text style={s.etiquetteDot}>·</Text>
+                  <Text style={s.etiquetteText}>{rule}</Text>
+                </View>
+              ))}
+            </View>
+
           </ScrollView>
 
           <View style={s.footer}>
@@ -406,40 +480,29 @@ const s = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
   },
-  backBtn: {
-    width: 38, height: 38,
-    borderRadius: 10,
-    backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.border,
-    justifyContent: 'center', alignItems: 'center',
-  },
 
-  // Hero — two-line staggered: small word then large punch word
+  // ── Topic mode label ──
   titleSmall: {
     fontFamily: fonts.display.bold,
-    fontSize: 22,
-    color: colors.textSubtle,
-    letterSpacing: 2,
+    fontSize: 20,
+    color: colors.textMuted,
+    letterSpacing: 1.5,
     marginTop: spacing.md,
     marginBottom: 2,
   },
-  titleLarge: {
-    fontFamily: fonts.display.black,
-    fontSize: 64,
-    lineHeight: 64,
+
+  // ── Topic mode headline ──
+  motionHeadline: {
+    fontFamily: fonts.jakarta.semiBold,
+    fontSize: 22,
     color: colors.text,
-    letterSpacing: -3,
-    marginBottom: spacing.md,
-  },
-  subtitle: {
-    fontFamily: fonts.jakarta.bold,
-    fontSize: 11,
-    color: colors.textSubtle,
-    letterSpacing: 1.4,
+    lineHeight: 30,
+    letterSpacing: -0.3,
+    marginTop: spacing.xs,
     marginBottom: spacing.xxl,
   },
 
-  // Dropdowns
+  // ── Dropdowns (both modes) ──
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -451,25 +514,85 @@ const s = StyleSheet.create({
     fontSize: 14,
     color: colors.textFaint,
   },
+  categoryDisabled: {
+    opacity: 0.5,
+  },
 
-  // Rules
-  rulesSection: { gap: spacing.sm },
-  rulesHeading: {
+  // ── Format rounds ──
+  formatSection: {
+    gap: spacing.sm,
+  },
+  formatHeading: {
     fontFamily: fonts.jakarta.bold,
-    fontSize: 10, color: colors.textFaint,
-    letterSpacing: 1.5, marginBottom: spacing.xs,
+    fontSize: 10,
+    color: colors.textFaint,
+    letterSpacing: 1.5,
+    marginBottom: spacing.xs,
   },
-  ruleRow: { flexDirection: 'row', gap: spacing.sm },
-  ruleDot: {
+  formatRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  formatNum: {
+    fontFamily: fonts.display.black,
+    fontSize: 30,
+    lineHeight: 32,
+    color: colors.textFaint,
+    letterSpacing: -1.5,
+    width: 44,
+  },
+  formatBody: {
+    flex: 1,
+    paddingTop: 2,
+    gap: 3,
+  },
+  formatTitle: {
+    fontFamily: fonts.jakarta.bold,
+    fontSize: 11,
+    color: colors.textMuted,
+    letterSpacing: 1.2,
+  },
+  formatText: {
     fontFamily: fonts.jakarta.regular,
-    fontSize: 13, color: colors.textFaint, lineHeight: 20,
+    fontSize: 13,
+    color: colors.textSubtle,
+    lineHeight: 20,
   },
-  ruleText: {
+
+  // ── Etiquette ──
+  etiquetteSection: {
+    marginTop: spacing.xl,
+    gap: spacing.xs,
+  },
+  etiquetteHeading: {
+    fontFamily: fonts.jakarta.bold,
+    fontSize: 10,
+    color: colors.textFaint,
+    letterSpacing: 1.5,
+    marginBottom: spacing.xs,
+  },
+  etiquetteRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingVertical: 3,
+  },
+  etiquetteDot: {
+    fontFamily: fonts.jakarta.regular,
+    fontSize: 13,
+    color: colors.textFaint,
+    lineHeight: 20,
+  },
+  etiquetteText: {
     flex: 1,
     fontFamily: fonts.jakarta.regular,
-    fontSize: 13, color: colors.textSubtle, lineHeight: 20,
+    fontSize: 13,
+    color: colors.textSubtle,
+    lineHeight: 20,
   },
 
+  // ── Footer CTA ──
   footer: {
     paddingHorizontal: SCREEN_PADDING,
     paddingBottom: spacing.lg,
@@ -478,7 +601,7 @@ const s = StyleSheet.create({
     borderTopColor: colors.border,
   },
 
-  // Searching
+  // ── Searching state ──
   searchingContainer: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
     gap: spacing.xl,
