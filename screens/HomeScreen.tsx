@@ -40,6 +40,15 @@ type TrendingDebate = {
   againstVotes: number
   lastArguer: { name: string; avatar: string }
   lastArgumentTime: string
+  context?: string
+  agreeCount: number
+  disagreeCount: number
+  unsureCount: number
+  whyDebate: string
+  proTitle: string
+  proBody: string
+  conTitle: string
+  conBody: string
 }
 
 type CuratedDebate = {
@@ -74,32 +83,50 @@ const TRENDING: TrendingDebate[] = [
   {
     id: 't1',
     category: 'politics',
-    motion: 'Should India remove religion-based laws?',
+    motion: 'Is democracy the best form of government?',
     debating: 12400,
-    forVotes: 7632,
-    againstVotes: 5412,
+    forVotes: 7632, againstVotes: 5412,
     lastArguer: { name: 'Arjun V.', avatar: '🧔' },
     lastArgumentTime: '2h ago',
+    context: 'Rising authoritarianism and electoral controversies worldwide have put democracy itself on trial.',
+    agreeCount: 7632, disagreeCount: 5412, unsureCount: 1200,
+    whyDebate: 'Democracy is celebrated as the gold standard, but critics argue it can be gridlocked, manipulated, or captured by populism.',
+    proTitle: 'Power belongs to the people',
+    proBody: 'Democracy holds leaders accountable through elections, enshrines individual rights, and adapts peacefully to change.',
+    conTitle: 'Mob rule over merit',
+    conBody: 'Short-term cycles and money in politics mean popular will rarely translates to good governance.',
   },
   {
     id: 't2',
     category: 'sports',
     motion: 'Should cricket be added to the Olympics?',
     debating: 8200,
-    forVotes: 5910,
-    againstVotes: 2290,
+    forVotes: 5910, againstVotes: 2290,
     lastArguer: { name: 'Riya M.', avatar: '👩' },
     lastArgumentTime: '15m ago',
+    context: 'With LA 2028 opening the door, boards and broadcasters are weighing whether cricket should accept the Olympic stage.',
+    agreeCount: 5910, disagreeCount: 2290, unsureCount: 800,
+    whyDebate: 'Cricket commands billions of fans but the Olympics has long resisted formats it sees as logistically heavy.',
+    proTitle: 'A global stage',
+    proBody: 'Olympic inclusion pushes cricket into new markets and unlocks funding for smaller cricketing nations.',
+    conTitle: 'Wrong format, wrong moment',
+    conBody: 'Calendars are overcrowded, boards won\'t pause leagues, and a rushed T20 risks watering down both.',
   },
   {
     id: 't3',
     category: 'lit',
     motion: 'Are translations betraying the originals?',
     debating: 4100,
-    forVotes: 1820,
-    againstVotes: 2280,
+    forVotes: 1820, againstVotes: 2280,
     lastArguer: { name: 'Kabir S.', avatar: '🧑' },
     lastArgumentTime: '1h ago',
+    context: 'As translated film and literature go mainstream, the faithful-vs-localised argument has flared up again.',
+    agreeCount: 1820, disagreeCount: 2280, unsureCount: 600,
+    whyDebate: 'Translation has become a mass-market product, reviving old questions about how much of an original survives.',
+    proTitle: 'Reinvention, not theft',
+    proBody: 'A skilled translator carries voice and context across; without them, world literature reaches only a tiny elite.',
+    conTitle: 'Something is always lost',
+    conBody: 'Metaphor, dialect, and rhyme rarely survive intact — many translations smooth over difficulty in ways that flatten intent.',
   },
 ]
 
@@ -141,6 +168,14 @@ const CURATED: CuratedDebate[] = [
     conBody: 'Fans come to sport for shared joy, not political division. Athletes risk their safety and livelihoods, and their influence rarely translates into meaningful policy change.',
   },
 ]
+
+// ─── POSTERS ──────────────────────────────────────────────────────
+
+const POSTER: Partial<Record<CategoryId, any>> = {
+  politics: require('../assets/poster_politics.png'),
+  sports:   require('../assets/poster_sports.png'),
+  lit:      require('../assets/poster_culture.png'),
+}
 
 // ─── HELPERS ──────────────────────────────────────────────────────
 
@@ -268,6 +303,8 @@ function TrendingSection({
                 motion={d.motion}
                 categoryName={cat.name}
                 categoryAccent={cat.accent}
+                image={POSTER[d.category]}
+                height={268}
                 style={{ width: TRENDING_CARD_WIDTH }}
                 onPress={() => onJoin(d.id)}
                 footer={
@@ -407,11 +444,22 @@ export default function HomeScreen({ navigation }: Props) {
   const handleJoin = (id: string) => {
     const debate = TRENDING.find(d => d.id === id)
     if (!debate) return
-    navigation.navigate('Debate', {
+    const cat = findCategory(debate.category)
+    navigation.navigate('DebateDetail', {
       debateId: id,
       categoryId: debate.category,
+      categoryName: cat.name,
+      categoryAccent: cat.accent,
       motion: debate.motion,
-      debating: debate.debating,
+      context: debate.context,
+      agreeCount: debate.agreeCount,
+      disagreeCount: debate.disagreeCount,
+      unsureCount: debate.unsureCount,
+      whyDebate: debate.whyDebate,
+      proTitle: debate.proTitle,
+      proBody: debate.proBody,
+      conTitle: debate.conTitle,
+      conBody: debate.conBody,
     })
   }
 

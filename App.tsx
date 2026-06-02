@@ -28,7 +28,6 @@ import PhoneScreen from './screens/PhoneScreen';
 import OTPScreen from './screens/OTPScreen';
 import OnboardingFlowScreen from './screens/OnboardingFlowScreen';
 import TopicScreen from './screens/TopicScreen';
-import DebateScreen from './screens/DebateScreen';
 import JoinDebateScreen from './screens/JoinDebateScreen';
 import EditProfileScreen, { type EditableProfile } from './screens/EditProfileScreen';
 import AllTrophiesScreen from './screens/AllTrophiesScreen';
@@ -49,7 +48,6 @@ export type RootStackParamList = {
   OnboardingFlow: undefined;
   Main: undefined;
   TopicScreen: { category: string };
-  Debate: { debateId: string; categoryId: string; motion: string; debating: number };
   JoinDebate: { topicId?: string; stanceId?: string; categoryAccent?: string; motion?: string } | undefined;
   EditProfile: {
     initial: EditableProfile;
@@ -134,7 +132,6 @@ export default function App() {
             <Stack.Screen name="OnboardingFlow" component={OnboardingFlowScreen} />
             <Stack.Screen name="Main" component={TabNavigator} />
             <Stack.Screen name="TopicScreen" component={TopicScreen} />
-            <Stack.Screen name="Debate" component={DebateScreen} />
             <Stack.Screen name="JoinDebate" component={JoinDebateScreen} />
             <Stack.Screen name="EditProfile" component={EditProfileScreen} />
             <Stack.Screen name="AllTrophies" component={AllTrophiesScreen} />

@@ -31,8 +31,15 @@ const AGAINST_ACCENT = colors.red
 
 const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}K` : `${n}`)
 
+const POSTER: Partial<Record<string, any>> = {
+  politics: require('../assets/poster_politics.png'),
+  sports:   require('../assets/poster_sports.png'),
+  lit:      require('../assets/poster_culture.png'),
+}
+
 export default function DebateDetailScreen({ route, navigation }: Props) {
   const {
+    categoryId,
     motion,
     context,
     categoryName,
@@ -113,6 +120,7 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
           motion={motion}
           categoryName={categoryName}
           categoryAccent={categoryAccent}
+          image={POSTER[categoryId]}
           height={HERO_HEIGHT}
           borderRadius={0}
           motionSize={24}
