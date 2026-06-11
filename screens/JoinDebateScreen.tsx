@@ -525,8 +525,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
             <Button
               label="STEP INTO THE RING"
               onPress={handleStepIntoRing}
-              variant="primary"
-              shadowColor={colors.lime}
+              variant="steel"
               isLoading={connecting}
               disabled={connecting}
             />
