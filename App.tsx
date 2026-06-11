@@ -22,6 +22,7 @@ import {
   PlusJakartaSans_700Bold,
   PlusJakartaSans_800ExtraBold,
 } from '@expo-google-fonts/plus-jakarta-sans';
+import * as Notifications from 'expo-notifications';
 import OnboardingScreen from './screens/OnboardingScreen';
 import LoginScreen from './screens/LoginScreen';
 import PhoneScreen from './screens/PhoneScreen';
@@ -39,6 +40,15 @@ import NotificationsScreen from './screens/NotificationsScreen';
 import type { Badge } from './components/profile/TrophyCase';
 import { TabNavigator } from './navigation/TabNavigator';
 import { colors } from './constants/colors';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 export type RootStackParamList = {
   Onboarding: undefined;
@@ -74,11 +84,11 @@ export type RootStackParamList = {
     agreeCount: number
     disagreeCount: number
     unsureCount: number
-    whyDebate: string
-    proTitle: string
-    proBody: string
-    conTitle: string
-    conBody: string
+    whyDebate?: string
+    proTitle?: string
+    proBody?: string
+    conTitle?: string
+    conBody?: string
   };
 };
 

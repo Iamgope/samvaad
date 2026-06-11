@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useCallback, useState, useRef, useEffect, useMemo } from 'react'
 import {
   View,
   StyleSheet,
@@ -6,12 +6,13 @@ import {
   ScrollView,
   Animated,
   Easing,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { colors } from '../constants/colors'
 import { fonts } from '../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../constants/spacing'
-import { TOPICS } from '../constants/topics'
 import { TIER_COLOR } from '../constants/tiers'
 import { Text } from '../components/Text'
 import { Button } from '../components/Button'
@@ -19,6 +20,14 @@ import { IconButton } from '../components/IconButton'
 import { ChipDropdown } from '../components/ChipDropdown'
 import { Avatar } from '../components/Avatar'
 import { ChevronLeftIcon } from '../components/Icons'
+import { Toast } from '../components/Toast'
+import {
+  connectWebSocket,
+  WebSocketClient,
+  fetchCategoryAndRules,
+  ApiError,
+  type DebateCategory,
+} from '../services/api'
 
 const DEFAULT_AVATAR = require('../assets/defaultprofilepic.png')
 
@@ -30,26 +39,36 @@ const STANCES = [
   { id: 'against',  label: 'Attack',      emoji: '⚔️',  accent: colors.streak },
 ]
 
-const FORMAT_ROUNDS = [
-  {
-    round: '01',
-    title: 'Opening',
-    body: 'State your case. You go first. No preamble needed, just your argument.',
-  },
-  {
-    round: '02',
-    title: 'Rebuttal',
-    body: "Address your opponent's points directly. Tangents are forfeit.",
-  },
-]
+const ALL_CATEGORY_ID = 'all'
+const CATEGORY_ACCENTS = [colors.streak, colors.sky, colors.purple2, colors.lime, '#F472B6', '#FB923C']
+const CATEGORY_EMOJIS  = ['🏛️', '🏆', '🎭', '🤖', '📚', '🎨', '⚖️', '🌍']
+
+type CategoryChip = { id: string; label: string; emoji: string; accent: string }
+
+const ALL_CHIP: CategoryChip = {
+  id: ALL_CATEGORY_ID,
+  label: 'All',
+  emoji: '🌏',
+  accent: colors.lime,
+}
+
+function toCategoryChips(categories: DebateCategory[]): CategoryChip[] {
+  return [
+    ALL_CHIP,
+    ...categories.map((c, i) => ({
+      id: String(c.id),
+      label: c.name,
+      emoji: CATEGORY_EMOJIS[i % CATEGORY_EMOJIS.length],
+      accent: CATEGORY_ACCENTS[i % CATEGORY_ACCENTS.length],
+    })),
+  ]
+}
 
 const ETIQUETTE = [
   'Attack arguments, not people.',
   'One strong point beats three weak ones.',
   'Concede what you must. It earns more respect.',
 ]
-
-type TopicEntry = (typeof TOPICS)[0]
 
 // ─── VS LOCK ANIMATION ────────────────────────────────────────────
 
@@ -58,9 +77,9 @@ const CARD_H = 182
 
 const MOCK_USER = { name: 'Aman G.', initials: 'AG', rating: 2047, tier: 'master' as const }
 
-type VsLockProps = { topic: TopicEntry; stance: (typeof STANCES)[0] }
+type VsLockProps = { category: CategoryChip; stance: (typeof STANCES)[0] }
 
-function VsLock({ topic, stance }: VsLockProps) {
+function VsLock({ category, stance }: VsLockProps) {
   const slideLeft  = useRef(new Animated.Value(-220)).current
   const slideRight = useRef(new Animated.Value(220)).current
   const vsScale    = useRef(new Animated.Value(0)).current
@@ -176,9 +195,9 @@ function VsLock({ topic, stance }: VsLockProps) {
             </View>
           </View>
           <View style={vl.footer}>
-            <Text style={vl.footerEmoji}>{topic.emoji}</Text>
+            <Text style={vl.footerEmoji}>{category.emoji}</Text>
             <Text style={[vl.footerLabel, { color: colors.textSubtle }]} numberOfLines={1}>
-              {topic.label.toUpperCase()}
+              {category.label.toUpperCase()}
             </Text>
           </View>
         </View>
@@ -262,70 +281,153 @@ const vl = StyleSheet.create({
 
 // ─── SCREEN ───────────────────────────────────────────────────────
 
-type RouteParams = {
-  topicId?: string
-  stanceId?: string
-  categoryAccent?: string
-  motion?: string
-}
+type RouteParams = { categoryId?: string; stanceId?: string }
 type Props = { navigation: any; route?: { params?: RouteParams } }
-
-const CONCRETE_TOPICS = TOPICS.filter(t => t.id !== 'all')
 
 export default function JoinDebateScreen({ navigation, route }: Props) {
   const params = route?.params
 
-  // If a specific motion was passed, we're in topic-locked mode
-  const isTopicMode = !!params?.motion
-  const isCategoryLocked = !!params?.categoryAccent
+  const [categories, setCategories] = useState<DebateCategory[]>([])
+  const [rules, setRules] = useState<string[]>([])
+  const [loadingCategories, setLoadingCategories] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
-  const [topic, setTopic] = useState<TopicEntry>(
-    (params?.topicId && TOPICS.find(t => t.id === params.topicId)) ||
-    (params?.categoryAccent && TOPICS.find(t => t.accent === params.categoryAccent)) ||
-    TOPICS[0]
-  )
+  const categoryChips = useMemo(() => toCategoryChips(categories), [categories])
+
+  const [category, setCategory] = useState<CategoryChip>(ALL_CHIP)
   const [selectedStance, setSelectedStance] = useState(
     params?.stanceId
       ? (STANCES.find(s => s.id === params.stanceId) ?? STANCES[0])
       : STANCES[0]
   )
   const [searching, setSearching] = useState(false)
+  const [connecting, setConnecting] = useState(false)
+  const [queueError, setQueueError] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  const wsRef = useRef<WebSocketClient | null>(null)
 
-  // Resolved whenever a category accent is passed (topic mode or category mode)
-  const lockedTopic: TopicEntry | null = isCategoryLocked
-    ? (TOPICS.find(t => t.accent === params?.categoryAccent) ?? null)
-    : null
+  const loadCategories = useCallback(async () => {
+    try {
+      setFetchError(null)
+      const res = await fetchCategoryAndRules()
+      setCategories(res.categories)
+      setRules(res.rules)
+    } catch (err) {
+      setFetchError(err instanceof ApiError ? err.message : 'Failed to load categories')
+    }
+  }, [])
 
   useEffect(() => {
-    if (!searching) return
-    const resolvedSide = selectedStance.id === 'surprise'
-      ? (Math.random() < 0.5 ? 'for' : 'against')
-      : selectedStance.id as 'for' | 'against'
+    let cancelled = false
+    setLoadingCategories(true)
+    loadCategories().finally(() => { if (!cancelled) setLoadingCategories(false) })
+    return () => { cancelled = true }
+  }, [loadCategories])
 
-    const resolvedTopic = topic.id === 'all'
-      ? CONCRETE_TOPICS[Math.floor(Math.random() * CONCRETE_TOPICS.length)]
-      : topic
+  // Reconcile selected category once data arrives — preserve route-param default if it matches.
+  useEffect(() => {
+    if (categories.length === 0) return
+    if (category.id !== ALL_CATEGORY_ID) {
+      const stillExists = categoryChips.find(c => c.id === category.id)
+      if (stillExists) { setCategory(stillExists); return }
+    }
+    if (params?.categoryId) {
+      const match = categoryChips.find(c => c.id === params.categoryId)
+      if (match) setCategory(match)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryChips])
 
-    const t = setTimeout(() => {
-      navigation.replace('DebateChat', {
-        debateId:       'mock-debate-1',
-        motion:         params?.motion ?? resolvedTopic.label,
-        userSide:       resolvedSide,
-        opponentName:   'Arjun S.',
-        categoryAccent: params?.categoryAccent ?? resolvedTopic.accent,
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    await loadCategories()
+    setRefreshing(false)
+  }, [loadCategories])
+
+  const closeSocket = () => {
+    wsRef.current?.close()
+    wsRef.current = null
+  }
+
+  useEffect(() => closeSocket, [])
+
+  const stanceToSide = (id: string): 'pro' | 'con' | null => {
+    if (id === 'for') return 'pro'
+    if (id === 'against') return 'con'
+    return null
+  }
+
+  const handleStepIntoRing = async () => {
+    setQueueError(null)
+    setConnecting(true)
+    try {
+      const client = await connectWebSocket('/ws/debate/')
+      wsRef.current = client
+
+      client.on('message', (msg) => {
+        console.log('[WS] message =', msg)
+        if (!msg || typeof msg !== 'object') return
+        const m = msg as { type?: string; message?: string; data?: unknown }
+
+        if (m.type === 'error') {
+          if (typeof m.message === 'string' && m.message.length > 0) setToast(m.message)
+          setConnecting(false)
+          return
+        }
+
+        if (m.type === 'queue.waiting') {
+          setConnecting(false)
+          setSearching(true)
+          return
+        }
+
+        if (m.type === 'queue.matched') {
+          // TODO: navigate to Debate screen with match data once it's built
+          setConnecting(false)
+          return
+        }
       })
-    }, 3000)
+      client.on('close', (info) => {
+        console.log('[WS] closed =', info)
+        wsRef.current = null
+      })
+      client.on('error', (err) => {
+        console.log('[WS] error =', err)
+      })
 
-    return () => clearTimeout(t)
-  }, [searching])
+      // TODO: send topic_id once a topic picker exists (sourced from /debate/topics/)
+      const categoryIdNum = Number(category.id)
+      const data: Record<string, number | string> = {}
+      if (category.id !== ALL_CATEGORY_ID && Number.isFinite(categoryIdNum)) {
+        data.category_id = categoryIdNum
+      }
+      const side = stanceToSide(selectedStance.id)
+      if (side) data.pro_or_con = side
+
+      client.send({ type: 'join_queue', data })
+    } catch (err) {
+      console.log('[WS] connect failed =', err)
+      setQueueError('Could not connect to matchmaking. Please try again.')
+      setConnecting(false)
+      closeSocket()
+    }
+  }
+
+  const handleCancelSearch = () => {
+    closeSocket()
+    setSearching(false)
+    setConnecting(false)
+  }
 
   const handleBack = () => {
-    if (searching) setSearching(false)
+    if (searching || connecting) handleCancelSearch()
     else navigation.goBack()
   }
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+      <Toast message={toast} variant="error" onHide={() => setToast(null)} />
 
       {/* ── Header ── */}
       <View style={s.header}>
@@ -341,13 +443,13 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
         /* ── Searching state ── */
         <View style={s.searchingContainer}>
           <Text style={s.searchingTitle}>FINDING{'\n'}YOUR MATCH.</Text>
-          <VsLock topic={topic} stance={selectedStance} />
+          <VsLock category={category} stance={selectedStance} />
           <Text style={s.searchingMeta}>
-            {(lockedTopic ?? topic).emoji}{'  '}{(lockedTopic ?? topic).label}{'  ·  '}{selectedStance.emoji}{'  '}{selectedStance.label}
+            {category.emoji}  {category.label}  ·  {selectedStance.emoji}  {selectedStance.label}
           </Text>
           <TouchableOpacity
             style={s.cancelBtn}
-            onPress={() => setSearching(false)}
+            onPress={handleCancelSearch}
             activeOpacity={0.7}
           >
             <Text style={s.cancelLabel}>Cancel search</Text>
@@ -361,77 +463,47 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
             contentContainerStyle={s.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={colors.lime}
+                colors={[colors.lime]}
+              />
+            }
           >
-            {isTopicMode ? (
-              /* ── Topic-locked mode ── */
-              <>
-                <Text style={s.titleSmall}>DEBATING</Text>
-                <Text style={s.motionHeadline}>{params!.motion!}</Text>
+            {/* Dropdowns */}
+            <View style={s.filterRow}>
+              <ChipDropdown
+                selected={category}
+                options={categoryChips}
+                onSelect={setCategory}
+                accent={category.accent}
+                zIndex={20}
+              />
+              <Text style={s.filterSep}>·</Text>
+              <ChipDropdown
+                selected={selectedStance}
+                options={STANCES}
+                onSelect={setSelectedStance}
+                accent={selectedStance.accent}
+                zIndex={10}
+              />
+            </View>
 
-                <View style={s.filterRow}>
-                  <View pointerEvents="none" style={s.categoryDisabled}>
-                    <ChipDropdown
-                      selected={topic}
-                      options={TOPICS}
-                      onSelect={() => {}}
-                      accent={topic.accent}
-                      zIndex={1}
-                    />
-                  </View>
-                  <Text style={s.filterSep}>·</Text>
-                  <ChipDropdown
-                    selected={selectedStance}
-                    options={STANCES}
-                    onSelect={setSelectedStance}
-                    accent={selectedStance.accent}
-                    zIndex={10}
-                  />
-                </View>
-              </>
-            ) : (
-              /* ── Random arena mode (category-locked or fully free) ── */
-              <>
-                {isCategoryLocked && lockedTopic && (
-                  <>
-                    <Text style={s.titleSmall}>DEBATING</Text>
-                    <Text style={s.motionHeadline}>{lockedTopic.label}</Text>
-                  </>
-                )}
-                <View style={[s.filterRow, !isCategoryLocked && { marginTop: spacing.md }]}>
-                  <View
-                    pointerEvents={isCategoryLocked ? 'none' : 'auto'}
-                    style={isCategoryLocked ? s.categoryDisabled : undefined}
-                  >
-                    <ChipDropdown
-                      selected={topic}
-                      options={TOPICS}
-                      onSelect={setTopic}
-                      accent={topic.accent}
-                      zIndex={20}
-                    />
-                  </View>
-                  <Text style={s.filterSep}>·</Text>
-                  <ChipDropdown
-                    selected={selectedStance}
-                    options={STANCES}
-                    onSelect={setSelectedStance}
-                    accent={selectedStance.accent}
-                    zIndex={10}
-                  />
-                </View>
-              </>
-            )}
-
-            {/* ── Format rounds (always shown) ── */}
-            <View style={s.formatSection}>
-              <Text style={s.formatHeading}>FORMAT</Text>
-              {FORMAT_ROUNDS.map(r => (
-                <View key={r.round} style={s.formatRow}>
-                  <Text style={s.formatNum}>{r.round}</Text>
-                  <View style={s.formatBody}>
-                    <Text style={s.formatTitle}>{r.title.toUpperCase()}</Text>
-                    <Text style={s.formatText}>{r.body}</Text>
-                  </View>
+            {/* Rules */}
+            <View style={s.rulesSection}>
+              <Text style={s.rulesHeading}>GROUND RULES</Text>
+              {loadingCategories && rules.length === 0 ? (
+                <ActivityIndicator color={colors.lime} style={s.rulesLoader} />
+              ) : fetchError && rules.length === 0 ? (
+                <Text style={s.ruleText} tone="danger">{fetchError}</Text>
+              ) : rules.length === 0 ? (
+                <Text style={s.ruleText} tone="muted">No rules available.</Text>
+              ) : rules.map((rule, i) => (
+                <View key={i} style={s.ruleRow}>
+                  <Text style={s.ruleDot}>—</Text>
+                  <Text style={s.ruleText}>{rule}</Text>
                 </View>
               ))}
             </View>
@@ -452,9 +524,17 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
           <View style={s.footer}>
             <Button
               label="STEP INTO THE RING"
-              onPress={() => setSearching(true)}
-              variant="steel"
+              onPress={handleStepIntoRing}
+              variant="primary"
+              shadowColor={colors.lime}
+              isLoading={connecting}
+              disabled={connecting}
             />
+            {queueError && (
+              <Text variant="caption" tone="danger" style={s.queueError}>
+                {queueError}
+              </Text>
+            )}
           </View>
         </>
       )}
@@ -625,5 +705,43 @@ const s = StyleSheet.create({
   cancelLabel: {
     fontFamily: fonts.jakarta.semiBold,
     fontSize: 13, color: colors.textMuted,
+  },
+  queueError: {
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
+  rulesLoader: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.xs,
+  },
+
+  rulesSection: {
+    gap: spacing.sm,
+  },
+  rulesHeading: {
+    fontFamily: fonts.jakarta.bold,
+    fontSize: 10,
+    color: colors.textFaint,
+    letterSpacing: 1.5,
+    marginBottom: spacing.xs,
+  },
+  ruleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    paddingVertical: 2,
+  },
+  ruleDot: {
+    fontFamily: fonts.jakarta.regular,
+    fontSize: 13,
+    color: colors.textFaint,
+    lineHeight: 20,
+  },
+  ruleText: {
+    flex: 1,
+    fontFamily: fonts.jakarta.regular,
+    fontSize: 13,
+    color: colors.textSubtle,
+    lineHeight: 20,
   },
 })

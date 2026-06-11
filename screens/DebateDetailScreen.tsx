@@ -154,7 +154,7 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
             <Text style={s.cardEyebrow}>CONTEXT</Text>
           </View>
           <ExpandableText
-            text={context ? `${context}\n\n${whyDebate}` : whyDebate}
+            text={context ? `${context}\n\n${whyDebate ?? ''}` : (whyDebate ?? '')}
             style={s.cardBody}
             lines={6}
           />
@@ -399,8 +399,8 @@ function StanceRow({
 }: {
   accent: string
   label: string
-  title: string
-  body: string
+  title?: string
+  body?: string
   image: any
 }) {
   return (
@@ -409,7 +409,7 @@ function StanceRow({
       <View style={s.stanceBody}>
         <Text style={[s.stanceLabel, { color: accent }]}>{label}</Text>
         <Text style={s.stanceTitle}>{title}</Text>
-        <ExpandableText text={body} style={s.stanceText} lines={3} />
+        <ExpandableText text={body ?? ''} style={s.stanceText} lines={3} />
       </View>
     </View>
   )
