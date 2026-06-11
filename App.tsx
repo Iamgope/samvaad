@@ -58,7 +58,7 @@ export type RootStackParamList = {
   OnboardingFlow: undefined;
   Main: undefined;
   TopicScreen: { category: string };
-  JoinDebate: { topicId?: string; stanceId?: string; categoryAccent?: string; motion?: string } | undefined;
+  JoinDebate: { categoryId?: string; stanceId?: string } | undefined;
   EditProfile: {
     initial: EditableProfile;
     onSave: (next: EditableProfile) => void;
