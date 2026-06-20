@@ -473,7 +473,8 @@ export default function HomeScreen({ navigation }: Props) {
   }
 
   const handleCategoryPress = (id: CategoryId) => {
-    navigation.navigate('TopicScreen', { category: id })
+    const cat = findCategory(id)
+    navigation.navigate('TopicScreen', { category: cat.name })
   }
 
   const handleCuratedPress = (id: string) => {

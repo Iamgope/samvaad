@@ -82,7 +82,7 @@ const s = StyleSheet.create({
   menu: {
     position: 'absolute',
     top: '100%',
-    left: 0,
+    right: 0,
     marginTop: 6,
     backgroundColor: colors.surface2,
     borderWidth: 1,

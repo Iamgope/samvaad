@@ -652,6 +652,7 @@ const s = StyleSheet.create({
   pillWrap: {
     height: PILL_HEIGHT + PILL_UNDER,
     borderRadius: 999,
+    overflow: 'hidden',
   },
   pillBase: {
     position: 'absolute',
