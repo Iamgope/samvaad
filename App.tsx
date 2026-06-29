@@ -58,7 +58,7 @@ export type RootStackParamList = {
   OnboardingFlow: undefined;
   Main: undefined;
   TopicScreen: { category: string };
-  JoinDebate: { categoryId?: string; stanceId?: string } | undefined;
+  JoinDebate: { categoryId?: string; stanceId?: string; topicId?: number; categoryAccent?: string } | undefined;
   EditProfile: {
     initial: EditableProfile;
     onSave: (next: EditableProfile) => void;
@@ -73,6 +73,7 @@ export type RootStackParamList = {
     userSide: 'for' | 'against'
     opponentName: string
     categoryAccent: string
+    myUserId: number
   };
   DebateDetail: {
     debateId: string

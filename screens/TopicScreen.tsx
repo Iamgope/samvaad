@@ -118,11 +118,16 @@ export default function TopicScreen({ navigation, route }: Props) {
   const openDebate = (id: number) => {
     const d = debates.find(x => x.id === id)
     if (!d) return
-    navigation.navigate('Debate', {
-      debateId:   d.id,
-      categoryId: activeCategoryId,
-      motion:     d.motion,
-      debating:   d.debating,
+    navigation.navigate('DebateDetail', {
+      debateId:      String(d.id),
+      categoryId:    activeCategoryId,
+      categoryName:  displayLabel,
+      categoryAccent: catAccent,
+      motion:        d.motion,
+      context:       d.context,
+      agreeCount:    d.forVotes,
+      disagreeCount: d.againstVotes,
+      unsureCount:   0,
     })
   }
 
@@ -230,7 +235,7 @@ export default function TopicScreen({ navigation, route }: Props) {
             label={`Find a ${displayLabel} opponent`}
             variant="steel"
             size="md"
-            onPress={() => navigation.navigate('JoinDebate', { categoryAccent: catAccent })}
+            onPress={() => navigation.navigate('JoinDebate', { categoryId: activeCategoryId, categoryAccent: catAccent })}
             style={s.cta}
           />
         </View>

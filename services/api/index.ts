@@ -1,8 +1,9 @@
 export { api, request } from './client';
 export { ApiError } from './errors';
-export { tokens } from './tokens';
+export { tokens, getCurrentUserId } from './tokens';
 export { WebSocketClient, connectWebSocket, WS_BASE_URL } from './ws';
 export type { WebSocketClientOptions } from './ws';
+export { debateSession } from './debateSession';
 export * from './auth';
 export * from './topics';
 export * from './categories';

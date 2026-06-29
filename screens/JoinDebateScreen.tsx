@@ -26,6 +26,8 @@ import {
   WebSocketClient,
   fetchCategoryAndRules,
   ApiError,
+  getCurrentUserId,
+  debateSession,
   type DebateCategory,
 } from '../services/api'
 
@@ -281,7 +283,7 @@ const vl = StyleSheet.create({
 
 // ─── SCREEN ───────────────────────────────────────────────────────
 
-type RouteParams = { categoryId?: string; stanceId?: string }
+type RouteParams = { categoryId?: string; stanceId?: string; topicId?: number; categoryAccent?: string }
 type Props = { navigation: any; route?: { params?: RouteParams } }
 
 export default function JoinDebateScreen({ navigation, route }: Props) {
@@ -362,6 +364,11 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
     setQueueError(null)
     setConnecting(true)
     try {
+      // Pre-fetch userId so the WS message handler stays synchronous.
+      // An async WS callback silently swallows rejected Promises — errors become invisible.
+      const myUserId = await getCurrentUserId()
+      console.log('[WS] myUserId =', myUserId)
+
       const client = await connectWebSocket('/ws/debate/')
       wsRef.current = client
 
@@ -383,8 +390,32 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
         }
 
         if (m.type === 'queue.matched') {
-          // TODO: navigate to Debate screen with match data once it's built
-          setConnecting(false)
+          try {
+            const debate = (m.data as any)?.debate
+            console.log('[WS] queue.matched debate =', JSON.stringify(debate))
+            if (!debate) { setConnecting(false); return }
+
+            const isUserPro = !!myUserId && Number(debate.user_pro?.id) === Number(myUserId)
+            const opponent = isUserPro ? debate.user_con : debate.user_pro
+            console.log('[WS] isUserPro =', isUserPro, '| opponent =', opponent?.username)
+
+            if (wsRef.current) {
+              debateSession.set(wsRef.current, debate.id)
+              wsRef.current = null
+            }
+
+            setConnecting(false)
+            navigation.replace('DebateChat', {
+              debateId: String(debate.id),
+              motion: debate.topic?.title ?? 'Debate',
+              userSide: isUserPro ? 'for' : 'against',
+              opponentName: opponent?.username ?? 'Opponent',
+              categoryAccent: category.accent,
+              myUserId: myUserId ?? 0,
+            })
+          } catch (navErr) {
+            console.error('[WS] queue.matched handler error:', navErr)
+          }
           return
         }
       })
@@ -396,10 +427,11 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
         console.log('[WS] error =', err)
       })
 
-      // TODO: send topic_id once a topic picker exists (sourced from /debate/topics/)
       const categoryIdNum = Number(category.id)
       const data: Record<string, number | string> = {}
-      if (category.id !== ALL_CATEGORY_ID && Number.isFinite(categoryIdNum)) {
+      if (params?.topicId) {
+        data.topic_id = params.topicId
+      } else if (category.id !== ALL_CATEGORY_ID && Number.isFinite(categoryIdNum)) {
         data.category_id = categoryIdNum
       }
       const side = stanceToSide(selectedStance.id)

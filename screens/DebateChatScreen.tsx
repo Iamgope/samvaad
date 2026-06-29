@@ -22,6 +22,7 @@ import { Text } from '../components/Text'
 import { Avatar } from '../components/Avatar'
 import { IconButton } from '../components/IconButton'
 import { ChevronLeftIcon, FlagIcon } from '../components/Icons'
+import { debateSession } from '../services/api'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DebateChat'>
 
@@ -40,25 +41,17 @@ const EMOJIS = [
 ]
 
 type Side = 'for' | 'against'
-type Phase = 'opening' | 'rebuttal' | 'verdict'
 
 const sideLabel = (s: Side) => (s === 'for' ? 'FOR' : 'AGAINST')
 const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
-type Message = { id: string; side: Side; text: string; time: string }
+type WsMsg = { id: string; isMe: boolean; text: string; time: string; roundId: number }
+type RoundLabel = { roundId: number; label: string }
 
-const OPENERS: Record<Side, string> = {
-  for:  'The motion stands on solid ground — every measure of progress moves in its favour. I am here to defend it.',
-  against: "It's net negative. The mechanics are engineered to exploit, not inform — and the costs land hardest on the most vulnerable.",
+const ROUND_TYPE_LABELS: Record<string, string> = {
+  OPENING:  'OPENING ROUND',
+  REBUTTAL: 'REBUTTAL ROUND',
 }
-
-const MOCK_REPLIES = [
-  'Sure, some good comes of it — but the same mechanics amplify outrage and misinformation far more efficiently than they spread truth.',
-  'Reach without trust is just noise. A billion impressions don’t make a claim true.',
-  'You are ignoring the broader context entirely. Zoom out and the picture inverts.',
-  'Has this actually worked anywhere in practice, or is it theory dressed as fact?',
-  'The burden of proof is on you here — and so far it has not been met.',
-]
 
 // ─── Send arrow (ChatGPT-style "up") ──────────────────────────────
 
@@ -154,84 +147,148 @@ function useKeyboardHeight() {
 // ─── Screen ────────────────────────────────────────────────────────
 
 export default function DebateChatScreen({ route, navigation }: Props) {
-  const { motion, userSide, opponentName, categoryAccent } = route.params
+  const { motion, userSide, opponentName, categoryAccent, myUserId } = route.params
 
-  // The arena themes off the topic colour, resolved upstream at match time.
-  // `colors.lime` is only the generic "All" filter accent (never a real topic),
-  // so if it somehow reaches here, fall back to a neutral brand purple.
   const accent = !categoryAccent || categoryAccent === colors.lime ? colors.purple : categoryAccent
   const listRef = useRef<FlatList>(null)
   const inputRef = useRef<TextInput>(null)
+  const turnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // myUserId is passed as a route param (pre-fetched synchronously in JoinDebateScreen)
 
   const opSide = (userSide === 'for' ? 'against' : 'for') as Side
 
-  const now = () =>
+  const nowStr = () =>
     new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })
 
-  // Opens with one statement from the opponent, then it's your turn.
-  const [messages, setMessages] = useState<Message[]>([
-    { id: 'opener', side: opSide, text: OPENERS[opSide], time: now() },
+  const [messages, setMessages] = useState<WsMsg[]>([])
+  const [roundLabels, setRoundLabels] = useState<RoundLabel[]>([
+    { roundId: 0, label: 'OPENING ROUND' },
   ])
-  const [activeSide, setActiveSide] = useState<Side>(userSide)
+  const [currentRoundType, setCurrentRoundType] = useState<'OPENING' | 'REBUTTAL'>('OPENING')
+  // OPENING: both can type simultaneously; REBUTTAL: strict turns, one message at a time
+  const [isMyTurn, setIsMyTurn] = useState(true)
+  const [iHaveSentOpening, setIHaveSentOpening] = useState(false)
+  const [hasSentInCurrentRound, setHasSentInCurrentRound] = useState(false)
+  const [waitingForBotReply, setWaitingForBotReply] = useState(false)
   const [myTime, setMyTime] = useState(CLOCK_SECONDS)
   const [opTime, setOpTime] = useState(CLOCK_SECONDS)
   const [over, setOver] = useState(false)
   const [draft, setDraft] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
+  const [opponentTyping, setOpponentTyping] = useState(false)
+  const opponentTypingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const typingThrottleRef = useRef<number>(0)
 
   const insets = useSafeAreaInsets()
   const kbHeight = useKeyboardHeight()
-  const isMyTurn = activeSide === userSide
 
   const scrollToEnd = () =>
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80)
 
-  // Keep the latest message visible when the keyboard opens.
   useEffect(() => {
     if (kbHeight > 0) scrollToEnd()
   }, [kbHeight])
 
-  // Chess clock — only the active side's budget ticks, and it never refreshes.
+  // Chess clock — ticks for whoever can currently act
   useEffect(() => {
     if (over) return
+    const myActive = currentRoundType === 'OPENING' ? !iHaveSentOpening : isMyTurn && !waitingForBotReply
     const id = setInterval(() => {
-      if (activeSide === userSide) setMyTime(t => Math.max(0, t - 1))
+      if (myActive) setMyTime(t => Math.max(0, t - 1))
       else setOpTime(t => Math.max(0, t - 1))
     }, 1000)
     return () => clearInterval(id)
-  }, [activeSide, over])
+  }, [currentRoundType, iHaveSentOpening, isMyTurn, waitingForBotReply, over])
 
-  // A clock hitting zero ends the match.
   useEffect(() => {
     if (!over && (myTime === 0 || opTime === 0)) setOver(true)
   }, [myTime, opTime, over])
 
-  // Opponent thinks, replies once, hands the mic back.
+  // Wire live WebSocket events
   useEffect(() => {
-    if (isMyTurn || over) return
-    const t = setTimeout(() => {
-      setMessages(prev => [
-        ...prev,
-        { id: `op_${Date.now()}`, side: opSide, text: MOCK_REPLIES[Math.floor(Math.random() * MOCK_REPLIES.length)], time: now() },
-      ])
-      setActiveSide(userSide)
-      scrollToEnd()
-    }, 2400 + Math.random() * 2600)
-    return () => clearTimeout(t)
-  }, [activeSide, over]) // eslint-disable-line react-hooks/exhaustive-deps
+    const ws = debateSession.client()
+    if (!ws) return
 
-  // Pasting is banned — arguments must be typed. `contextMenuHidden` kills the
-  // long-press paste menu on touch; this guard also blocks a hardware-keyboard
-  // paste, which lands as one big insertion no real typing/IME would produce.
+    const off = ws.on('message', (raw) => {
+      if (!raw || typeof raw !== 'object') return
+      const ev = raw as { type?: string; message?: any; round?: any; judgement?: any }
+
+      if (ev.type === 'message.new' && ev.message) {
+        const msg = ev.message
+        const isMe = !!myUserId && Number(msg.user?.id) === Number(myUserId)
+        setMessages(prev => [...prev, {
+          id: String(msg.id),
+          isMe,
+          text: msg.content ?? '',
+          time: nowStr(),
+          roundId: msg.round_id ?? 0,
+        }])
+        scrollToEnd()
+
+        if (!isMe) {
+          // Opponent replied — clear typing indicator and bot-reply gate
+          setOpponentTyping(false)
+          if (opponentTypingTimer.current) clearTimeout(opponentTypingTimer.current)
+          setWaitingForBotReply(false)
+          // In REBUTTAL: after opponent's message, flip to my turn unless round.advanced arrives first
+          setCurrentRoundType(rt => {
+            if (rt === 'REBUTTAL') {
+              if (turnTimerRef.current) clearTimeout(turnTimerRef.current)
+              turnTimerRef.current = setTimeout(() => {
+                setIsMyTurn(prev => prev ? prev : true)
+              }, 700)
+            }
+            return rt
+          })
+        }
+      }
+
+      if (ev.type === 'round.advanced' && ev.round) {
+        if (turnTimerRef.current) { clearTimeout(turnTimerRef.current); turnTimerRef.current = null }
+        const round = ev.round
+        const label = ROUND_TYPE_LABELS[round.round_type] ?? round.round_type
+        setRoundLabels(prev => [...prev, { roundId: round.id, label }])
+        setCurrentRoundType('REBUTTAL')
+        setHasSentInCurrentRound(false)
+        setWaitingForBotReply(false)
+        // Whoever the backend set as first speaker opens REBUTTAL
+        const firstSpeakerId = round.current_speaker_id
+        setIsMyTurn(!!myUserId && Number(firstSpeakerId) === Number(myUserId))
+      }
+
+      if (ev.type === 'opponent.typing') {
+        setOpponentTyping(true)
+        if (opponentTypingTimer.current) clearTimeout(opponentTypingTimer.current)
+        opponentTypingTimer.current = setTimeout(() => setOpponentTyping(false), 3000)
+      }
+
+      if (ev.type === 'debate.completed') {
+        if (turnTimerRef.current) clearTimeout(turnTimerRef.current)
+        setOver(true)
+      }
+    })
+
+    return () => {
+      off()
+      if (turnTimerRef.current) clearTimeout(turnTimerRef.current)
+      if (opponentTypingTimer.current) clearTimeout(opponentTypingTimer.current)
+    }
+  }, []) // mount once
+
   const onChangeDraft = (t: string) => {
     if (t.length - draft.length > PASTE_GUARD_LEN) return
     setDraft(t.slice(0, CHAR_LIMIT))
+    // Throttle typing events to once per 2 seconds
+    const now = Date.now()
+    if (canType && t.length > 0 && now - typingThrottleRef.current > 2000) {
+      typingThrottleRef.current = now
+      debateSession.client()?.send({ type: 'typing', data: {} })
+    }
   }
 
   const addEmoji = (e: string) => setDraft(d => (d + e).slice(0, CHAR_LIMIT))
 
-  // Swap between the emoji panel and the keyboard, like a chat app.
   const toggleEmoji = () =>
     setShowEmoji(v => {
       const next = !v
@@ -241,31 +298,61 @@ export default function DebateChatScreen({ route, navigation }: Props) {
     })
 
   const send = () => {
-    if (!draft.trim() || !isMyTurn || over) return
-    setMessages(prev => [...prev, { id: `me_${Date.now()}`, side: userSide, text: draft.trim(), time: now() }])
+    if (!draft.trim() || over) return
+    if (currentRoundType === 'OPENING' && iHaveSentOpening) return
+    if (currentRoundType === 'REBUTTAL' && !isMyTurn) return
+    const ws = debateSession.client()
+    if (!ws) return
+    ws.send({ type: 'message', data: { content: draft.trim() } })
     setDraft('')
     setShowEmoji(false)
-    setActiveSide(opSide)
-    Keyboard.dismiss() // it's the opponent's turn now — drop the composer back down
+    Keyboard.dismiss()
     scrollToEnd()
+    if (currentRoundType === 'OPENING') {
+      setIHaveSentOpening(true)
+      setIsMyTurn(false)
+    } else {
+      setHasSentInCurrentRound(true)
+      setWaitingForBotReply(true)
+    }
+  }
+
+  const endTurn = () => {
+    if (!isMyTurn || over || currentRoundType !== 'REBUTTAL') return
+    const ws = debateSession.client()
+    if (!ws) return
+    ws.send({ type: 'end_turn', data: {} })
+    setIsMyTurn(false)
+    Keyboard.dismiss()
   }
 
   const listData = useMemo(() => {
-    const out: ({ type: 'divider'; id: string; label: string } | (Message & { type: 'msg' }))[] = []
-    let prev: Phase | null = null
-    messages.forEach((m, i) => {
-      const ph: Phase = i < 2 ? 'opening' : 'rebuttal'
-      if (ph !== prev) {
-        out.push({ type: 'divider', id: `div_${ph}`, label: ph === 'opening' ? 'OPENING ROUND' : 'REBUTTAL ROUND' })
-        prev = ph
+    type ListItem = { type: 'divider'; id: string; label: string } | (WsMsg & { type: 'msg' })
+    const out: ListItem[] = []
+    const seenRounds = new Set<number>()
+    // Always open with the OPENING label
+    out.push({ type: 'divider', id: 'div_opening', label: 'OPENING ROUND' })
+
+    messages.forEach(m => {
+      if (m.roundId !== 0 && !seenRounds.has(m.roundId)) {
+        seenRounds.add(m.roundId)
+        const extra = roundLabels.find(r => r.roundId === m.roundId)
+        if (extra) out.push({ type: 'divider', id: `div_${m.roundId}`, label: extra.label })
       }
       out.push({ ...m, type: 'msg' })
     })
     if (over) out.push({ type: 'divider', id: 'div_verdict', label: 'VERDICT' })
     return out
-  }, [messages, over])
+  }, [messages, roundLabels, over])
 
-  const canSend = isMyTurn && !over && !!draft.trim()
+  const canType = !over && (currentRoundType === 'OPENING' ? !iHaveSentOpening : isMyTurn && !waitingForBotReply)
+  const canSend = canType && !!draft.trim()
+  const canEndTurn = !over && currentRoundType === 'REBUTTAL' && isMyTurn && !waitingForBotReply && hasSentInCurrentRound
+  const showTypingDots = !over && (
+    opponentTyping ||
+    (currentRoundType === 'OPENING' && iHaveSentOpening) ||
+    (currentRoundType === 'REBUTTAL' && waitingForBotReply)
+  )
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -307,9 +394,9 @@ export default function DebateChatScreen({ route, navigation }: Props) {
 
       {/* ── Combatants: opponent (left) vs you (right) ── */}
       <View style={s.vsRow}>
-        <Combatant name={opponentName} side={opSide} isYou={false} accent={accent} time={opTime} active={!isMyTurn && !over} />
+        <Combatant name={opponentName} side={opSide} isYou={false} accent={accent} time={opTime} active={showTypingDots} />
         <Text style={s.vs}>VS</Text>
-        <Combatant name="You" side={userSide} isYou accent={accent} time={myTime} active={isMyTurn && !over} mirror />
+        <Combatant name="You" side={userSide} isYou accent={accent} time={myTime} active={canType} mirror />
       </View>
       </View>
 
@@ -321,9 +408,9 @@ export default function DebateChatScreen({ route, navigation }: Props) {
           renderItem={({ item }) =>
             item.type === 'divider'
               ? <RoundDivider label={item.label} />
-              : <Bubble message={item} isMe={item.side === userSide} accent={accent} />
+              : <Bubble message={item} accent={accent} />
           }
-          ListFooterComponent={!isMyTurn && !over ? <TypingDots color={colors.textMuted} /> : null}
+          ListFooterComponent={showTypingDots ? <TypingDots color={colors.textMuted} /> : null}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
@@ -338,7 +425,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
             </View>
           )}
 
-          {showEmoji && isMyTurn && !over && (
+          {showEmoji && canType && (
             <View style={s.emojiPanel}>
               <ScrollView
                 contentContainerStyle={s.emojiGrid}
@@ -361,9 +448,14 @@ export default function DebateChatScreen({ route, navigation }: Props) {
               value={draft}
               onChangeText={onChangeDraft}
               onFocus={() => setShowEmoji(false)}
-              placeholder={over ? 'Match complete' : isMyTurn ? 'Make your point…' : 'Waiting…'}
+              placeholder={
+                over ? 'Match complete'
+                : currentRoundType === 'OPENING'
+                  ? (iHaveSentOpening ? 'Waiting for opponent…' : 'State your opening…')
+                  : (isMyTurn ? 'Make your point…' : 'Waiting…')
+              }
               placeholderTextColor={colors.textSubtle}
-              editable={isMyTurn && !over}
+              editable={canType}
               multiline
               maxLength={CHAR_LIMIT}
               contextMenuHidden
@@ -373,13 +465,22 @@ export default function DebateChatScreen({ route, navigation }: Props) {
             />
 
             <View style={s.inputFooter}>
-              {isMyTurn && !over && (
+              {canType && (
                 <TouchableOpacity onPress={toggleEmoji} hitSlop={8} activeOpacity={0.7}>
                   <EmojiIcon size={22} color={showEmoji ? accent : colors.textMuted} />
                 </TouchableOpacity>
               )}
               <View style={{ flex: 1 }} />
-              {isMyTurn && !over && <Text style={s.charCount}>{draft.length}/{CHAR_LIMIT}</Text>}
+              {canType && <Text style={s.charCount}>{draft.length}/{CHAR_LIMIT}</Text>}
+              {canEndTurn && (
+                <TouchableOpacity
+                  onPress={endTurn}
+                  activeOpacity={0.85}
+                  style={s.endTurnBtn}
+                >
+                  <Text style={s.endTurnLabel}>End Turn</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 onPress={send}
                 disabled={!canSend}
@@ -447,7 +548,8 @@ function RoundDivider({ label }: { label: string }) {
 
 // ─── Bubble ────────────────────────────────────────────────────────
 
-function Bubble({ message, isMe, accent }: { message: Message; isMe: boolean; accent: string }) {
+function Bubble({ message, accent }: { message: WsMsg; accent: string }) {
+  const { isMe } = message
   return (
     <View style={[s.bubbleRow, isMe ? s.bubbleRowMe : s.bubbleRowThem]}>
       <View
@@ -591,6 +693,14 @@ const s = StyleSheet.create({
   sendBtn: {
     width: 34, height: 34, borderRadius: 17,
     alignItems: 'center', justifyContent: 'center',
+  },
+  endTurnBtn: {
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 8, borderWidth: 1, borderColor: colors.border,
+  },
+  endTurnLabel: {
+    fontFamily: fonts.jakarta.semiBold,
+    fontSize: 11, color: colors.textMuted, letterSpacing: 0.3,
   },
 })
 
