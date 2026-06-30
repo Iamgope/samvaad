@@ -14,6 +14,7 @@ interface ChipDropdownProps<T extends ChipOption> {
   onSelect: (o: T) => void;
   accent: string;
   zIndex?: number;
+  menuAlign?: 'left' | 'right';
 }
 
 export function ChipDropdown<T extends ChipOption>({
@@ -22,6 +23,7 @@ export function ChipDropdown<T extends ChipOption>({
   onSelect,
   accent,
   zIndex,
+  menuAlign = 'right',
 }: ChipDropdownProps<T>) {
   const [open, setOpen] = useState(false);
 
@@ -40,7 +42,7 @@ export function ChipDropdown<T extends ChipOption>({
       </TouchableOpacity>
 
       {open && (
-        <View style={s.menu}>
+        <View style={[s.menu, menuAlign === 'left' ? { left: 0, right: undefined } : { right: 0 }]}>
           {options.map((o, i) => {
             const active = o.id === selected.id;
             const itemAccent = o.accent ?? accent;

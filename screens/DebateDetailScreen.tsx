@@ -216,6 +216,7 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
               topicId: Number(route.params.debateId),
               categoryId,
               categoryAccent,
+              topicTitle: motion,
             })}
           />
         </View>

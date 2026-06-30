@@ -35,7 +35,7 @@ import AllTrophiesScreen from './screens/AllTrophiesScreen';
 import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
 import HelpSupportScreen from './screens/HelpSupportScreen';
 import DebateDetailScreen from './screens/DebateDetailScreen'
-import DebateChatScreen from './screens/DebateChatScreen';
+import DebateChatScreen from './screens/DebateChat';
 import NotificationsScreen from './screens/NotificationsScreen';
 import type { Badge } from './components/profile/TrophyCase';
 import { TabNavigator } from './navigation/TabNavigator';
@@ -58,7 +58,7 @@ export type RootStackParamList = {
   OnboardingFlow: undefined;
   Main: undefined;
   TopicScreen: { category: string };
-  JoinDebate: { categoryId?: string; stanceId?: string; topicId?: number; categoryAccent?: string } | undefined;
+  JoinDebate: { categoryId?: string; stanceId?: string; topicId?: number; categoryAccent?: string; topicTitle?: string } | undefined;
   EditProfile: {
     initial: EditableProfile;
     onSave: (next: EditableProfile) => void;
@@ -74,6 +74,7 @@ export type RootStackParamList = {
     opponentName: string
     categoryAccent: string
     myUserId: number
+    pendingOpening?: string
   };
   DebateDetail: {
     debateId: string

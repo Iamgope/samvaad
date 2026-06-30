@@ -30,6 +30,7 @@ import {
   debateSession,
   type DebateCategory,
 } from '../services/api'
+import { OpeningOverlay } from './DebateChat/OpeningOverlay'
 
 const DEFAULT_AVATAR = require('../assets/defaultprofilepic.png')
 
@@ -283,7 +284,7 @@ const vl = StyleSheet.create({
 
 // ─── SCREEN ───────────────────────────────────────────────────────
 
-type RouteParams = { categoryId?: string; stanceId?: string; topicId?: number; categoryAccent?: string }
+type RouteParams = { categoryId?: string; stanceId?: string; topicId?: number; categoryAccent?: string; topicTitle?: string }
 type Props = { navigation: any; route?: { params?: RouteParams } }
 
 export default function JoinDebateScreen({ navigation, route }: Props) {
@@ -308,6 +309,16 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
   const [queueError, setQueueError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const wsRef = useRef<WebSocketClient | null>(null)
+
+  type MatchedDebate = {
+    debateId: string
+    motion: string
+    userSide: 'for' | 'against'
+    opponentName: string
+    categoryAccent: string
+    myUserId: number
+  }
+  const [matchedDebate, setMatchedDebate] = useState<MatchedDebate | null>(null)
 
   const loadCategories = useCallback(async () => {
     try {
@@ -354,9 +365,11 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
 
   useEffect(() => closeSocket, [])
 
-  const stanceToSide = (id: string): 'pro' | 'con' | null => {
-    if (id === 'for') return 'pro'
-    if (id === 'against') return 'con'
+  const hasSpecificTopic = !!params?.topicId
+
+const stanceToSide = (id: string): 'PRO' | 'CON' | null => {
+    if (id === 'for') return 'PRO'
+    if (id === 'against') return 'CON'
     return null
   }
 
@@ -401,11 +414,12 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
 
             if (wsRef.current) {
               debateSession.set(wsRef.current, debate.id)
+              debateSession.startBuffering()
               wsRef.current = null
             }
 
             setConnecting(false)
-            navigation.replace('DebateChat', {
+            setMatchedDebate({
               debateId: String(debate.id),
               motion: debate.topic?.title ?? 'Debate',
               userSide: isUserPro ? 'for' : 'against',
@@ -506,14 +520,19 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
           >
             {/* Dropdowns */}
             <View style={s.filterRow}>
-              <ChipDropdown
-                selected={category}
-                options={categoryChips}
-                onSelect={setCategory}
-                accent={category.accent}
-                zIndex={20}
-              />
-              <Text style={s.filterSep}>·</Text>
+              {!hasSpecificTopic && (
+                <>
+                  <ChipDropdown
+                    selected={category}
+                    options={categoryChips}
+                    onSelect={setCategory}
+                    accent={category.accent}
+                    zIndex={20}
+                    menuAlign="left"
+                  />
+                  <Text style={s.filterSep}>·</Text>
+                </>
+              )}
               <ChipDropdown
                 selected={selectedStance}
                 options={STANCES}
@@ -570,6 +589,17 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
         </>
       )}
 
+      {matchedDebate && (
+        <OpeningOverlay
+          motion={matchedDebate.motion}
+          userSide={matchedDebate.userSide}
+          onSubmit={(openingText) => {
+            const d = matchedDebate
+            setMatchedDebate(null)
+            navigation.replace('DebateChat', { ...d, pendingOpening: openingText })
+          }}
+        />
+      )}
     </SafeAreaView>
   )
 }
