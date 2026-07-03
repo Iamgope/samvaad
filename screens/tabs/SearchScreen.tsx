@@ -193,7 +193,7 @@ export default function SearchScreen() {
 
     const byId: Record<string, CategoryView> = {}
     const pillList: PillView[] = [
-      { id: EXPLORE_ID, label: 'Explore', emoji: '🧭', color: colors.text },
+      { id: EXPLORE_ID, label: 'All', emoji: '🧭', color: colors.text },
     ]
 
     names.forEach((name, i) => {
