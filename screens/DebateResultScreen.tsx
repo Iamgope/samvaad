@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
@@ -12,8 +12,9 @@ import { IconButton } from '../components/IconButton'
 import { Avatar } from '../components/Avatar'
 import { DebateHeroCard } from '../components/DebateHeroCard'
 import { DiceIcon, AnalysisIcon, ChevronLeftIcon, ShareIcon } from '../components/Icons'
+import { ResultShareCard, shareResultCard } from '../components/ResultShareCard'
 
-type Props = NativeStackScreenProps<RootStackParamList, 'DebateDetail'>
+type Props = NativeStackScreenProps<RootStackParamList, 'DebateResult'>
 
 const SCREEN_H = Dimensions.get('window').height
 
@@ -44,6 +45,7 @@ export default function DebateResultScreen({ route, navigation }: Props) {
 
   const meta         = RESULT_META[MOCK_RESULT]
   const opponentSide: 'for' | 'against' = MOCK_USER_SIDE === 'for' ? 'against' : 'for'
+  const shareCardRef = useRef<View>(null)
 
   // PRO on right, AGAINST on left
   const left  = MOCK_USER_SIDE === 'against'
@@ -68,7 +70,7 @@ export default function DebateResultScreen({ route, navigation }: Props) {
         <IconButton
           size="md"
           icon={<ShareIcon size={15} color={colors.text} />}
-          onPress={() => {}}
+          onPress={() => shareResultCard(shareCardRef, motion)}
           accent={colors.text}
         />
       </View>
@@ -140,6 +142,22 @@ export default function DebateResultScreen({ route, navigation }: Props) {
           onPress={() => {}}
           size="md"
           style={s.outsideBtn}
+        />
+      </View>
+
+      {/* Off-screen capture target */}
+      <View style={s.offScreen}>
+        <ResultShareCard
+          ref={shareCardRef}
+          motion={motion}
+          result={MOCK_RESULT}
+          categoryName={categoryName}
+          categoryAccent={categoryAccent}
+          userUsername="you"
+          opponentUsername={MOCK_OPPONENT}
+          userSide={MOCK_USER_SIDE}
+          ratingDelta={meta.ratingDelta}
+          xp={meta.xp}
         />
       </View>
     </View>
@@ -339,4 +357,5 @@ const s = StyleSheet.create({
     marginTop: spacing.md,
   },
   outsideBtn: { flex: 1 },
+  offScreen: { position: 'absolute', left: -9999, top: -9999 },
 })
