@@ -513,8 +513,8 @@ const stanceToSide = (id: string): 'PRO' | 'CON' | null => {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                tintColor={colors.lime}
-                colors={[colors.lime]}
+                tintColor={colors.textMuted}
+                colors={[colors.textMuted]}
               />
             }
           >

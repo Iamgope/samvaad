@@ -192,7 +192,7 @@ function Header({ onBellPress, hasUnread }: { onBellPress: () => void; hasUnread
     <View style={s.header}>
       <Text style={s.wordmark}>Samvaad<Text style={s.wordmarkDot}>.</Text></Text>
       <TouchableOpacity style={s.bellBtn} activeOpacity={0.7} onPress={onBellPress} hitSlop={8}>
-        <BellIcon size={22} color={colors.text} />
+        <BellIcon size={hasUnread?26:22} steel={hasUnread} />
         {hasUnread && <View style={s.bellDot} />}
       </TouchableOpacity>
     </View>
@@ -451,6 +451,7 @@ type Props = {
 
 export default function HomeScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false)
+  const [hasUnread, setHasUnread] = useState(true)
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -517,12 +518,15 @@ export default function HomeScreen({ navigation }: Props) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={colors.lime}
-            colors={[colors.lime]}
+            tintColor={colors.textMuted}
+            colors={[colors.textMuted]}
           />
         }
       >
-        <Header onBellPress={() => navigation.navigate('Notifications')} hasUnread />
+        <Header
+          onBellPress={() => { setHasUnread(false); navigation.navigate('Notifications') }}
+          hasUnread={hasUnread}
+        />
         <TrendingSection debates={TRENDING} onJoin={handleJoin} />
         <ExploreTopics onPress={handleCategoryPress} />
         <ActionSection onPress={(key) => {
@@ -568,7 +572,7 @@ const s = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.lime,
+    backgroundColor: colors.textMuted,
     borderWidth: 1.5,
     borderColor: colors.black,
   },

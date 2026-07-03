@@ -62,12 +62,7 @@ const MOCK_PROFILE: ProfileData = {
     { id: 'm4', motion: 'Is judicial review undemocratic by design?',   opponentName: 'Kabir Singh',  opponentInit: 'KS', format: 'stronger', topic: 'politics', outcome: 'win',  agoLabel: '2d'  },
     { id: 'm5', motion: 'Do we glorify violence in cinema too much?',   opponentName: 'Priya Sharma', opponentInit: 'PS', format: 'clash',    topic: 'culture',  outcome: 'win',  agoLabel: '3d'  },
   ],
-  badges: [
-    { key: 'b1', label: 'First debate',    earned: true,  image: require('../../assets/badges/FirstDebateBadge.png'), earnedOn: 'May 22' },
-    { key: 'b2', label: '10 debates',      earned: true,  image: require('../../assets/badges/TenDebateBadge.png'),   earnedOn: 'Jun 08' },
-    { key: 'b3', label: '3 debates a day', earned: true,  image: require('../../assets/badges/ThreeDebateADay.png'),  earnedOn: 'Jul 14' },
-    { key: 'b4', label: 'Top 10 finish',   earned: false },
-  ],
+  badges: [],
 };
 
 // ─── HERO ─────────────────────────────────────────────────────────
@@ -507,8 +502,8 @@ export default function ProfileScreen({
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={colors.lime}
-            colors={[colors.lime]}
+            tintColor={colors.textMuted}
+            colors={[colors.textMuted]}
           />
         }
       >
@@ -529,12 +524,14 @@ export default function ProfileScreen({
           </Section>
         )}
 
-        <Section>
-          <TrophyCase
-            badges={profile.badges}
-            onSeeAll={() => navigation.navigate('AllTrophies', { badges: profile.badges })}
-          />
-        </Section>
+        {profile.badges.length > 0 && (
+          <Section>
+            <TrophyCase
+              badges={profile.badges}
+              onSeeAll={() => navigation.navigate('AllTrophies', { badges: profile.badges })}
+            />
+          </Section>
+        )}
 
         <Section>
           <DebateHistory matches={profile.matches} isOwn={profile.isOwn} />

@@ -278,8 +278,8 @@ export default function SearchScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={colors.lime}
-            colors={[colors.lime]}
+            tintColor={colors.textMuted}
+            colors={[colors.textMuted]}
           />
         }
       >
