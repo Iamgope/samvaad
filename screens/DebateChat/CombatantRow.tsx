@@ -1,0 +1,105 @@
+import React from 'react'
+import { View, StyleSheet } from 'react-native'
+import { colors } from '../../constants/colors'
+import { fonts } from '../../constants/fonts'
+import { spacing, SCREEN_PADDING } from '../../constants/spacing'
+import { Text } from '../../components/Text'
+import { Avatar } from '../../components/Avatar'
+import type { Side } from './types'
+import { sideLabel, fmtTime } from './types'
+
+function Combatant({ name, side, isYou, accent, time, active, mirror }: {
+  name: string
+  side: Side
+  isYou: boolean
+  accent: string
+  time: number
+  active: boolean
+  mirror?: boolean
+}) {
+  const initial = (name?.trim()?.[0] ?? '?').toUpperCase()
+  const ring = isYou ? accent : colors.text
+
+  return (
+    <View style={[cb.wrap, mirror && { flexDirection: 'row-reverse' }]}>
+      <Avatar
+        size={44}
+        offset={3}
+        initials={initial}
+        borderColor={active ? ring : colors.border}
+        glowColor={active ? ring : undefined}
+        backgroundColor={isYou ? accent + '14' : colors.surface2}
+        textColor={isYou ? accent : colors.textMuted}
+      />
+      <View style={[cb.info, mirror && { alignItems: 'flex-end' }]}>
+        <Text style={cb.name} numberOfLines={1}>{name}</Text>
+        <View style={cb.meta}>
+          <Text style={cb.side}>{sideLabel(side)}</Text>
+          <Text style={cb.sep}>·</Text>
+          <Text style={[cb.time, active && { color: isYou ? accent : colors.text }]}>{fmtTime(time)}</Text>
+        </View>
+      </View>
+    </View>
+  )
+}
+
+export function CombatantRow({
+  opponentName,
+  opSide,
+  userSide,
+  accent,
+  opTime,
+  myTime,
+  showTypingDots,
+  canType,
+}: {
+  opponentName: string
+  opSide: Side
+  userSide: Side
+  accent: string
+  opTime: number
+  myTime: number
+  showTypingDots: boolean
+  canType: boolean
+}) {
+  return (
+    <View style={s.vsRow}>
+      <Combatant
+        name={opponentName}
+        side={opSide}
+        isYou={false}
+        accent={accent}
+        time={opTime}
+        active={showTypingDots}
+      />
+      <Text style={s.vs}>VS</Text>
+      <Combatant
+        name="You"
+        side={userSide}
+        isYou
+        accent={accent}
+        time={myTime}
+        active={canType}
+        mirror
+      />
+    </View>
+  )
+}
+
+const s = StyleSheet.create({
+  vsRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    paddingHorizontal: SCREEN_PADDING, paddingTop: spacing.xs, paddingBottom: spacing.md,
+  },
+  vs: { fontFamily: fonts.display.black, fontSize: 11, color: colors.textSubtle, letterSpacing: 0.5 },
+})
+
+const cb = StyleSheet.create({
+  wrap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  info: { flex: 1, gap: 2 },
+  name: { fontFamily: fonts.display.bold, fontSize: 14, color: colors.text, letterSpacing: -0.2 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  side: { fontFamily: fonts.jakarta.extraBold, fontSize: 9, color: colors.textSubtle, letterSpacing: 1 },
+  sep: { fontSize: 9, color: colors.textFaint },
+  time: { fontFamily: fonts.jakarta.bold, fontSize: 11, color: colors.textMuted, fontVariant: ['tabular-nums'] },
+})

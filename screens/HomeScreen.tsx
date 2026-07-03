@@ -17,7 +17,7 @@ import { Text } from '../components/Text'
 import { DebateHeadline } from '../components/DebateHeadline'
 import { DebateHeroCard } from '../components/DebateHeroCard'
 import { CategoryCard } from '../components/CategoryCard'
-import { BellIcon } from '../components/Icons'
+import { BellIcon, DiceIcon, LearnIcon } from '../components/Icons'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const TRENDING_CARD_WIDTH = SCREEN_WIDTH - SCREEN_PADDING * 2
@@ -355,18 +355,26 @@ function ExploreTopics({ onPress }: { onPress: (id: CategoryId) => void }) {
 
 // ─── ACTION SECTION ──────────────────────────────────────────────
 
-const ACTIONS = [
+type ActionItem = {
+  key: string
+  icon?: React.ReactNode
+  emoji?: string
+  title: string
+  subtitle: string
+}
+
+const ACTIONS: ActionItem[] = [
   {
     key:      'join',
-    emoji:    '⚔️',
-    title:    'Join a Debate',
-    subtitle: 'Enter live public debates',
+    icon:     <DiceIcon />,
+    title:    '',
+    subtitle: 'Join a random debate',
   },
   {
-    key:      'persona',
-    emoji:    '🎭',
-    title:    'Debate Personas',
-    subtitle: 'Argue the other side',
+    key:      'learn',
+    icon:     <LearnIcon />,
+    title:    '',
+    subtitle: 'Practice Mode',
   },
 ]
 
@@ -383,10 +391,10 @@ function ActionSection({ onPress }: { onPress: (key: string) => void }) {
             activeOpacity={0.8}
           >
             <View style={s.actionEmojiArea}>
-              <Text style={s.actionEmoji}>{a.emoji}</Text>
+              {a.icon ?? <Text style={s.actionEmoji}>{a.emoji}</Text>}
             </View>
             <View style={s.actionTextArea}>
-              <Text style={s.actionTitle}>{a.title}</Text>
+              {!!a.title && <Text style={s.actionTitle}>{a.title}</Text>}
               <Text style={s.actionSubtitle}>{a.subtitle}</Text>
             </View>
           </TouchableOpacity>
@@ -473,7 +481,8 @@ export default function HomeScreen({ navigation }: Props) {
   }
 
   const handleCategoryPress = (id: CategoryId) => {
-    navigation.navigate('TopicScreen', { category: id })
+    const cat = findCategory(id)
+    navigation.navigate('TopicScreen', { category: cat.name })
   }
 
   const handleCuratedPress = (id: string) => {
@@ -516,7 +525,10 @@ export default function HomeScreen({ navigation }: Props) {
         <Header onBellPress={() => navigation.navigate('Notifications')} hasUnread />
         <TrendingSection debates={TRENDING} onJoin={handleJoin} />
         <ExploreTopics onPress={handleCategoryPress} />
-        <ActionSection onPress={(key) => { if (key === 'join') navigation.navigate('JoinDebate') }} />
+        <ActionSection onPress={(key) => {
+          if (key === 'join') navigation.navigate('JoinDebate')
+          if (key === 'learn') navigation.navigate('LearnScreen')
+        }} />
         <ForYouSection debates={CURATED} onPress={handleCuratedPress} />
       </ScrollView>
     </SafeAreaView>

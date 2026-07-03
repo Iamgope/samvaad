@@ -9,7 +9,7 @@ function devHost(): string {
 
 export const BASE_URL = __DEV__
   ? `http://${devHost()}:${DEV_API_PORT}`
-  : 'https://api.samvaad.app';
+  : 'https://vaad-vivaad-production.up.railway.app';
 
 export const APP_VERSION = "1";
 

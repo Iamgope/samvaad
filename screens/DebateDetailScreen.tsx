@@ -212,7 +212,12 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
             label="Start Debate"
             variant="steel"
             size="md"
-            onPress={() => navigation.navigate('JoinDebate', { categoryId })}
+            onPress={() => navigation.navigate('JoinDebate', {
+              topicId: Number(route.params.debateId),
+              categoryId,
+              categoryAccent,
+              topicTitle: motion,
+            })}
           />
         </View>
       </View>
