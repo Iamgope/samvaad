@@ -525,7 +525,10 @@ export default function HomeScreen({ navigation }: Props) {
         <Header onBellPress={() => navigation.navigate('Notifications')} hasUnread />
         <TrendingSection debates={TRENDING} onJoin={handleJoin} />
         <ExploreTopics onPress={handleCategoryPress} />
-        <ActionSection onPress={(key) => { if (key === 'join') navigation.navigate('JoinDebate') }} />
+        <ActionSection onPress={(key) => {
+          if (key === 'join') navigation.navigate('JoinDebate')
+          if (key === 'learn') navigation.navigate('LearnScreen')
+        }} />
         <ForYouSection debates={CURATED} onPress={handleCuratedPress} />
       </ScrollView>
     </SafeAreaView>

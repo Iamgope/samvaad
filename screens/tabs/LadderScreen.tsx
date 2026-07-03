@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, StyleSheet, Dimensions, ScrollView, Animated, PanResponder,
 } from 'react-native';
@@ -7,9 +7,10 @@ import Svg, { Polygon, Text as SvgText } from 'react-native-svg';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import { spacing, SCREEN_PADDING } from '../../constants/spacing';
-import { TOPICS, TopicId } from '../../constants/topics';
+import { categoryConfig } from '../../constants/categories';
+import { fetchTopics } from '../../services/api';
 import { Text } from '../../components/Text';
-import { ChipDropdown } from '../../components/ChipDropdown';
+import { ChipDropdown, type ChipOption } from '../../components/ChipDropdown';
 import { RankListRow } from '../../components/RankListRow';
 import { IconButton } from '../../components/IconButton';
 import { ChevronUpIcon, ChevronDownIcon } from '../../components/Icons';
@@ -19,46 +20,9 @@ type Player = {
   wins: number; debates: number; streak: number;
 };
 
-const PLAYERS_BY_TOPIC: Record<TopicId, Player[]> = {
-  all: [
-    { rank: 1, name: 'Arjun Mehta', initials: 'AM', wins: 142, debates: 178, streak: 12 },
-    { rank: 2, name: 'Zara Khan', initials: 'ZK', wins: 118, debates: 155, streak: 7 },
-    { rank: 3, name: 'Dev Patel', initials: 'DP', wins: 97, debates: 134, streak: 3 },
-    { rank: 4, name: 'Priya Sharma', initials: 'PS', wins: 89, debates: 120, streak: 5 },
-    { rank: 5, name: 'Rishi Gupta', initials: 'RG', wins: 76, debates: 110, streak: 2 },
-    { rank: 6, name: 'Aisha Nair', initials: 'AN', wins: 71, debates: 105, streak: 0 },
-    { rank: 7, name: 'Kabir Singh', initials: 'KS', wins: 65, debates: 98, streak: 4 },
-    { rank: 8, name: 'Meera Iyer', initials: 'MI', wins: 58, debates: 90, streak: 1 },
-    { rank: 9, name: 'Vikram Das', initials: 'VD', wins: 52, debates: 82, streak: 3 },
-    { rank: 10, name: 'Sneha Verma', initials: 'SV', wins: 48, debates: 76, streak: 2 },
-    { rank: 11, name: 'Harsh Jain', initials: 'HJ', wins: 42, debates: 68, streak: 1 },
-    { rank: 12, name: 'Anjali Roy', initials: 'AR', wins: 38, debates: 62, streak: 0 },
-    { rank: 13, name: 'Rohan Desai', initials: 'RD', wins: 35, debates: 58, streak: 4 },
-    { rank: 14, name: 'Divya Khurana', initials: 'DK', wins: 31, debates: 52, streak: 2 },
-    { rank: 15, name: 'Nitin Bhat', initials: 'NB', wins: 28, debates: 48, streak: 1 },
-  ],
-  politics: [
-    { rank: 1, name: 'Zara Khan', initials: 'ZK', wins: 64, debates: 82, streak: 5 },
-    { rank: 2, name: 'Arjun Mehta', initials: 'AM', wins: 58, debates: 78, streak: 3 },
-    { rank: 3, name: 'Kabir Singh', initials: 'KS', wins: 41, debates: 60, streak: 2 },
-    { rank: 4, name: 'Aisha Nair', initials: 'AN', wins: 38, debates: 55, streak: 0 },
-    { rank: 5, name: 'Dev Patel', initials: 'DP', wins: 33, debates: 50, streak: 1 },
-    { rank: 6, name: 'Vikram Das', initials: 'VD', wins: 29, debates: 44, streak: 2 },
-    { rank: 7, name: 'Sneha Verma', initials: 'SV', wins: 25, debates: 38, streak: 1 },
-    { rank: 8, name: 'Harsh Jain', initials: 'HJ', wins: 21, debates: 34, streak: 0 },
-    { rank: 9, name: 'Anjali Roy', initials: 'AR', wins: 18, debates: 30, streak: 3 },
-    { rank: 10, name: 'Rohan Desai', initials: 'RD', wins: 15, debates: 26, streak: 1 },
-  ],
-  sports: [
-    { rank: 1, name: 'Dev Patel', initials: 'DP', wins: 44, debates: 60, streak: 4 },
-    { rank: 2, name: 'Arjun Mehta', initials: 'AM', wins: 39, debates: 55, streak: 2 },
-    { rank: 3, name: 'Rishi Gupta', initials: 'RG', wins: 31, debates: 48, streak: 0 },
-  ],
-  culture: [
-    { rank: 1, name: 'Arjun Mehta', initials: 'AM', wins: 51, debates: 68, streak: 6 },
-    
-  ],
-};
+const ALL_CHIP: ChipOption = { id: 'all', label: 'All', emoji: '🌏', accent: colors.lime };
+
+const PLAYERS_BY_CATEGORY: Record<string, Player[]> = {};
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const PODIUM_GAP = 4;
@@ -189,10 +153,26 @@ function Podium({ players, accent }: { players: Player[]; accent: string }) {
 }
 
 export default function LadderScreen() {
-  const [topic, setTopic] = useState<TopicId>('all');
+  const [chips, setChips] = useState<ChipOption[]>([ALL_CHIP]);
+  const [selectedId, setSelectedId] = useState<string>('all');
   const [isExpanded, setIsExpanded] = useState(false);
-  const currentTopic = TOPICS.find(t => t.id === topic) ?? TOPICS[0];
-  const players = PLAYERS_BY_TOPIC[topic];
+
+  useEffect(() => {
+    fetchTopics()
+      .then(data => {
+        setChips([
+          ALL_CHIP,
+          ...Object.keys(data).map(name => {
+            const cfg = categoryConfig(name);
+            return { id: name, label: name, emoji: cfg.emoji, accent: cfg.accent };
+          }),
+        ]);
+      })
+      .catch(() => {});
+  }, []);
+
+  const currentChip = chips.find(c => c.id === selectedId) ?? chips[0];
+  const players: Player[] = PLAYERS_BY_CATEGORY[selectedId] ?? [];
   const topThree = players.slice(0, 3);
   const restOfList = players.slice(3);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -249,17 +229,17 @@ export default function LadderScreen() {
         <Text style={styles.headerTitle}>Leaderboard</Text>
         <View style={styles.filterWrap}>
           <ChipDropdown
-            selected={currentTopic}
-            options={TOPICS}
-            onSelect={(t) => setTopic(t.id)}
-            accent={currentTopic.accent}
+            selected={currentChip}
+            options={chips}
+            onSelect={(c) => setSelectedId(c.id)}
+            accent={currentChip.accent ?? colors.lime}
             zIndex={20}
           />
         </View>
       </View>
 
       <View style={styles.podiumSection}>
-        <Podium players={topThree} accent={currentTopic.accent} />
+        <Podium players={topThree} accent={currentChip.accent ?? colors.lime} />
       </View>
 
       <Animated.View style={[styles.sheet, { top: sheetY }]}>
@@ -287,7 +267,7 @@ export default function LadderScreen() {
           }}
         >
           <Text style={styles.sectionTitle}>
-            {topic === 'all' ? 'Full standings' : `Top in ${currentTopic.label}`}
+            {selectedId === 'all' ? 'Full standings' : `Top in ${currentChip.label}`}
           </Text>
 
           {restOfList.length === 0 ? (
@@ -302,7 +282,7 @@ export default function LadderScreen() {
                 initials={p.initials}
                 name={p.name}
                 metaText={`${p.wins} wins`}
-                accent={currentTopic.accent}
+                accent={currentChip.accent ?? colors.lime}
                 isLast={i === restOfList.length - 1}
               />
             ))

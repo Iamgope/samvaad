@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../../App'
 import { colors } from '../../constants/colors'
+import { categoryConfig } from '../../constants/categories'
 import { fonts } from '../../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../../constants/spacing'
 import { Text } from '../../components/Text'
@@ -55,8 +56,6 @@ type PillView = {
 
 // ─── PALETTES & MOCKS ──────────────────────────────────────────────
 
-const ACCENT_PALETTE = [colors.streak, colors.sky, colors.purple2, colors.lime, '#F472B6', '#FB923C']
-const EMOJI_PALETTE  = ['🏛️', '🏆', '🎭', '🤖', '📚', '🎨', '⚖️', '🌍']
 
 function mockCounts(id: number) {
   const agreeCount    = ((id * 137) % 6000) + 500
@@ -196,20 +195,20 @@ export default function SearchScreen() {
       { id: EXPLORE_ID, label: 'All', emoji: '🧭', color: colors.text },
     ]
 
-    names.forEach((name, i) => {
-      const accent = ACCENT_PALETTE[i % ACCENT_PALETTE.length]
+    names.forEach((name) => {
+      const cfg = categoryConfig(name)
       const iconUri = mediaUrl(groups[name].icon)
       byId[name] = {
         id: name,
         name,
-        accent,
+        accent: cfg.accent,
         iconSource: iconUri ? { uri: iconUri } : null,
       }
       pillList.push({
         id: name,
         label: name,
-        emoji: EMOJI_PALETTE[i % EMOJI_PALETTE.length],
-        color: accent,
+        emoji: cfg.emoji,
+        color: cfg.accent,
       })
     })
 

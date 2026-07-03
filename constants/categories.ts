@@ -16,7 +16,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   Sports: {
     emoji:  '🏆',
-    accent: '#38BDF8',
+    accent: colors.sky,
     icon:   require('../assets/sports_icon.png'),
     poster: require('../assets/poster_sports.png'),
   },
