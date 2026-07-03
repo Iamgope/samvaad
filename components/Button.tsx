@@ -26,7 +26,7 @@ const HEIGHTS = { lg: 56, md: 48, sm: 40 };
 const CHIP_SIZE = { lg: 36, md: 32, sm: 28 };
 
 type Size = 'lg' | 'md' | 'sm';
-export type ButtonVariant = 'primary' | 'action' | 'outline' | 'ghost' | 'text' | 'game' | 'pill' | 'pillBrand' | 'ticket' | 'steel';
+export type ButtonVariant = 'primary' | 'action' | 'outline' | 'ghost' | 'text' | 'game' | 'pill' | 'pillBrand' | 'ticket' | 'steel' | 'darkSteel';
 
 const PILL_HEIGHT = 38;
 const PILL_UNDER  = 4;
@@ -169,7 +169,8 @@ function tokensFor(
         hasBorder: false,
       };
     case 'steel':
-      // Steel has its own dedicated render path and ignores these tokens.
+    case 'darkSteel':
+      // Both have their own dedicated render paths and ignore these tokens.
       return {
         surface: '#9097A8',
         border:  'transparent',
@@ -248,6 +249,18 @@ export function Button({
         onPress={isInteractable ? onPress : undefined}
         size={size}
         style={style}
+      />
+    );
+  }
+
+  if (variant === 'darkSteel') {
+    return (
+      <DarkSteelButton
+        label={label}
+        onPress={isInteractable ? onPress : undefined}
+        size={size}
+        style={style}
+        leadingIcon={leadingIcon}
       />
     );
   }
@@ -598,6 +611,90 @@ function SteelButton({
   );
 }
 
+function DarkSteelButton({
+  label,
+  onPress,
+  size = 'lg',
+  style,
+  leadingIcon,
+}: {
+  label: string;
+  onPress?: () => void;
+  size?: Size;
+  style?: ViewStyle;
+  leadingIcon?: React.ReactNode;
+}) {
+  const shine = useRef(new Animated.Value(0)).current;
+  const press = useRef(new Animated.Value(0)).current;
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shine, {
+          toValue: 1,
+          duration: 1800,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.delay(4200),
+        Animated.timing(shine, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.delay(300),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [shine]);
+
+  const SHINE_WIDTH = 80;
+  const translateX = shine.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-SHINE_WIDTH, Math.max(width + SHINE_WIDTH, 400)],
+  });
+  const scale = press.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.985],
+  });
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={() =>
+        Animated.timing(press, { toValue: 1, duration: 80, useNativeDriver: true }).start()
+      }
+      onPressOut={() =>
+        Animated.spring(press, { toValue: 0, tension: 400, friction: 18, useNativeDriver: true }).start()
+      }
+      onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
+      style={style}
+    >
+      <Animated.View style={[s.darkSteelOuter, { height: HEIGHTS[size], transform: [{ scale }] }]}>
+        <LinearGradient
+          colors={['#323849', '#1E2234', '#11141E']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={s.darkSteelFace}
+        >
+          <Animated.View
+            pointerEvents="none"
+            style={[s.steelSheenWrap, { width: SHINE_WIDTH, transform: [{ translateX }, { rotate: '20deg' }] }]}
+          >
+            <LinearGradient
+              colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.1)', 'rgba(255,255,255,0)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={s.steelSheen}
+            />
+          </Animated.View>
+
+          {leadingIcon && <View style={s.darkSteelIcon}>{leadingIcon}</View>}
+          <Text style={s.darkSteelLabel}>{label}</Text>
+        </LinearGradient>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 export function DebateActionButton({
   icon,
   ...props
@@ -708,6 +805,32 @@ const s = StyleSheet.create({
     fontFamily: fonts.display.bold,
     fontSize: 15,
     color: '#1A1F2C',
+    letterSpacing: -0.1,
+  },
+
+  // ── Dark Steel ──
+  darkSteelOuter: {
+    overflow: 'hidden',
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  darkSteelFace: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    overflow: 'hidden',
+    gap: 8,
+  },
+  darkSteelIcon: {
+    opacity: 0.9,
+  },
+  darkSteelLabel: {
+    fontFamily: fonts.display.bold,
+    fontSize: 15,
+    color: '#EDEEF3',
     letterSpacing: -0.1,
   },
 });

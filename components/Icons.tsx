@@ -292,6 +292,20 @@ export function ThumbUpIcon({
   );
 }
 
+export function AnalysisIcon({ size = 24, color = colors.text, strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4V5z"
+        stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
+      />
+      <Path d="M8 12V10"  stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <Path d="M12 12V7" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <Path d="M16 12V9" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Svg>
+  )
+}
+
 // Ported from https://upload.wikimedia.org/wikipedia/commons/5/57/Learn_Icon_WHITE-01.svg (CC0)
 export function LearnIcon({ size = 68, color = colors.text }: IconProps) {
   return (

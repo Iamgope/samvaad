@@ -34,7 +34,7 @@ import EditProfileScreen, { type EditableProfile } from './screens/EditProfileSc
 import AllTrophiesScreen from './screens/AllTrophiesScreen';
 import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
 import HelpSupportScreen from './screens/HelpSupportScreen';
-import DebateDetailScreen from './screens/DebateDetailScreen'
+import DebateResultScreen from './screens/DebateResultScreen'
 import DebateChatScreen from './screens/DebateChat';
 import NotificationsScreen from './screens/NotificationsScreen';
 import LearnScreen from './screens/LearnScreen';
@@ -151,7 +151,11 @@ export default function App() {
             <Stack.Screen name="AllTrophies" component={AllTrophiesScreen} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
             <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
-            <Stack.Screen name="DebateDetail" component={DebateDetailScreen} />
+            <Stack.Screen
+              name="DebateDetail"
+              component={DebateResultScreen}
+              options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}
+            />
             <Stack.Screen name="DebateChat" component={DebateChatScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="LearnScreen" component={LearnScreen} />
