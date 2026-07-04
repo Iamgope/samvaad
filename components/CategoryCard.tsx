@@ -97,7 +97,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  icon: { width: '180%', height: '180%' },
+  icon: { width: '80%', height: '80%' },
   name: {
     fontFamily: fonts.display.bold,
     fontSize: 12,

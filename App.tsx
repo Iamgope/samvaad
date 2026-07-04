@@ -100,6 +100,13 @@ export type RootStackParamList = {
     categoryId: string
     categoryName: string
     categoryAccent: string
+    userSide: 'for' | 'against'
+    myUsername: string
+    myRating: number
+    opponentName: string
+    result: 'win' | 'loss' | 'draw'
+    ratingDelta: number
+    xpDelta: number
   };
 };
 
