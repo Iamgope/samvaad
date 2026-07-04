@@ -2,6 +2,24 @@ export type Side = 'for' | 'against'
 export type WsMsg = { id: string; isMe: boolean; text: string; time: string; roundId: number }
 export type RoundLabel = { roundId: number; label: string }
 
+export type Judgement = {
+  id: number
+  winner: { id: number; username: string } | null
+  argument_score_pro: number
+  rebuttal_score_pro: number
+  clarity_score_pro: number
+  persuasion_score_pro: number
+  argument_score_con: number
+  rebuttal_score_con: number
+  clarity_score_con: number
+  persuasion_score_con: number
+  reasoning: string
+  strongest_moment: string
+  coaching_tip_pro: string
+  coaching_tip_con: string
+  created_at: string
+}
+
 export const CLOCK_SECONDS = 2 * 60
 export const CHAR_LIMIT = 400
 export const PASTE_GUARD_LEN = 8

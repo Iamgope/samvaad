@@ -12,9 +12,11 @@ import { DebateChatHeader } from './DebateChatHeader'
 import { CombatantRow } from './CombatantRow'
 import { Bubble, RoundDivider, TypingDots } from './MessageBubble'
 import { DebateComposer } from './DebateComposer'
+import { JudgementModal } from './JudgementModal'
+import { JudgingOverlay } from './JudgingOverlay'
 import {
   CLOCK_SECONDS, CHAR_LIMIT, PASTE_GUARD_LEN, ROUND_TYPE_LABELS,
-  type Side, type WsMsg, type RoundLabel,
+  type Side, type WsMsg, type RoundLabel, type Judgement,
 } from './types'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DebateChat'>
@@ -56,6 +58,8 @@ export default function DebateChatScreen({ route, navigation }: Props) {
   const [myTime, setMyTime] = useState(CLOCK_SECONDS)
   const [opTime, setOpTime] = useState(CLOCK_SECONDS)
   const [over, setOver] = useState(false)
+  const [judgement, setJudgement] = useState<Judgement | null>(null)
+  const completedSentRef = useRef(false)
   const [draft, setDraft] = useState('')
   const [leaveWarning, setLeaveWarning] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
@@ -111,6 +115,19 @@ export default function DebateChatScreen({ route, navigation }: Props) {
     if (!over && (myTime === 0 || opTime === 0)) setOver(true)
   }, [myTime, opTime, over])
 
+  // Ask the backend to judge the debate as soon as it ends, however it ended.
+  useEffect(() => {
+    if (!over || completedSentRef.current) return
+    completedSentRef.current = true
+    const ws = debateSession.client()
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
+    try {
+      ws.send({ type: 'debate_completed', data: { debate_id: debateSession.debateId() } })
+    } catch (err) {
+      console.warn('Failed to send debate_completed', err)
+    }
+  }, [over])
+
   // Wire live WebSocket events
   useEffect(() => {
     const ws = debateSession.client()
@@ -118,7 +135,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
 
     const handleEvent = (raw: unknown) => {
       if (!raw || typeof raw !== 'object') return
-      const ev = raw as { type?: string; message?: any; round?: any; judgement?: any }
+      const ev = raw as { type?: string; message?: any; round?: any; data?: any }
 
       if (ev.type === 'message.new' && ev.message) {
         const msg = ev.message
@@ -169,6 +186,10 @@ export default function DebateChatScreen({ route, navigation }: Props) {
       if (ev.type === 'debate.completed') {
         if (turnTimerRef.current) clearTimeout(turnTimerRef.current)
         setOver(true)
+      }
+
+      if (ev.type === 'debate_result' && ev.data) {
+        setJudgement(ev.data as Judgement)
       }
     }
 
@@ -334,6 +355,17 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         danger
         onConfirm={confirmLeave}
         onCancel={() => setLeaveWarning(false)}
+      />
+
+      <JudgingOverlay visible={over && !judgement} accent={accent} />
+
+      <JudgementModal
+        visible={!!judgement}
+        judgement={judgement}
+        myUserId={myUserId}
+        userSide={userSide}
+        opponentName={opponentName}
+        onClose={() => navigation.goBack()}
       />
     </SafeAreaView>
   )
