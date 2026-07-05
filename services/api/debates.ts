@@ -1,5 +1,6 @@
 import { api } from './client';
 import type { Topic } from './topics';
+import type { Judgement } from '../../screens/DebateChat/types';
 
 export type DebateUserRef = {
   id: number;
@@ -27,6 +28,10 @@ type ApiResponse = {
 
 export async function fetchMyDebates(): Promise<DebateSummary[]> {
   const res = await api.get<ApiResponse>('/debate/getMyDebates/');
-  console.log(res.data)
   return res.data.debates;
+}
+
+export async function fetchDebateJudgement(debateId: string): Promise<Judgement> {
+  const res = await api.get<{ status: number; message: string; data: Judgement }>(`/debate/${debateId}/judgement/`);
+  return res.data;
 }

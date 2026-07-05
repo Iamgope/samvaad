@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-  View, StyleSheet, Dimensions, ScrollView, Animated, PanResponder,
+  View, StyleSheet, Dimensions, ScrollView, Animated, PanResponder, TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Polygon, Text as SvgText } from 'react-native-svg';
@@ -8,7 +8,7 @@ import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import { spacing, SCREEN_PADDING } from '../../constants/spacing';
 import { categoryConfig } from '../../constants/categories';
-import { fetchTopics } from '../../services/api';
+import { useTopics } from '../../hooks/useQueries';
 import { Text } from '../../components/Text';
 import { ChipDropdown, type ChipOption } from '../../components/ChipDropdown';
 import { RankListRow } from '../../components/RankListRow';
@@ -153,23 +153,17 @@ function Podium({ players, accent }: { players: Player[]; accent: string }) {
 }
 
 export default function LadderScreen() {
-  const [chips, setChips] = useState<ChipOption[]>([ALL_CHIP]);
-  const [selectedId, setSelectedId] = useState<string>('all');
-  const [isExpanded, setIsExpanded] = useState(false);
+  const { data: topicsData } = useTopics();
+  const chips: ChipOption[] = topicsData
+    ? [ALL_CHIP, ...Object.keys(topicsData).map(name => {
+        const cfg = categoryConfig(name);
+        return { id: name, label: name, emoji: cfg.emoji, accent: cfg.accent };
+      })]
+    : [ALL_CHIP];
 
-  useEffect(() => {
-    fetchTopics()
-      .then(data => {
-        setChips([
-          ALL_CHIP,
-          ...Object.keys(data).map(name => {
-            const cfg = categoryConfig(name);
-            return { id: name, label: name, emoji: cfg.emoji, accent: cfg.accent };
-          }),
-        ]);
-      })
-      .catch(() => {});
-  }, []);
+  const [selectedId, setSelectedId] = useState<string>('all');
+  const [timeFrame, setTimeFrame] = useState<'weekly' | 'allTime'>('weekly');
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const currentChip = chips.find(c => c.id === selectedId) ?? chips[0];
   const players: Player[] = PLAYERS_BY_CATEGORY[selectedId] ?? [];
@@ -226,7 +220,20 @@ export default function LadderScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Leaderboard</Text>
+        <View style={styles.timeToggle}>
+          {(['weekly', 'allTime'] as const).map(tf => (
+            <TouchableOpacity
+              key={tf}
+              style={[styles.timeBtn, timeFrame === tf && styles.timeBtnActive]}
+              onPress={() => setTimeFrame(tf)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.timeBtnText, timeFrame === tf && styles.timeBtnTextActive]}>
+                {tf === 'weekly' ? 'Weekly' : 'All Time'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
         <View style={styles.filterWrap}>
           <ChipDropdown
             selected={currentChip}
@@ -302,6 +309,31 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontFamily: fonts.jakarta.semiBold, fontSize: 16, color: colors.text, flex: 1 },
   filterWrap: { position: 'relative', zIndex: 10, minWidth: 140 },
+
+  timeToggle: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface2,
+    borderRadius: 20,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
+  timeBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  timeBtnActive: {
+    backgroundColor: colors.borderStrong,
+  },
+  timeBtnText: {
+    fontFamily: fonts.jakarta.semiBold,
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  timeBtnTextActive: {
+    color: colors.text,
+  },
 
   avatarWrap: { alignItems: 'center', justifyContent: 'center' },
   avatarCircle: { backgroundColor: '#1C2535', alignItems: 'center', justifyContent: 'center' },

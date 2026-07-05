@@ -1,5 +1,5 @@
 import React, { useRef } from 'react'
-import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native'
+import { View, StyleSheet, TouchableOpacity, Dimensions, ScrollView } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../App'
@@ -25,35 +25,32 @@ const POSTER: Record<string, any> = {
   culture:  require('../assets/poster_culture.png'),
 }
 
-// ── Mocked until wired from DebateChat ────────────────────────────────────────
-const MOCK_RESULT:    'win' | 'loss' | 'draw' = 'loss'
-const MOCK_USER_SIDE: 'for' | 'against'       = 'for'
-const MOCK_OPPONENT   = 'arjun.m'
-const MOCK_XP         = 10
-
-const FOR_COLOR = '#4ADE80'
-
-const RESULT_META = {
-  win:  { ratingDelta: '+3', xp: MOCK_XP },
-  loss: { ratingDelta: '-4', xp: 10 },
-  draw: { ratingDelta: '+1', xp: 5  },
-}
+const FOR_COLOR     = '#4ADE80'
+const AGAINST_COLOR = '#FF3B5C'
 
 export default function DebateResultScreen({ route, navigation }: Props) {
-  const { motion, categoryId, categoryName, categoryAccent } = route.params
+  const {
+    motion, categoryId, categoryName, categoryAccent,
+    userSide, myUsername, myRating, opponentName,
+    result, ratingDelta, xpDelta,
+    reasoning, strongestMoment, coachingTip, scores,
+  } = route.params
   const insets = useSafeAreaInsets()
 
-  const meta         = RESULT_META[MOCK_RESULT]
-  const opponentSide: 'for' | 'against' = MOCK_USER_SIDE === 'for' ? 'against' : 'for'
+  const opponentSide: 'for' | 'against' = userSide === 'for' ? 'against' : 'for'
   const shareCardRef = useRef<View>(null)
+  const deltaColor   = ratingDelta >= 0 ? FOR_COLOR : AGAINST_COLOR
+  const ratingStr    = ratingDelta >= 0 ? `+${ratingDelta}` : String(ratingDelta)
 
   // PRO on right, AGAINST on left
-  const left  = MOCK_USER_SIDE === 'against'
-    ? { name: 'you',         initials: 'Y',  side: MOCK_USER_SIDE as 'for' | 'against' }
-    : { name: MOCK_OPPONENT, initials: 'AM', side: opponentSide }
-  const right = MOCK_USER_SIDE === 'for'
-    ? { name: 'you',         initials: 'Y',  side: MOCK_USER_SIDE as 'for' | 'against' }
-    : { name: MOCK_OPPONENT, initials: 'AM', side: opponentSide }
+  const myInitials  = myUsername.slice(0, 2).toUpperCase()
+  const opInitials  = opponentName.slice(0, 2).toUpperCase()
+  const left  = userSide === 'against'
+    ? { name: myUsername,   initials: myInitials, side: userSide }
+    : { name: opponentName, initials: opInitials, side: opponentSide }
+  const right = userSide === 'for'
+    ? { name: myUsername,   initials: myInitials, side: userSide }
+    : { name: opponentName, initials: opInitials, side: opponentSide }
 
   return (
     <View style={s.overlay}>
@@ -76,7 +73,7 @@ export default function DebateResultScreen({ route, navigation }: Props) {
       </View>
 
       {/* WON / LOST — outside modal, above it */}
-      <ResultBadge result={MOCK_RESULT} />
+      <ResultBadge result={result} />
 
       {/* ── Modal card ── */}
       <View style={s.sheet}>
@@ -93,7 +90,7 @@ export default function DebateResultScreen({ route, navigation }: Props) {
           style={s.heroCard}
         />
 
-        <View style={s.body}>
+        <ScrollView style={s.body} contentContainerStyle={s.bodyContent} showsVerticalScrollIndicator={false}>
 
           {/* Avatars row */}
           <View style={s.avatarsRow}>
@@ -104,25 +101,72 @@ export default function DebateResultScreen({ route, navigation }: Props) {
 
           <View style={s.divider} />
 
-          {/* Stat boxes — 2 separate cards */}
+          {/* Stat boxes */}
           <View style={s.statBoxRow}>
             <View style={s.statBox}>
               <Text style={s.statBoxLabel}>RATING</Text>
               <View style={s.statBoxInner}>
-                <Text style={s.statBoxMain}>1445</Text>
-                <Text style={[s.statBoxDelta, { color: FOR_COLOR }]}>{meta.ratingDelta}</Text>
+                <Text style={s.statBoxMain}>{myRating}</Text>
+                <Text style={[s.statBoxDelta, { color: deltaColor }]}>{ratingStr}</Text>
               </View>
             </View>
             <View style={s.statBox}>
               <Text style={s.statBoxLabel}>TOTAL XP</Text>
               <View style={s.statBoxInner}>
-                <Text style={s.statBoxMain}>{meta.xp}</Text>
-                <Text style={[s.statBoxDelta, { color: colors.lime }]}>+{meta.xp}</Text>
+                <Text style={s.statBoxMain}>{xpDelta}</Text>
+                <Text style={[s.statBoxDelta, { color: colors.lime }]}>+{xpDelta}</Text>
               </View>
             </View>
           </View>
 
-        </View>
+          {/* Analysis — only shown when judgment data is present */}
+          {scores && (
+            <>
+              <View style={s.divider} />
+              <Text style={s.analysisSectionLabel}>SCORECARD</Text>
+              <View style={s.scoreHeader}>
+                <Text style={s.scoreHeaderSide}>FOR</Text>
+                <View style={{ flex: 1 }} />
+                <Text style={s.scoreHeaderSide}>AGAINST</Text>
+              </View>
+              {([
+                ['ARGUMENT',   scores.argumentPro,   scores.argumentCon],
+                ['REBUTTAL',   scores.rebuttalPro,   scores.rebuttalCon],
+                ['CLARITY',    scores.clarityPro,    scores.clarityCon],
+                ['PERSUASION', scores.persuasionPro, scores.persuasionCon],
+              ] as [string, number, number][]).map(([label, pro, con]) => (
+                <View key={label} style={s.scoreRow}>
+                  <Text style={s.scoreNum}>{pro.toFixed(1)}</Text>
+                  <Text style={s.scoreLabel}>{label}</Text>
+                  <Text style={s.scoreNum}>{con.toFixed(1)}</Text>
+                </View>
+              ))}
+            </>
+          )}
+
+          {!!reasoning && (
+            <>
+              <View style={s.divider} />
+              <Text style={s.analysisSectionLabel}>REASONING</Text>
+              <Text style={s.analysisBody}>{reasoning}</Text>
+            </>
+          )}
+
+          {!!strongestMoment && (
+            <>
+              <Text style={[s.analysisSectionLabel, { marginTop: spacing.md }]}>STRONGEST MOMENT</Text>
+              <Text style={s.analysisBody}>{strongestMoment}</Text>
+            </>
+          )}
+
+          {!!coachingTip && (
+            <>
+              <Text style={[s.analysisSectionLabel, { marginTop: spacing.md }]}>COACHING TIP FOR YOU</Text>
+              <Text style={s.analysisBody}>{coachingTip}</Text>
+            </>
+          )}
+
+        </ScrollView>
       </View>
 
       {/* Buttons — outside modal */}
@@ -150,14 +194,14 @@ export default function DebateResultScreen({ route, navigation }: Props) {
         <ResultShareCard
           ref={shareCardRef}
           motion={motion}
-          result={MOCK_RESULT}
+          result={result}
           categoryName={categoryName}
           categoryAccent={categoryAccent}
-          userUsername="you"
-          opponentUsername={MOCK_OPPONENT}
-          userSide={MOCK_USER_SIDE}
-          ratingDelta={meta.ratingDelta}
-          xp={meta.xp}
+          userUsername={myUsername}
+          opponentUsername={opponentName}
+          userSide={userSide}
+          ratingDelta={ratingStr}
+          xp={xpDelta}
         />
       </View>
     </View>
@@ -271,6 +315,9 @@ const s = StyleSheet.create({
   heroCard: {},
 
   body: {
+    maxHeight: SCREEN_H * 0.44,
+  },
+  bodyContent: {
     padding: spacing.md,
     gap: spacing.md,
   },
@@ -358,4 +405,52 @@ const s = StyleSheet.create({
   },
   outsideBtn: { flex: 1 },
   offScreen: { position: 'absolute', left: -9999, top: -9999 },
+
+  // Analysis section
+  analysisSectionLabel: {
+    fontFamily: fonts.jakarta.semiBold,
+    fontSize: 9,
+    color: colors.textSubtle,
+    letterSpacing: 1.5,
+    marginTop: spacing.xs,
+  },
+  scoreHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  scoreHeaderSide: {
+    fontFamily: fonts.jakarta.semiBold,
+    fontSize: 9,
+    letterSpacing: 1,
+    color: colors.textSubtle,
+    width: 52,
+  },
+  scoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 5,
+  },
+  scoreNum: {
+    fontFamily: fonts.display.bold,
+    fontSize: 14,
+    color: colors.text,
+    width: 52,
+  },
+  scoreLabel: {
+    flex: 1,
+    fontFamily: fonts.jakarta.semiBold,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  analysisBody: {
+    fontFamily: fonts.jakarta.regular,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.textMuted,
+    marginTop: 4,
+  },
 })

@@ -24,12 +24,12 @@ import { Toast } from '../components/Toast'
 import {
   connectWebSocket,
   WebSocketClient,
-  fetchCategoryAndRules,
   ApiError,
   getCurrentUserId,
   debateSession,
   type DebateCategory,
 } from '../services/api'
+import { useCategories } from '../hooks/useQueries'
 import { OpeningOverlay } from './DebateChat/OpeningOverlay'
 
 const DEFAULT_AVATAR = require('../assets/defaultprofilepic.png')
@@ -290,11 +290,19 @@ type Props = { navigation: any; route?: { params?: RouteParams } }
 export default function JoinDebateScreen({ navigation, route }: Props) {
   const params = route?.params
 
-  const [categories, setCategories] = useState<DebateCategory[]>([])
-  const [rules, setRules] = useState<string[]>([])
-  const [loadingCategories, setLoadingCategories] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [fetchError, setFetchError] = useState<string | null>(null)
+  const {
+    data: categoriesData,
+    isLoading: loadingCategories,
+    isRefetching: refreshing,
+    error: categoriesError,
+    refetch: refetchCategories,
+  } = useCategories()
+
+  const categories: DebateCategory[] = categoriesData?.categories ?? []
+  const rules: string[] = categoriesData?.rules ?? []
+  const fetchError = categoriesError
+    ? ((categoriesError as ApiError).message ?? 'Failed to load categories')
+    : null
 
   const categoryChips = useMemo(() => toCategoryChips(categories), [categories])
 
@@ -320,24 +328,6 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
   }
   const [matchedDebate, setMatchedDebate] = useState<MatchedDebate | null>(null)
 
-  const loadCategories = useCallback(async () => {
-    try {
-      setFetchError(null)
-      const res = await fetchCategoryAndRules()
-      setCategories(res.categories)
-      setRules(res.rules)
-    } catch (err) {
-      setFetchError(err instanceof ApiError ? err.message : 'Failed to load categories')
-    }
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-    setLoadingCategories(true)
-    loadCategories().finally(() => { if (!cancelled) setLoadingCategories(false) })
-    return () => { cancelled = true }
-  }, [loadCategories])
-
   // Reconcile selected category once data arrives — preserve route-param default if it matches.
   useEffect(() => {
     if (categories.length === 0) return
@@ -352,11 +342,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryChips])
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true)
-    await loadCategories()
-    setRefreshing(false)
-  }, [loadCategories])
+  const onRefresh = useCallback(() => { void refetchCategories() }, [refetchCategories])
 
   const closeSocket = () => {
     wsRef.current?.close()

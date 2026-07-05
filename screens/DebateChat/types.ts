@@ -13,6 +13,12 @@ export type Judgement = {
   rebuttal_score_con: number
   clarity_score_con: number
   persuasion_score_con: number
+  overall_score_pro: number
+  overall_score_con: number
+  rating_delta_pro: number
+  rating_delta_con: number
+  xp_delta_pro: number
+  xp_delta_con: number
   reasoning: string
   strongest_moment: string
   coaching_tip_pro: string

@@ -17,8 +17,9 @@ export type Match = {
   opponentInit: string;
   format: FormatKey;
   topic: TopicKey;
-  outcome: 'win' | 'loss';
+  outcome: 'win' | 'loss' | 'draw';
   agoLabel: string;
+  userSide: 'for' | 'against';
 };
 
 const FORMAT_LABELS: Record<FormatKey, string> = {
@@ -30,9 +31,11 @@ const FORMAT_LABELS: Record<FormatKey, string> = {
 export function DebateHistory({
   matches,
   isOwn,
+  onPress,
 }: {
   matches: Match[];
   isOwn: boolean;
+  onPress?: (match: Match) => void;
 }) {
   const [topic, setTopic] = useState<TopicId>('all');
   const currentTopic = TOPICS.find(t => t.id === topic) ?? TOPICS[0];
@@ -77,8 +80,13 @@ export function DebateHistory({
         </View>
       ) : (
         filtered.map((m, i) => {
-          const isWin = m.outcome === 'win';
           const t = TOPICS.find(t => t.id === m.topic) ?? TOPICS[0];
+          const chipStyle = m.outcome === 'win' ? styles.outcomeWin
+            : m.outcome === 'loss' ? styles.outcomeLoss
+            : styles.outcomeDraw;
+          const chipColor = m.outcome === 'win' ? '#7FE0AA'
+            : m.outcome === 'loss' ? '#E08A8A'
+            : '#93C5FD';
           return (
             <View
               key={m.id}
@@ -93,10 +101,11 @@ export function DebateHistory({
                 categoryName={t.label}
                 categoryAccent={colors.textMuted}
                 headlineSize={15}
+                onPress={onPress ? () => onPress(m) : undefined}
               />
-              <View style={[styles.outcomeChip, isWin ? styles.outcomeWin : styles.outcomeLoss]}>
-                <Text style={[styles.outcomeText, { color: isWin ? '#7FE0AA' : '#E08A8A' }]}>
-                  {isWin ? 'WIN' : 'LOSS'}
+              <View style={[styles.outcomeChip, chipStyle]}>
+                <Text style={[styles.outcomeText, { color: chipColor }]}>
+                  {m.outcome === 'win' ? 'WIN' : m.outcome === 'loss' ? 'LOSS' : 'DRAW'}
                 </Text>
               </View>
             </View>
@@ -151,6 +160,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(224, 138, 138, 0.10)',
     borderColor: 'rgba(224, 138, 138, 0.35)',
     borderBottomColor: 'rgba(224, 138, 138, 0.65)',
+  },
+  outcomeDraw: {
+    backgroundColor: 'rgba(147, 197, 253, 0.10)',
+    borderColor: 'rgba(147, 197, 253, 0.35)',
+    borderBottomColor: 'rgba(147, 197, 253, 0.65)',
   },
   empty: {
     paddingVertical: spacing.xl,

@@ -1,19 +1,20 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react'
-import { FlatList, StyleSheet, Platform, Keyboard } from 'react-native'
+import { FlatList, View, StyleSheet, Platform, Keyboard } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../../App'
 import { colors } from '../../constants/colors'
 import { spacing, SCREEN_PADDING } from '../../constants/spacing'
 import { TextInput } from 'react-native'
+import { Text } from '../../components/Text'
 import { ConfirmModal } from '../../components/ConfirmModal'
-import { debateSession } from '../../services/api'
+import { useQueryClient } from '@tanstack/react-query'
+import { debateSession, fetchUserProfile } from '../../services/api'
+import { QUERY_KEYS } from '../../hooks/useQueries'
 import { DebateChatHeader } from './DebateChatHeader'
 import { CombatantRow } from './CombatantRow'
 import { Bubble, RoundDivider, TypingDots } from './MessageBubble'
 import { DebateComposer } from './DebateComposer'
-import { JudgementModal } from './JudgementModal'
-import { JudgingOverlay } from './JudgingOverlay'
 import {
   CLOCK_SECONDS, CHAR_LIMIT, PASTE_GUARD_LEN, ROUND_TYPE_LABELS,
   type Side, type WsMsg, type RoundLabel, type Judgement,
@@ -36,6 +37,7 @@ function useKeyboardHeight() {
 export default function DebateChatScreen({ route, navigation }: Props) {
   const { motion, userSide, opponentName, categoryAccent, myUserId, pendingOpening } = route.params
 
+  const queryClient = useQueryClient()
   const accent = !categoryAccent || categoryAccent === colors.lime ? colors.purple : categoryAccent
   const listRef = useRef<FlatList>(null)
   const inputRef = useRef<TextInput>(null)
@@ -58,10 +60,90 @@ export default function DebateChatScreen({ route, navigation }: Props) {
   const [myTime, setMyTime] = useState(CLOCK_SECONDS)
   const [opTime, setOpTime] = useState(CLOCK_SECONDS)
   const [over, setOver] = useState(false)
-  const [judgement, setJudgement] = useState<Judgement | null>(null)
   const completedSentRef = useRef(false)
   const [draft, setDraft] = useState('')
+  const [wsLost, setWsLost] = useState(false)
   const [leaveWarning, setLeaveWarning] = useState(false)
+  const verdictRef = useRef<any>(null)   // stores raw judgement from debate.completed
+  useEffect(() => {
+    if (!over) return
+
+    // Tell the backend the debate is over so it triggers the judge.
+    // Safe to call even if end_turn was already used — the backend is idempotent.
+    try {
+      debateSession.client()?.send({ type: 'time_expired', data: {} })
+    } catch (_) {}
+
+    const goToResult = (username: string, rating: number) => {
+      const j = verdictRef.current as Judgement | null
+      const result: 'win' | 'loss' | 'draw' =
+        j == null          ? 'draw'
+        : j.winner == null ? 'draw'
+        : Number(j.winner.id) === Number(myUserId) ? 'win'
+        : 'loss'
+
+      // Read deltas directly from backend judgement (stored by apply_judgement_outcome).
+      const ratingDelta = j
+        ? (userSide === 'for' ? j.rating_delta_pro : j.rating_delta_con)
+        : 0
+      const xpDelta = j
+        ? (userSide === 'for' ? j.xp_delta_pro : j.xp_delta_con)
+        : 0
+
+      // Profile was fetched before ELO update ran; add the delta to get the new rating.
+      const updatedRating = rating + ratingDelta
+
+      navigation.navigate('DebateResult', {
+        motion,
+        categoryId:    '',
+        categoryName:  'Debate',
+        categoryAccent,
+        userSide,
+        myUsername:    username,
+        myRating:      updatedRating,
+        opponentName,
+        result,
+        ratingDelta,
+        xpDelta,
+        reasoning:       j?.reasoning,
+        strongestMoment: j?.strongest_moment,
+        coachingTip:     userSide === 'for' ? j?.coaching_tip_pro : j?.coaching_tip_con,
+        scores: j ? {
+          argumentPro:  j.argument_score_pro,
+          rebuttalPro:  j.rebuttal_score_pro,
+          clarityPro:   j.clarity_score_pro,
+          persuasionPro: j.persuasion_score_pro,
+          argumentCon:  j.argument_score_con,
+          rebuttalCon:  j.rebuttal_score_con,
+          clarityCon:   j.clarity_score_con,
+          persuasionCon: j.persuasion_score_con,
+        } : undefined,
+      })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.userProfile })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.myDebates })
+    }
+
+    // Fetch profile in parallel while waiting for the verdict
+    const profilePromise = fetchUserProfile()
+      .then(p => ({ username: p.user.username, rating: p.elo_rating }))
+      .catch(() => ({ username: 'you', rating: 0 }))
+
+    // Poll for verdictRef up to 18s (judge typically takes ~10s)
+    const MAX_WAIT_MS  = 18_000
+    const POLL_MS      = 300
+    let elapsed        = 0
+
+    const poll = setInterval(async () => {
+      elapsed += POLL_MS
+      if (verdictRef.current || elapsed >= MAX_WAIT_MS) {
+        clearInterval(poll)
+        const { username, rating } = await profilePromise
+        goToResult(username, rating)
+      }
+    }, POLL_MS)
+
+    return () => clearInterval(poll)
+  }, [over])
   const [showEmoji, setShowEmoji] = useState(false)
   const [opponentTyping, setOpponentTyping] = useState(false)
   const opponentTypingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -135,7 +217,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
 
     const handleEvent = (raw: unknown) => {
       if (!raw || typeof raw !== 'object') return
-      const ev = raw as { type?: string; message?: any; round?: any; data?: any }
+      const ev = raw as { type?: string; message?: any; round?: any; data?: any; judgement?: any }
 
       if (ev.type === 'message.new' && ev.message) {
         const msg = ev.message
@@ -185,21 +267,23 @@ export default function DebateChatScreen({ route, navigation }: Props) {
 
       if (ev.type === 'debate.completed') {
         if (turnTimerRef.current) clearTimeout(turnTimerRef.current)
+        if (ev.judgement) verdictRef.current = ev.judgement
         setOver(true)
       }
 
       if (ev.type === 'debate_result' && ev.data) {
-        setJudgement(ev.data as Judgement)
+        verdictRef.current = ev.data as Judgement
       }
     }
 
     const off = ws.on('message', handleEvent)
+    const offClose = ws.on('close', () => setWsLost(true))
 
     // Replay any events that arrived during the opening overlay
     debateSession.drainBuffer().forEach(handleEvent)
 
     // Auto-send the opening statement written before match
-    if (pendingOpening) {
+    if (pendingOpening && ws.readyState === WebSocket.OPEN) {
       ws.send({ type: 'message', data: { content: pendingOpening } })
       setIHaveSentOpening(true)
       setIsMyTurn(false)
@@ -207,6 +291,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
 
     return () => {
       off()
+      offClose()
       if (turnTimerRef.current) clearTimeout(turnTimerRef.current)
       if (opponentTypingTimer.current) clearTimeout(opponentTypingTimer.current)
     }
@@ -218,7 +303,10 @@ export default function DebateChatScreen({ route, navigation }: Props) {
     const now = Date.now()
     if (canType && t.length > 0 && now - typingThrottleRef.current > 2000) {
       typingThrottleRef.current = now
-      debateSession.client()?.send({ type: 'typing', data: {} })
+      const wsTyping = debateSession.client()
+      if (wsTyping && wsTyping.readyState === WebSocket.OPEN) {
+        try { wsTyping.send({ type: 'typing', data: {} }) } catch (_) {}
+      }
     }
   }
 
@@ -235,7 +323,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
     if (currentRoundType === 'OPENING' && iHaveSentOpening) return
     if (currentRoundType === 'REBUTTAL' && !isMyTurn) return
     const ws = debateSession.client()
-    if (!ws) return
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
     ws.send({ type: 'message', data: { content: draft.trim() } })
     setDraft('')
     setShowEmoji(false)
@@ -253,7 +341,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
   const endTurn = () => {
     if (!isMyTurn || over || currentRoundType !== 'REBUTTAL') return
     const ws = debateSession.client()
-    if (!ws) return
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
     ws.send({ type: 'end_turn', data: {} })
     setIsMyTurn(false)
     Keyboard.dismiss()
@@ -328,6 +416,12 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
       />
 
+      {wsLost && !over && (
+        <View style={s.wsLostBanner}>
+          <Text variant="labelSm" style={s.wsLostText}>Connection lost — messages may not send</Text>
+        </View>
+      )}
+
       <DebateComposer
         draft={draft}
         onChangeDraft={onChangeDraft}
@@ -357,16 +451,6 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         onCancel={() => setLeaveWarning(false)}
       />
 
-      <JudgingOverlay visible={over && !judgement} accent={accent} />
-
-      <JudgementModal
-        visible={!!judgement}
-        judgement={judgement}
-        myUserId={myUserId}
-        userSide={userSide}
-        opponentName={opponentName}
-        onClose={() => navigation.goBack()}
-      />
     </SafeAreaView>
   )
 }
@@ -374,4 +458,11 @@ export default function DebateChatScreen({ route, navigation }: Props) {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.black },
   list: { paddingHorizontal: SCREEN_PADDING, paddingTop: spacing.xs, paddingBottom: spacing.md },
+  wsLostBanner: {
+    backgroundColor: '#7C2D12',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: SCREEN_PADDING,
+    alignItems: 'center',
+  },
+  wsLostText: { color: '#FED7AA' },
 })

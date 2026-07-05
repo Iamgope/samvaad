@@ -11,6 +11,7 @@ export type UserAccount = {
 export type UserProfile = {
   user: UserAccount;
   elo_rating: number;
+  xp: number;
   total_debates: number;
   wins: number;
   losses: number;

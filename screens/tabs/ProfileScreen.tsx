@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+
 import {
   View, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, ActivityIndicator, RefreshControl,
 } from 'react-native';
@@ -17,12 +18,14 @@ import {
   CoinIcon, EditIcon, MoreVerticalIcon, ShareIcon, StarIcon,
 } from '../../components/Icons';
 import { TIERS, TIER_COLOR, getTierInfo } from '../../constants/tiers';
+import { categoryConfig } from '../../constants/categories';
 import { pickSquareImage } from '../../utils/imagePicker';
 import { ShareCard, shareProfileCard } from '../../components/profile/ShareCard';
 import { TrophyCase, type Badge } from '../../components/profile/TrophyCase';
 import { DebateHistory, type Match } from '../../components/profile/DebateHistory';
 import { MoreMenuModal, type MoreMenuAction } from '../../components/MoreMenuModal';
-import { fetchUserProfile, fetchMyDebates, mediaUrl, logout, type UserProfile, type DebateSummary } from '../../services/api';
+import { mediaUrl, logout, fetchDebateJudgement, type UserProfile, type DebateSummary } from '../../services/api';
+import { useUserProfile, useMyDebates } from '../../hooks/useQueries';
 
 const DEFAULT_AVATAR = require('../../assets/defaultprofilepic.png');
 
@@ -36,6 +39,7 @@ type ProfileData = {
   avatarUri?: string | null;
   bio: string | null;
   rating: number;
+  xp: number;
   wins: number;
   debates: number;
   streak: number;
@@ -43,27 +47,6 @@ type ProfileData = {
   badges: Badge[];
 };
 
-// ─── MOCK DATA ─────────────────────────────────────────────────────
-
-const MOCK_PROFILE: ProfileData = {
-  isOwn:    true,
-  name:     'Aman Gope',
-  handle:   '@aman',
-  initials: 'AG',
-  bio:      'Reading more than I write. Trying to argue better.',
-  rating:   2047,
-  wins:     94,
-  debates:  142,
-  streak:   6,
-  matches: [
-    { id: 'm1', motion: 'Should India remove religion-based laws?',     opponentName: 'Zara Khan',    opponentInit: 'ZK', format: 'clash',    topic: 'politics', outcome: 'win',  agoLabel: '2h'  },
-    { id: 'm2', motion: 'Should cricket be added to the Olympics?',     opponentName: 'Dev Patel',    opponentInit: 'DP', format: 'stronger', topic: 'sports',   outcome: 'win',  agoLabel: '5h'  },
-    { id: 'm3', motion: 'Are translations betraying the originals?',    opponentName: 'Aisha Nair',   opponentInit: 'AN', format: 'counter',  topic: 'culture',  outcome: 'loss', agoLabel: 'Yesterday' },
-    { id: 'm4', motion: 'Is judicial review undemocratic by design?',   opponentName: 'Kabir Singh',  opponentInit: 'KS', format: 'stronger', topic: 'politics', outcome: 'win',  agoLabel: '2d'  },
-    { id: 'm5', motion: 'Do we glorify violence in cinema too much?',   opponentName: 'Priya Sharma', opponentInit: 'PS', format: 'clash',    topic: 'culture',  outcome: 'win',  agoLabel: '3d'  },
-  ],
-  badges: [],
-};
 
 // ─── HERO ─────────────────────────────────────────────────────────
 
@@ -152,7 +135,7 @@ function ProfileHero({
           </View>
           <View style={[hero.statChip, hero.statChipNeutral]}>
             <CoinIcon size={13} color={colors.gold} />
-            <Text style={[hero.statChipLabel, { color: colors.lime }]}>250</Text>
+            <Text style={[hero.statChipLabel, { color: colors.lime }]}>{profile.xp ?? 0}</Text>
           </View>
         </View>
       </View>
@@ -348,7 +331,9 @@ function mapDebatesToMatches(debates: DebateSummary[], myId: number): Match[] {
     .map((d): Match => {
       const meIsPro = d.user_pro.id === myId;
       const opponent = meIsPro ? d.user_con : d.user_pro;
-      const outcome: Match['outcome'] = d.winner?.id === myId ? 'win' : 'loss';
+      const outcome: Match['outcome'] = d.winner == null ? 'draw'
+        : d.winner.id === myId ? 'win'
+        : 'loss';
       const when = d.completed_at ?? d.started_at;
       return {
         id: String(d.id),
@@ -359,11 +344,12 @@ function mapDebatesToMatches(debates: DebateSummary[], myId: number): Match[] {
         topic: topicKeyFor(d.topic.category.name),
         outcome,
         agoLabel: formatAgo(when),
+        userSide: meIsPro ? 'for' : 'against',
       };
     });
 }
 
-function mergeApiProfile(base: ProfileData, api: UserProfile): ProfileData {
+function buildProfile(api: UserProfile, matches: Match[]): ProfileData {
   const { first_name, last_name, username } = api.user;
   const fullName = [first_name, last_name].filter(Boolean).join(' ').trim();
   const initials = [first_name, last_name]
@@ -372,57 +358,68 @@ function mergeApiProfile(base: ProfileData, api: UserProfile): ProfileData {
     .join('')
     .slice(0, 2);
   return {
-    ...base,
-    name: fullName || base.name,
-    handle: username ? `@${username}` : base.handle,
-    initials: initials || base.initials,
-    bio: api.bio,
-    rating: api.elo_rating,
+    isOwn:   true,
+    name:    fullName || username,
+    handle:  `@${username}`,
+    initials: initials || username.slice(0, 2).toUpperCase(),
+    bio:     api.bio,
+    rating:  api.elo_rating,
+    xp:      api.xp ?? 0,
+    wins:    api.wins,
     debates: api.total_debates,
-    wins: api.wins,
-    streak: api.streak,
+    streak:  api.streak,
+    matches,
+    badges:  [],
   };
 }
 
-export default function ProfileScreen({
-  profile: initialProfile = MOCK_PROFILE,
-}: { profile?: ProfileData }) {
+export default function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [profile, setProfile] = useState<ProfileData>(initialProfile);
-  const [avatarUri, setAvatarUri] = useState<string | null>(initialProfile.avatarUri ?? null);
+  const { data: apiProfile, isLoading: loading, isRefetching, error: profileError, refetch: refetchProfile } = useUserProfile();
+  const { data: apiDebates, isRefetching: isRefetchingDebates, refetch: refetchDebates } = useMyDebates();
+  const profile = useMemo<ProfileData | null>(() => {
+    if (!apiProfile) return null;
+    const matches = apiDebates ? mapDebatesToMatches(apiDebates, apiProfile.user.id) : [];
+    return buildProfile(apiProfile, matches);
+  }, [apiProfile, apiDebates]);
+
+  const [localAvatarUri, setLocalAvatarUri] = useState<string | null>(null);
+  const avatarUri = localAvatarUri ?? (apiProfile ? (mediaUrl(apiProfile.profile_pic) ?? null) : null);
+
   const [menuOpen, setMenuOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const refreshing = isRefetching || isRefetchingDebates;
+  const error = profileError ? ((profileError as Error).message ?? 'Could not load profile') : null;
   const shareCardRef = useRef<View>(null);
 
-  const loadProfile = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
-    if (mode === 'initial') setLoading(true);
-    else setRefreshing(true);
-    setError(null);
-    try {
-      const [apiProfile, apiDebates] = await Promise.all([
-        fetchUserProfile(),
-        fetchMyDebates(),
-      ]);
-      const matches = mapDebatesToMatches(apiDebates, apiProfile.user.id);
-      setProfile(p => ({ ...mergeApiProfile(p, apiProfile), matches }));
-      setAvatarUri(mediaUrl(apiProfile.profile_pic));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load profile');
-    } finally {
-      if (mode === 'initial') setLoading(false);
-      else setRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadProfile('initial');
-  }, [loadProfile]);
-
   const onRefresh = useCallback(() => {
-    void loadProfile('refresh');
-  }, [loadProfile]);
+    void refetchProfile();
+    void refetchDebates();
+  }, [refetchProfile, refetchDebates]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={screen.safe} edges={['top']}>
+        <View style={screen.centered}>
+          <ActivityIndicator color={colors.lime} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={screen.safe} edges={['top']}>
+        <View style={screen.centered}>
+          <Text variant="bodyMd" tone="danger" style={screen.errorText}>{error}</Text>
+          <TouchableOpacity onPress={() => refetchProfile()} style={screen.retryBtn} activeOpacity={0.8}>
+            <Text variant="labelMd" style={{ color: colors.lime }}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!profile) return null;
 
   const goToEdit = () => {
     navigation.navigate('EditProfile', {
@@ -433,8 +430,8 @@ export default function ProfileScreen({
         avatarUri,
       },
       onSave: (next) => {
-        setProfile(p => ({ ...p, name: next.name, handle: next.handle, bio: next.bio }));
-        setAvatarUri(next.avatarUri);
+        setLocalAvatarUri(next.avatarUri);
+        void refetchProfile();
       },
     });
   };
@@ -459,39 +456,68 @@ export default function ProfileScreen({
 
   const handlePickAvatar = async () => {
     const uri = await pickSquareImage();
-    if (uri) setAvatarUri(uri);
+    if (uri) setLocalAvatarUri(uri);
   };
 
   const handleShareProfile = () => shareProfileCard(shareCardRef, profile.name);
+
+  const handleMatchPress = async (match: Match) => {
+    const capitalised = match.topic.charAt(0).toUpperCase() + match.topic.slice(1);
+    const cfg = categoryConfig(capitalised);
+
+    let ratingDelta = 0;
+    let xpDelta = 0;
+    let scores: { argumentPro: number; rebuttalPro: number; clarityPro: number; persuasionPro: number; argumentCon: number; rebuttalCon: number; clarityCon: number; persuasionCon: number } | undefined;
+    let reasoning: string | undefined;
+    let strongestMoment: string | undefined;
+    let coachingTip: string | undefined;
+
+    try {
+      const j = await fetchDebateJudgement(match.id);
+      const isPro = match.userSide === 'for';
+      ratingDelta = isPro ? j.rating_delta_pro : j.rating_delta_con;
+      xpDelta     = isPro ? j.xp_delta_pro     : j.xp_delta_con;
+      reasoning        = j.reasoning;
+      strongestMoment  = j.strongest_moment;
+      coachingTip      = isPro ? j.coaching_tip_pro : j.coaching_tip_con;
+      scores = {
+        argumentPro:  j.argument_score_pro,
+        rebuttalPro:  j.rebuttal_score_pro,
+        clarityPro:   j.clarity_score_pro,
+        persuasionPro: j.persuasion_score_pro,
+        argumentCon:  j.argument_score_con,
+        rebuttalCon:  j.rebuttal_score_con,
+        clarityCon:   j.clarity_score_con,
+        persuasionCon: j.persuasion_score_con,
+      };
+    } catch {
+      // judgement unavailable — show zeros and no analysis
+    }
+
+    navigation.navigate('DebateResult', {
+      motion:         match.motion,
+      categoryId:     match.topic,
+      categoryName:   capitalised,
+      categoryAccent: cfg.accent,
+      userSide:       match.userSide,
+      myUsername:     apiProfile?.user.username ?? profile.handle.replace('@', ''),
+      myRating:       profile.rating + ratingDelta,
+      opponentName:   match.opponentName,
+      result:         match.outcome,
+      ratingDelta,
+      xpDelta,
+      reasoning,
+      strongestMoment,
+      coachingTip,
+      scores,
+    });
+  };
 
   const menuActions: MoreMenuAction[] = [
     { key: 'privacy', label: 'Privacy policy', onPress: () => navigation.navigate('PrivacyPolicy') },
     { key: 'help',    label: 'Help & support', onPress: () => navigation.navigate('HelpSupport') },
     { key: 'logout',  label: 'Log out',        danger: true, onPress: confirmLogout },
   ];
-
-  if (loading) {
-    return (
-      <SafeAreaView style={screen.safe} edges={['top']}>
-        <View style={screen.centered}>
-          <ActivityIndicator color={colors.lime} />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (error) {
-    return (
-      <SafeAreaView style={screen.safe} edges={['top']}>
-        <View style={screen.centered}>
-          <Text variant="bodyMd" tone="danger" style={screen.errorText}>{error}</Text>
-          <TouchableOpacity onPress={() => loadProfile('initial')} style={screen.retryBtn} activeOpacity={0.8}>
-            <Text variant="labelMd" style={{ color: colors.lime }}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={screen.safe} edges={['top']}>
@@ -534,7 +560,7 @@ export default function ProfileScreen({
         )}
 
         <Section>
-          <DebateHistory matches={profile.matches} isOwn={profile.isOwn} />
+          <DebateHistory matches={profile.matches} isOwn={profile.isOwn} onPress={handleMatchPress} />
         </Section>
 
         <View style={{ height: spacing.xxl * 2 }} />

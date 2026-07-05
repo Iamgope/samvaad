@@ -40,8 +40,18 @@ import DebateChatScreen from './screens/DebateChat';
 import NotificationsScreen from './screens/NotificationsScreen';
 import LearnScreen from './screens/LearnScreen';
 import type { Badge } from './components/profile/TrophyCase';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TabNavigator } from './navigation/TabNavigator';
 import { colors } from './constants/colors';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 30, // 30 min default
+      retry: 1,
+    },
+  },
+});
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -107,6 +117,14 @@ export type RootStackParamList = {
     result: 'win' | 'loss' | 'draw'
     ratingDelta: number
     xpDelta: number
+    // Optional judgment analysis
+    reasoning?: string
+    strongestMoment?: string
+    coachingTip?: string
+    scores?: {
+      argumentPro: number; rebuttalPro: number; clarityPro: number; persuasionPro: number
+      argumentCon: number; rebuttalCon: number; clarityCon: number; persuasionCon: number
+    }
   };
 };
 
@@ -140,6 +158,7 @@ export default function App() {
   }
 
   return (
+    <QueryClientProvider client={queryClient}>
     <SafeAreaProvider>
       <View style={{ flex: 1, backgroundColor: colors.black }}>
         <NavigationContainer theme={navTheme}>
@@ -178,5 +197,6 @@ export default function App() {
         </NavigationContainer>
       </View>
     </SafeAreaProvider>
+    </QueryClientProvider>
   );
 }
