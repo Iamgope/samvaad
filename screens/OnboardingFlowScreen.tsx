@@ -1,13 +1,10 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   TextInput,
   ScrollView,
   StyleSheet,
   Pressable,
-  Animated,
-  TouchableOpacity,
-  PanResponder,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
@@ -23,6 +20,8 @@ import { spacing } from '../constants/spacing';
 import { text } from '../constants/typography';
 import { Text } from '../components/Text';
 import { Button } from '../components/Button';
+import { IconButton } from '../components/IconButton';
+import { ChevronLeftIcon } from '../components/Icons';
 import { completeOnboarding } from '../services/api/auth';
 
 type Props = {
@@ -31,10 +30,13 @@ type Props = {
 };
 
 const { width: WIDTH } = Dimensions.get('window');
+// Kept for StepTopics/StepReady below, which aren't wired into the flow right now.
 const TOTAL_STEPS = 3;
 const MIN_USERNAME = 3;
 const MAX_USERNAME = 20;
 const USERNAME_RE = /^[A-Za-z0-9_]+$/;
+// Steel accent used across this screen instead of the app's lime brand color.
+const STEEL = '#9097A8';
 
 // ─── Topic data ────────────────────────────────────────────────────────────
 
@@ -81,13 +83,9 @@ const TOPICS: Array<{ section: string; icon: string; items: string[] }> = [
 // ─── Main component ────────────────────────────────────────────────────────
 
 export default function OnboardingFlowScreen({ navigation, route }: Props) {
-  const [step, setStep] = useState(0);
   const [username, setUsername] = useState(route.params?.suggestedUsername ?? '');
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const slideAnim = useRef(new Animated.Value(0)).current;
 
   // ── Derived validity ─────────────────────────────────────────────────────
 
@@ -96,108 +94,22 @@ export default function OnboardingFlowScreen({ navigation, route }: Props) {
     cleaned.length >= MIN_USERNAME &&
     cleaned.length <= MAX_USERNAME &&
     USERNAME_RE.test(cleaned);
-  // Require at least 1 pick from every section
-  const topicsValid = TOPICS.every(group =>
-    group.items.some(item => selected.has(item))
-  );
 
-  const canAdvance =
-    step === 0 ? usernameValid :
-      step === 1 ? topicsValid :
-        true;
+  // ── Submit ────────────────────────────────────────────────────────────────
 
-  // ── Step navigation ──────────────────────────────────────────────────────
-
-  const snapTo = (s: number, velocity = 0) => {
-    Animated.spring(slideAnim, {
-      toValue: -s * WIDTH,
-      useNativeDriver: true,
-      tension: 68,
-      friction: 13,
-      velocity,
-    }).start();
-  };
-
-  const goNext = async () => {
-    if (!canAdvance || submitting) return;
-    if (step === TOTAL_STEPS - 1) {
-      setSubmitError(null);
-      setSubmitting(true);
-      try {
-        await completeOnboarding(cleaned);
-        navigation.replace('Main');
-      } catch (err: any) {
-        setSubmitError(err?.message ?? 'Could not save your username. Please try again.');
-      } finally {
-        setSubmitting(false);
-      }
-      return;
+  const handleSubmit = async () => {
+    if (!usernameValid || submitting) return;
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      await completeOnboarding(cleaned);
+      navigation.replace('Main');
+    } catch (err: any) {
+      setSubmitError(err?.message ?? 'Could not save your username. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
-    const next = step + 1;
-    setStep(next);
-    snapTo(next);
   };
-
-  const goBack = () => {
-    if (step === 0) {
-      navigation.goBack();
-      return;
-    }
-    const prev = step - 1;
-    setStep(prev);
-    snapTo(prev);
-  };
-
-  // ── Swipe gesture ────────────────────────────────────────────────────────
-
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_, g) =>
-          Math.abs(g.dx) > 12 && Math.abs(g.dx) > Math.abs(g.dy) * 1.8,
-        onPanResponderMove: (_, g) => {
-          const base = -step * WIDTH;
-          const drag = g.dx;
-          // Resist over-dragging at the edges
-          const atStart = step === 0 && drag > 0;
-          const atEnd = step === TOTAL_STEPS - 1 && drag < 0;
-          const resistance = atStart || atEnd ? 0.25 : 1;
-          slideAnim.setValue(base + drag * resistance);
-        },
-        onPanResponderRelease: (_, g) => {
-          const threshold = WIDTH * 0.3;
-          if (g.dx < -threshold && step < TOTAL_STEPS - 1 && canAdvance) {
-            const next = step + 1;
-            setStep(next);
-            snapTo(next, g.vx);
-          } else if (g.dx > threshold && step > 0) {
-            const prev = step - 1;
-            setStep(prev);
-            snapTo(prev, g.vx);
-          } else {
-            snapTo(step);
-          }
-        },
-      }),
-    [step, canAdvance],
-  );
-
-  // ── Topic toggle ─────────────────────────────────────────────────────────
-
-  const toggleTopic = (item: string) => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      next.has(item) ? next.delete(item) : next.add(item);
-      return next;
-    });
-  };
-
-  // ── CTA label ────────────────────────────────────────────────────────────
-
-  const ctaLabel =
-    step === 0 ? 'Continue' :
-      step === 1 ? `Continue${selected.size > 0 ? ` (${selected.size})` : ''}` :
-        'Enter Arena';
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -207,45 +119,28 @@ export default function OnboardingFlowScreen({ navigation, route }: Props) {
 
       {/* ── Top bar ── */}
       <View style={s.topBar}>
-        <TouchableOpacity style={s.backBtn} onPress={goBack} hitSlop={8}>
-          <Text variant="titleLg">←</Text>
-        </TouchableOpacity>
-
-        <View style={s.progressRow}>
-          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-            <View
-              key={i}
-              style={[
-                s.progressSeg,
-                i < step && s.progressDone,
-                i === step && s.progressActive,
-              ]}
-            />
-          ))}
-        </View>
+        <IconButton
+          size="md"
+          icon={<ChevronLeftIcon size={18} color={colors.text} />}
+          onPress={() => navigation.goBack()}
+          accent={colors.text}
+        />
       </View>
 
-      {/* ── Swipeable step area ── */}
       <KeyboardAvoidingView
         style={s.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={0}
       >
-        <View style={s.viewport} {...panResponder.panHandlers}>
-          <Animated.View
-            style={[s.stepsRow, { transform: [{ translateX: slideAnim }] }]}
-          >
-            <StepUsername
-              username={username}
-              setUsername={setUsername}
-              valid={usernameValid}
-              tooShort={cleaned.length > 0 && cleaned.length < MIN_USERNAME}
-              badChars={cleaned.length >= MIN_USERNAME && !USERNAME_RE.test(cleaned)}
-              maxLen={MAX_USERNAME}
-            />
-            <StepTopics selected={selected} onToggle={toggleTopic} />
-            <StepReady username={cleaned} topicCount={selected.size} />
-          </Animated.View>
+        <View style={s.viewport}>
+          <StepUsername
+            username={username}
+            setUsername={setUsername}
+            valid={usernameValid}
+            tooShort={cleaned.length > 0 && cleaned.length < MIN_USERNAME}
+            badChars={cleaned.length >= MIN_USERNAME && !USERNAME_RE.test(cleaned)}
+            maxLen={MAX_USERNAME}
+          />
         </View>
 
         {/* ── Footer CTA ── */}
@@ -256,12 +151,11 @@ export default function OnboardingFlowScreen({ navigation, route }: Props) {
             </Text>
           )}
           <Button
-            label={ctaLabel}
-            onPress={goNext}
-            shadowColor={colors.lime}
-            disabled={!canAdvance || submitting}
+            variant="steel"
+            label="Continue"
+            onPress={handleSubmit}
+            disabled={!usernameValid || submitting}
             isLoading={submitting}
-            arrow
           />
         </View>
       </KeyboardAvoidingView>
@@ -284,7 +178,6 @@ function StepUsername({ username, setUsername, valid, tooShort, badChars, maxLen
   const cleaned = username.trim();
   return (
     <View style={s.step}>
-      <Text variant="overline" tone="accent" style={s.stepLabel}>STEP 1 OF 3</Text>
       <Text variant="displayMd" style={s.headline}>Pick your{'\n'}username</Text>
       <Text variant="bodyLg" tone="muted" style={s.subhead}>
         This is how you'll appear in every debate.
@@ -335,11 +228,11 @@ function StepTopics({ selected, onToggle }: StepTopicsProps) {
 
   return (
     <View style={s.step}>
-      <Text variant="overline" tone="accent" style={s.stepLabel}>STEP 2 OF 3</Text>
+      <Text variant="overline" style={[s.stepLabel, s.steelAccentText]}>STEP 2 OF 3</Text>
       <Text variant="displayMd" style={s.headline}>What do you{'\n'}want to debate?</Text>
       <Text variant="bodyLg" tone="muted" style={s.subheadTopics}>
         Pick at least one topic per section.{' '}
-        <Text variant="bodyLg" tone="accent">{sectionsComplete}/{TOPICS.length} done</Text>
+        <Text variant="bodyLg" style={s.steelAccentText}>{sectionsComplete}/{TOPICS.length} done</Text>
       </Text>
 
       <ScrollView
@@ -401,7 +294,7 @@ type StepReadyProps = {
 function StepReady({ username, topicCount }: StepReadyProps) {
   return (
     <View style={[s.step, s.stepReady]}>
-      <Text variant="overline" tone="accent" style={s.stepLabel}>STEP 3 OF 3</Text>
+      <Text variant="overline" style={[s.stepLabel, s.steelAccentText]}>STEP 3 OF 3</Text>
 
       <Text variant="displayLg" style={s.readyHeadline}>
         You're in
@@ -442,16 +335,6 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   progressRow: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -463,11 +346,11 @@ const s = StyleSheet.create({
     backgroundColor: colors.surface2,
   },
   progressDone: {
-    backgroundColor: colors.lime,
+    backgroundColor: STEEL,
     opacity: 0.45,
   },
   progressActive: {
-    backgroundColor: colors.lime,
+    backgroundColor: STEEL,
   },
 
   // ── Viewport + slide ──
@@ -495,6 +378,9 @@ const s = StyleSheet.create({
   stepLabel: {
     marginBottom: spacing.lg,
   },
+  steelAccentText: {
+    color: STEEL,
+  },
   headline: {
     marginBottom: spacing.md,
   },
@@ -518,7 +404,7 @@ const s = StyleSheet.create({
     gap: spacing.sm,
     marginBottom: spacing.sm,
   },
-  fieldOk: { borderColor: colors.lime },
+  fieldOk: { borderColor: STEEL },
   fieldErr: { borderColor: colors.red },
   atSign: { lineHeight: 20 },
   input: {
@@ -530,7 +416,7 @@ const s = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: colors.lime,
+    backgroundColor: STEEL,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -552,7 +438,7 @@ const s = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: colors.lime,
+    backgroundColor: STEEL,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -567,7 +453,7 @@ const s = StyleSheet.create({
     paddingBottom: 3,
     position: 'relative',
   },
-  // Static lime shadow shown only when pill is selected
+  // Static steel shadow shown only when pill is selected
   pillShadow: {
     position: 'absolute',
     top: 3,
@@ -575,7 +461,7 @@ const s = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderRadius: 999,
-    backgroundColor: colors.limeMuted,
+    backgroundColor: STEEL,
   },
   pill: {
     paddingHorizontal: 14,

@@ -249,6 +249,8 @@ export function Button({
         onPress={isInteractable ? onPress : undefined}
         size={size}
         style={style}
+        disabled={disabled}
+        isLoading={isLoading}
       />
     );
   }
@@ -529,11 +531,15 @@ function SteelButton({
   onPress,
   size = 'lg',
   style,
+  disabled = false,
+  isLoading = false,
 }: {
   label: string;
   onPress?: () => void;
   size?: Size;
   style?: ViewStyle;
+  disabled?: boolean;
+  isLoading?: boolean;
 }) {
   const shine = useRef(new Animated.Value(0)).current;
   const press = useRef(new Animated.Value(0)).current;
@@ -579,7 +585,7 @@ function SteelButton({
       onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
       style={style}
     >
-      <Animated.View style={[s.steelOuter, { height: HEIGHTS[size], transform: [{ scale }] }]}>
+      <Animated.View style={[s.steelOuter, { height: HEIGHTS[size], transform: [{ scale }], opacity: disabled ? 0.5 : 1 }]}>
         <LinearGradient
           colors={['#F4F6FA', '#CFD4DF', '#A0A7B6']}
           start={{ x: 0, y: 0 }}
@@ -605,7 +611,129 @@ function SteelButton({
           </Animated.View>
 
           <Text style={s.steelLabel}>{label}</Text>
+          {isLoading && (
+            <ActivityIndicator color="#1A1F2C" style={s.iconRight} />
+          )}
         </LinearGradient>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+// Steel + ticket perforation cuts on left/right edges. Used only on OnboardingScreen.
+export function SteelTicketButton({
+  label,
+  onPress,
+  size = 'lg',
+  style,
+  notchColor = '#000',
+}: {
+  label: string;
+  onPress: () => void;
+  size?: Size;
+  style?: ViewStyle;
+  notchColor?: string;
+}) {
+  const shine = useRef(new Animated.Value(0)).current;
+  const press = useRef(new Animated.Value(0)).current;
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shine, {
+          toValue: 1,
+          duration: 1600,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.delay(3500),
+        Animated.timing(shine, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.delay(200),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [shine]);
+
+  const SHINE_WIDTH = 100;
+  const translateX = shine.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-SHINE_WIDTH, Math.max(width + SHINE_WIDTH, 400)],
+  });
+  const scale = press.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.985],
+  });
+
+  const notchDot = {
+    width: TICKET_NOTCH,
+    height: TICKET_NOTCH,
+    borderRadius: TICKET_NOTCH / 2,
+    backgroundColor: notchColor,
+  } as const;
+  const dots = Array.from({ length: TICKET_PER_SIDE }, (_, i) => i);
+  const perforationTrack = (side: 'left' | 'right') => (
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        width: TICKET_NOTCH,
+        [side]: -TICKET_NOTCH / 2,
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+      }}
+    >
+      {dots.map(i => <View key={i} style={notchDot} />)}
+    </View>
+  );
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={() =>
+        Animated.timing(press, { toValue: 1, duration: 80, useNativeDriver: true }).start()
+      }
+      onPressOut={() =>
+        Animated.spring(press, { toValue: 0, tension: 400, friction: 18, useNativeDriver: true }).start()
+      }
+      onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
+      style={style}
+    >
+      <Animated.View style={{ height: HEIGHTS[size], transform: [{ scale }] }}>
+        <View style={[s.steelOuter, { height: HEIGHTS[size] }]}>
+          <LinearGradient
+            colors={['#F4F6FA', '#CFD4DF', '#A0A7B6']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={s.steelFace}
+          >
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                s.steelSheenWrap,
+                {
+                  width: SHINE_WIDTH,
+                  transform: [{ translateX }, { rotate: '20deg' }],
+                },
+              ]}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.5)', 'rgba(255,255,255,0)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={s.steelSheen}
+              />
+            </Animated.View>
+
+            <Text style={s.steelLabel}>{label}</Text>
+          </LinearGradient>
+        </View>
+        {perforationTrack('left')}
+        {perforationTrack('right')}
       </Animated.View>
     </Pressable>
   );
