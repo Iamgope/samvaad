@@ -16,15 +16,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
 import type { RootStackParamList } from '../App';
 import { colors } from '../constants/colors';
 import { spacing } from '../constants/spacing';
 import { text } from '../constants/typography';
 import { Text } from '../components/Text';
 import { Button } from '../components/Button';
+import { completeOnboarding } from '../services/api/auth';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'OnboardingFlow'>;
+  route: RouteProp<RootStackParamList, 'OnboardingFlow'>;
 };
 
 const { width: WIDTH } = Dimensions.get('window');
@@ -77,10 +80,12 @@ const TOPICS: Array<{ section: string; icon: string; items: string[] }> = [
 
 // ─── Main component ────────────────────────────────────────────────────────
 
-export default function OnboardingFlowScreen({ navigation }: Props) {
+export default function OnboardingFlowScreen({ navigation, route }: Props) {
   const [step, setStep] = useState(0);
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(route.params?.suggestedUsername ?? '');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
 
@@ -113,10 +118,19 @@ export default function OnboardingFlowScreen({ navigation }: Props) {
     }).start();
   };
 
-  const goNext = () => {
-    if (!canAdvance) return;
+  const goNext = async () => {
+    if (!canAdvance || submitting) return;
     if (step === TOTAL_STEPS - 1) {
-      navigation.replace('Main');
+      setSubmitError(null);
+      setSubmitting(true);
+      try {
+        await completeOnboarding(cleaned);
+        navigation.replace('Main');
+      } catch (err: any) {
+        setSubmitError(err?.message ?? 'Could not save your username. Please try again.');
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
     const next = step + 1;
@@ -236,11 +250,17 @@ export default function OnboardingFlowScreen({ navigation }: Props) {
 
         {/* ── Footer CTA ── */}
         <View style={s.footer}>
+          {submitError && (
+            <Text variant="bodySm" tone="danger" style={s.submitError}>
+              {submitError}
+            </Text>
+          )}
           <Button
             label={ctaLabel}
             onPress={goNext}
             shadowColor={colors.lime}
-            disabled={!canAdvance}
+            disabled={!canAdvance || submitting}
+            isLoading={submitting}
             arrow
           />
         </View>
@@ -599,5 +619,9 @@ const s = StyleSheet.create({
     paddingHorizontal: HORIZONTAL,
     paddingBottom: spacing.lg,
     paddingTop: spacing.sm,
+  },
+  submitError: {
+    textAlign: 'center',
+    marginBottom: spacing.sm,
   },
 });

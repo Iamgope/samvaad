@@ -42,7 +42,11 @@ export default function LoginScreen({ navigation }: Props) {
 
       const res = await signInWithGoogle(idToken);
       registerDeviceAsync();
-      navigation.navigate(res.is_new_user ? 'OnboardingFlow' : 'Main');
+      if (res.is_new_user) {
+        navigation.navigate('OnboardingFlow', { suggestedUsername: res.username });
+      } else {
+        navigation.navigate('Main');
+      }
     } catch (err: any) {
       console.log('[GOOGLE] sign-in error =', { code: err?.code, message: err?.message, raw: err });
       if (err?.code === statusCodes.SIGN_IN_CANCELLED) return;

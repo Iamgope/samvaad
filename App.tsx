@@ -67,7 +67,7 @@ export type RootStackParamList = {
   Login: undefined;
   Phone: undefined;
   OTP: { phone: string };
-  OnboardingFlow: undefined;
+  OnboardingFlow: { suggestedUsername?: string } | undefined;
   Main: undefined;
   TopicScreen: { category: string };
   JoinDebate: { categoryId?: string; stanceId?: string; topicId?: number; categoryAccent?: string; topicTitle?: string } | undefined;

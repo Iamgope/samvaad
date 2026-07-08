@@ -10,6 +10,7 @@ export type AuthTokens = {
 
 export type AuthResponse = AuthTokens & {
   is_new_user?: boolean;
+  username?: string;
 };
 
 type ApiEnvelope<T> = {
@@ -36,6 +37,14 @@ export async function verifyOtp(phone: string, code: string): Promise<AuthRespon
   return res.data;
 }
 
+// ── Dev login (DEBUG only) ───────────────────────────────────────────────────
+
+export async function devLogin(username: string): Promise<AuthResponse> {
+  const res = await api.post<ApiEnvelope<AuthResponse>>('/authentication/dev-login/', { username });
+  await storeTokens(res.data);
+  return res.data;
+}
+
 // ── Google ───────────────────────────────────────────────────────────────────
 
 export async function signInWithGoogle(idToken: string): Promise<AuthResponse> {
@@ -48,8 +57,10 @@ export async function signInWithGoogle(idToken: string): Promise<AuthResponse> {
 
 // ── Onboarding ───────────────────────────────────────────────────────────────
 
-export async function completeOnboarding(username: string, topics: string[]): Promise<void> {
-  await api.post('/authentication/onboarding', { username, topics });
+export async function completeOnboarding(username: string): Promise<void> {
+  const form = new FormData();
+  form.append('username', username);
+  await api.post('/users/getProfile/', form);
 }
 
 // ── Session ──────────────────────────────────────────────────────────────────
