@@ -43,6 +43,7 @@ import type { Badge } from './components/profile/TrophyCase';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TabNavigator } from './navigation/TabNavigator';
 import { colors } from './constants/colors';
+import { refreshAccessToken } from './services/api/refresh';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -153,7 +154,15 @@ export default function App() {
     PlusJakartaSans_800ExtraBold,
   });
 
-  if (!fontsLoaded) {
+  const [initialRoute, setInitialRoute] = React.useState<keyof RootStackParamList | null>(null);
+
+  React.useEffect(() => {
+    refreshAccessToken()
+      .then(() => setInitialRoute('Main'))
+      .catch(() => setInitialRoute('Onboarding'));
+  }, []);
+
+  if (!fontsLoaded || !initialRoute) {
     return <View style={{ flex: 1, backgroundColor: colors.black }} />;
   }
 
@@ -164,7 +173,7 @@ export default function App() {
         <NavigationContainer theme={navTheme}>
           <StatusBar style="light" />
           <Stack.Navigator
-            initialRouteName="Onboarding"
+            initialRouteName={initialRoute}
             screenOptions={{
               headerShown: false,
               animation: 'fade',
