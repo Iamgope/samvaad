@@ -4,9 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
-import { colors } from '../constants/colors';
 import { spacing } from '../constants/spacing';
-import { Button } from '../components/Button';
+import { SteelTicketButton } from '../components/Button';
 import { OrbitingIcons } from '../components/OrbitingIcons';
 import { PageHeading } from '../components/PageHeading';
 
@@ -35,12 +34,9 @@ export default function OnboardingScreen({ navigation }: Props) {
       </View>
 
       <View style={s.footer}>
-        <Button
-          variant='ticket'
+        <SteelTicketButton
           label="Get Started"
           onPress={() => navigation.replace('Login')}
-          arrow
-          shadowColor={colors.purple2}
           style={s.ctaWrap}
         />
       </View>
