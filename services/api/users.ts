@@ -30,6 +30,20 @@ export async function fetchUserProfile(): Promise<UserProfile> {
   return res.data.user;
 }
 
+export type Timeframe = 'weekly' | 'all_time';
+
+export type LeaderboardEntry = UserProfile & { rank: number };
+
+type LeaderboardResponse = {
+  message?: string;
+  data: { players: LeaderboardEntry[] };
+};
+
+export async function fetchLeaderboard(timeframe: Timeframe): Promise<LeaderboardEntry[]> {
+  const res = await api.get<LeaderboardResponse>(`/users/leaderboard/?timeframe=${timeframe}`);
+  return res.data.players;
+}
+
 export type UpdateProfilePayload = {
   name: string;
   username: string;

@@ -361,6 +361,7 @@ type ActionItem = {
   emoji?: string
   title: string
   subtitle: string
+  comingSoon?: boolean
 }
 
 const ACTIONS: ActionItem[] = [
@@ -375,6 +376,7 @@ const ACTIONS: ActionItem[] = [
     icon:     <LearnIcon />,
     title:    '',
     subtitle: 'Practice Mode',
+    comingSoon: true,
   },
 ]
 
@@ -387,16 +389,23 @@ function ActionSection({ onPress }: { onPress: (key: string) => void }) {
           <TouchableOpacity
             key={a.key}
             style={s.actionCard}
-            onPress={() => onPress(a.key)}
-            activeOpacity={0.8}
+            onPress={() => { if (!a.comingSoon) onPress(a.key) }}
+            activeOpacity={a.comingSoon ? 1 : 0.8}
           >
-            <View style={s.actionEmojiArea}>
-              {a.icon ?? <Text style={s.actionEmoji}>{a.emoji}</Text>}
+            <View style={[s.actionCardContent, a.comingSoon && s.actionCardDisabled]}>
+              <View style={s.actionEmojiArea}>
+                {a.icon ?? <Text style={s.actionEmoji}>{a.emoji}</Text>}
+              </View>
+              <View style={s.actionTextArea}>
+                {!!a.title && <Text style={s.actionTitle}>{a.title}</Text>}
+                <Text style={s.actionSubtitle}>{a.subtitle}</Text>
+              </View>
             </View>
-            <View style={s.actionTextArea}>
-              {!!a.title && <Text style={s.actionTitle}>{a.title}</Text>}
-              <Text style={s.actionSubtitle}>{a.subtitle}</Text>
-            </View>
+            {a.comingSoon && (
+              <View style={s.comingSoonBadge}>
+                <Text style={s.comingSoonText}>Coming soon</Text>
+              </View>
+            )}
           </TouchableOpacity>
         ))}
       </View>
@@ -648,6 +657,30 @@ const s = StyleSheet.create({
     paddingVertical: spacing.lg,
     alignItems: 'center',
     gap: spacing.md,
+  },
+  actionCardContent: {
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  actionCardDisabled: {
+    opacity: 0.45,
+  },
+  comingSoonBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.sm,
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    backgroundColor: colors.black,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
+  comingSoonText: {
+    fontFamily: fonts.jakarta.semiBold,
+    fontSize: 8,
+    letterSpacing: -0.3,
+    color: colors.text,
   },
   actionEmojiArea: {
     alignItems: 'center',

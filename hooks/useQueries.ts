@@ -4,6 +4,8 @@ import {
   fetchMyDebates,
   fetchCategoryAndRules,
   fetchTopics,
+  fetchLeaderboard,
+  type Timeframe,
 } from '../services/api'
 
 export const QUERY_KEYS = {
@@ -11,6 +13,7 @@ export const QUERY_KEYS = {
   myDebates:   ['myDebates']   as const,
   categories:  ['categories']  as const,
   topics:      ['topics']      as const,
+  leaderboard: (timeframe: Timeframe) => ['leaderboard', timeframe] as const,
 }
 
 export const useUserProfile = () =>
@@ -39,6 +42,13 @@ export const useTopics = () =>
     queryKey: QUERY_KEYS.topics,
     queryFn:  fetchTopics,
     staleTime: 1000 * 60 * 60 * 24,   // 24h
+  })
+
+export const useLeaderboard = (timeframe: Timeframe) =>
+  useQuery({
+    queryKey: QUERY_KEYS.leaderboard(timeframe),
+    queryFn:  () => fetchLeaderboard(timeframe),
+    staleTime: 1000 * 60 * 5,          // 5 min
   })
 
 export const useInvalidateAfterDebate = () => {

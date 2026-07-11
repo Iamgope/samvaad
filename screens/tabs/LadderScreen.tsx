@@ -7,10 +7,9 @@ import Svg, { Polygon, Text as SvgText } from 'react-native-svg';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import { spacing, SCREEN_PADDING } from '../../constants/spacing';
-import { categoryConfig } from '../../constants/categories';
-import { useTopics } from '../../hooks/useQueries';
+import { useLeaderboard } from '../../hooks/useQueries';
+import type { LeaderboardEntry, Timeframe } from '../../services/api';
 import { Text } from '../../components/Text';
-import { ChipDropdown, type ChipOption } from '../../components/ChipDropdown';
 import { RankListRow } from '../../components/RankListRow';
 import { IconButton } from '../../components/IconButton';
 import { ChevronUpIcon, ChevronDownIcon } from '../../components/Icons';
@@ -20,9 +19,17 @@ type Player = {
   wins: number; debates: number; streak: number;
 };
 
-const ALL_CHIP: ChipOption = { id: 'all', label: 'All', emoji: '🌏', accent: colors.lime };
-
-const PLAYERS_BY_CATEGORY: Record<string, Player[]> = {};
+function toPlayer(entry: LeaderboardEntry): Player {
+  const name = entry.user.first_name || entry.user.username;
+  return {
+    rank: entry.rank,
+    name,
+    initials: name.slice(0, 2).toUpperCase(),
+    wins: entry.wins,
+    debates: entry.total_debates,
+    streak: entry.streak,
+  };
+}
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const PODIUM_GAP = 4;
@@ -152,21 +159,16 @@ function Podium({ players, accent }: { players: Player[]; accent: string }) {
   );
 }
 
-export default function LadderScreen() {
-  const { data: topicsData } = useTopics();
-  const chips: ChipOption[] = topicsData
-    ? [ALL_CHIP, ...Object.keys(topicsData).map(name => {
-        const cfg = categoryConfig(name);
-        return { id: name, label: name, emoji: cfg.emoji, accent: cfg.accent };
-      })]
-    : [ALL_CHIP];
+const ACCENT = colors.lime;
 
-  const [selectedId, setSelectedId] = useState<string>('all');
+export default function LadderScreen() {
   const [timeFrame, setTimeFrame] = useState<'weekly' | 'allTime'>('weekly');
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const currentChip = chips.find(c => c.id === selectedId) ?? chips[0];
-  const players: Player[] = PLAYERS_BY_CATEGORY[selectedId] ?? [];
+  const apiTimeframe: Timeframe = timeFrame === 'weekly' ? 'weekly' : 'all_time';
+  const { data: leaderboard } = useLeaderboard(apiTimeframe);
+
+  const players: Player[] = (leaderboard ?? []).map(toPlayer);
   const topThree = players.slice(0, 3);
   const restOfList = players.slice(3);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -234,19 +236,10 @@ export default function LadderScreen() {
             </TouchableOpacity>
           ))}
         </View>
-        <View style={styles.filterWrap}>
-          <ChipDropdown
-            selected={currentChip}
-            options={chips}
-            onSelect={(c) => setSelectedId(c.id)}
-            accent={currentChip.accent ?? colors.lime}
-            zIndex={20}
-          />
-        </View>
       </View>
 
       <View style={styles.podiumSection}>
-        <Podium players={topThree} accent={currentChip.accent ?? colors.lime} />
+        <Podium players={topThree} accent={ACCENT} />
       </View>
 
       <Animated.View style={[styles.sheet, { top: sheetY }]}>
@@ -273,9 +266,7 @@ export default function LadderScreen() {
             lastY.current = currentSheetY.current;
           }}
         >
-          <Text style={styles.sectionTitle}>
-            {selectedId === 'all' ? 'Full standings' : `Top in ${currentChip.label}`}
-          </Text>
+          <Text style={styles.sectionTitle}>Full standings</Text>
 
           {restOfList.length === 0 ? (
             <View style={styles.emptyList}>
@@ -289,7 +280,7 @@ export default function LadderScreen() {
                 initials={p.initials}
                 name={p.name}
                 metaText={`${p.wins} wins`}
-                accent={currentChip.accent ?? colors.lime}
+                accent={ACCENT}
                 isLast={i === restOfList.length - 1}
               />
             ))
@@ -308,7 +299,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   headerTitle: { fontFamily: fonts.jakarta.semiBold, fontSize: 16, color: colors.text, flex: 1 },
-  filterWrap: { position: 'relative', zIndex: 10, minWidth: 140 },
 
   timeToggle: {
     flexDirection: 'row',

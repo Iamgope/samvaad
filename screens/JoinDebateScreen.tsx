@@ -27,9 +27,11 @@ import {
   ApiError,
   getCurrentUserId,
   debateSession,
+  mediaUrl,
   type DebateCategory,
 } from '../services/api'
-import { useCategories } from '../hooks/useQueries'
+import { useCategories, useUserProfile } from '../hooks/useQueries'
+import { getTierInfo } from '../constants/tiers'
 import { OpeningOverlay } from './DebateChat/OpeningOverlay'
 
 const DEFAULT_AVATAR = require('../assets/defaultprofilepic.png')
@@ -78,11 +80,11 @@ const ETIQUETTE = [
 const CARD_W = 132
 const CARD_H = 182
 
-const MOCK_USER = { name: 'Aman G.', initials: 'AG', rating: 2047, tier: 'master' as const }
+type CurrentUser = { name: string; initials: string; rating: number; tier: string; avatarUri: string | null }
 
-type VsLockProps = { category: CategoryChip; stance: (typeof STANCES)[0] }
+type VsLockProps = { category: CategoryChip; stance: (typeof STANCES)[0]; user: CurrentUser }
 
-function VsLock({ category, stance }: VsLockProps) {
+function VsLock({ category, stance, user }: VsLockProps) {
   const slideLeft  = useRef(new Animated.Value(-220)).current
   const slideRight = useRef(new Animated.Value(220)).current
   const vsScale    = useRef(new Animated.Value(0)).current
@@ -127,7 +129,7 @@ function VsLock({ category, stance }: VsLockProps) {
   }, [])
 
   const scanY     = scanLine.interpolate({ inputRange: [0, 1], outputRange: [0, CARD_H] })
-  const tierColor = TIER_COLOR[MOCK_USER.tier] ?? colors.text
+  const tierColor = TIER_COLOR[user.tier] ?? colors.text
 
   return (
     <View style={vl.row}>
@@ -141,13 +143,18 @@ function VsLock({ category, stance }: VsLockProps) {
         <View style={vl.inner}>
           <View style={vl.cardTop}>
             <Text style={vl.eyebrow}>YOU</Text>
-            <Avatar size={52} source={DEFAULT_AVATAR} borderColor={colors.borderStrong} offset={3} />
+            <Avatar
+              size={52}
+              source={user.avatarUri ? { uri: user.avatarUri } : DEFAULT_AVATAR}
+              borderColor={colors.borderStrong}
+              offset={3}
+            />
             <View style={vl.nameBlock}>
-              <Text style={vl.playerName} numberOfLines={1}>{MOCK_USER.name}</Text>
+              <Text style={vl.playerName} numberOfLines={1}>{user.name}</Text>
               <View style={vl.tierChip}>
-                <Text style={vl.tierLabel}>{MOCK_USER.tier.toUpperCase()}</Text>
+                <Text style={vl.tierLabel}>{user.tier.toUpperCase()}</Text>
                 <Text style={vl.ratingDot}>·</Text>
-                <Text style={vl.ratingText}>{MOCK_USER.rating}</Text>
+                <Text style={vl.ratingText}>{user.rating}</Text>
               </View>
             </View>
           </View>
@@ -297,6 +304,16 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
     error: categoriesError,
     refetch: refetchCategories,
   } = useCategories()
+
+  const { data: myProfile } = useUserProfile()
+
+  const currentUser: CurrentUser = {
+    name:      myProfile?.user.first_name || myProfile?.user.username || 'You',
+    initials:  (myProfile?.user.first_name || myProfile?.user.username || '?').slice(0, 2).toUpperCase(),
+    rating:    myProfile ? Math.round(myProfile.elo_rating) : 0,
+    tier:      getTierInfo(myProfile?.elo_rating ?? 0).current.key,
+    avatarUri: myProfile ? mediaUrl(myProfile.profile_pic) : null,
+  }
 
   const categories: DebateCategory[] = categoriesData?.categories ?? []
   const rules: string[] = categoriesData?.rules ?? []
@@ -475,7 +492,7 @@ const stanceToSide = (id: string): 'PRO' | 'CON' | null => {
         /* ── Searching state ── */
         <View style={s.searchingContainer}>
           <Text style={s.searchingTitle}>FINDING{'\n'}YOUR MATCH.</Text>
-          <VsLock category={category} stance={selectedStance} />
+          <VsLock category={category} stance={selectedStance} user={currentUser} />
           <Text style={s.searchingMeta}>
             {category.emoji}  {category.label}  ·  {selectedStance.emoji}  {selectedStance.label}
           </Text>
