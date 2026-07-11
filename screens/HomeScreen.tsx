@@ -190,7 +190,7 @@ const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}K` : `${n}`)
 function Header({ onBellPress, hasUnread }: { onBellPress: () => void; hasUnread?: boolean }) {
   return (
     <View style={s.header}>
-      <Text style={s.wordmark}>Samvaad<Text style={s.wordmarkDot}>.</Text></Text>
+      <Text style={s.wordmark}>Duella<Text style={s.wordmarkDot}>.</Text></Text>
       <TouchableOpacity style={s.bellBtn} activeOpacity={0.7} onPress={onBellPress} hitSlop={8}>
         <BellIcon size={hasUnread?26:22} steel={hasUnread} />
         {hasUnread && <View style={s.bellDot} />}

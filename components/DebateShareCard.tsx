@@ -51,7 +51,7 @@ export const DebateShareCard = React.forwardRef<View, Props>(
               <FakeQR size={88} />
             </View>
             <View style={s.footerText}>
-              <Text style={s.brand}>SAMVAAD</Text>
+              <Text style={s.brand}>DUELLA</Text>
               <Text variant="bodySm" tone="muted">Scan to join this debate</Text>
             </View>
           </View>

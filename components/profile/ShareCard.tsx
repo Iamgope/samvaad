@@ -54,7 +54,7 @@ export const ShareCard = React.forwardRef<View, Props>(
               <FakeQR size={88} />
             </View>
             <View style={styles.footerText}>
-              <Text style={styles.brand}>SAMVAAD</Text>
+              <Text style={styles.brand}>DUELLA</Text>
               <Text variant="bodySm" tone="muted">Scan to join the debate</Text>
             </View>
           </View>
@@ -78,7 +78,7 @@ export async function shareProfileCard(
     }
     await Sharing.shareAsync(uri, {
       mimeType: 'image/png',
-      dialogTitle: `${name}'s Samvaad profile`,
+      dialogTitle: `${name}'s Duella profile`,
     });
   } catch {
     Alert.alert('Could not share', 'Something went wrong while creating the share image.');

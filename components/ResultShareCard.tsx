@@ -81,7 +81,7 @@ export const ResultShareCard = React.forwardRef<View, ResultShareCardProps>(
 
         {/* Branding */}
         <View style={s.footer}>
-          <Text style={s.brand}>SAMVAAD</Text>
+          <Text style={s.brand}>DUELLA</Text>
           <Text style={s.footerSub}>debate · learn · grow</Text>
         </View>
       </View>

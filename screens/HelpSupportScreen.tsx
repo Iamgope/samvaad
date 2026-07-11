@@ -33,7 +33,7 @@ export default function HelpSupportScreen() {
   const navigation = useNavigation();
 
   const emailSupport = () => {
-    Linking.openURL('mailto:support@samvaad.app?subject=Samvaad%20help');
+    Linking.openURL('mailto:support@joinduella.com?subject=Duella%20help');
   };
 
   const confirmSuspend = () => {

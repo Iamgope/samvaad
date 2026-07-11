@@ -36,7 +36,7 @@ const ICONS: Record<string, (focused: boolean) => React.ReactNode> = {
   Profile: (f) => <ProfileIcon focused={f} />,
 };
 
-function SamvaadTabBar({ state, navigation }: BottomTabBarProps) {
+function DuellaTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -86,7 +86,7 @@ function SamvaadTabBar({ state, navigation }: BottomTabBarProps) {
 export function TabNavigator() {
   return (
     <Tab.Navigator
-      tabBar={props => <SamvaadTabBar {...props} />}
+      tabBar={props => <DuellaTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Home"    component={HomeScreen}   />
