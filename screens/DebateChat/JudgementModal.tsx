@@ -11,10 +11,10 @@ type Metric = { label: string; pro: number; con: number }
 
 function metricsFor(j: Judgement): Metric[] {
   return [
-    { label: 'ARGUMENT',   pro: j.argument_score_pro,   con: j.argument_score_con },
-    { label: 'REBUTTAL',   pro: j.rebuttal_score_pro,   con: j.rebuttal_score_con },
-    { label: 'CLARITY',    pro: j.clarity_score_pro,    con: j.clarity_score_con },
-    { label: 'PERSUASION', pro: j.persuasion_score_pro, con: j.persuasion_score_con },
+    { label: 'ARGUMENT',   pro: Number(j.argument_score_pro) || 0,   con: Number(j.argument_score_con) || 0 },
+    { label: 'REBUTTAL',   pro: Number(j.rebuttal_score_pro) || 0,   con: Number(j.rebuttal_score_con) || 0 },
+    { label: 'CLARITY',    pro: Number(j.clarity_score_pro) || 0,    con: Number(j.clarity_score_con) || 0 },
+    { label: 'PERSUASION', pro: Number(j.persuasion_score_pro) || 0, con: Number(j.persuasion_score_con) || 0 },
   ]
 }
 

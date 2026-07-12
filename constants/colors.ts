@@ -4,10 +4,11 @@
 // the dark navy than they do against #000.
 export const colors = {
   // Core brand
-  lime:      '#CAFF33',
-  limeMuted: '#A3E635', // softer default for button shadows
+  lime:      '#4FA9FF',
+  limeMuted: '#7EC0FF', // softer default for button shadows
   purple: '#6B3FE4',
   red:    '#FF3B5C',
+  steel:  '#9097A8', // metallic gray accent, used in place of lime in some flows
 
   // Dark surface hierarchy (bg → elevated → more elevated)
   black:    '#0C0F16',  // primary bg — dark navy-charcoal, not pure black

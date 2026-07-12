@@ -9,12 +9,14 @@ import { TextInput } from 'react-native'
 import { Text } from '../../components/Text'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { useQueryClient } from '@tanstack/react-query'
-import { debateSession, fetchUserProfile } from '../../services/api'
-import { QUERY_KEYS } from '../../hooks/useQueries'
+import { debateSession, fetchUserProfile, mediaUrl } from '../../services/api'
+import { QUERY_KEYS, useUserProfile } from '../../hooks/useQueries'
+import { roundHalfEven } from '../../utils/math'
 import { DebateChatHeader } from './DebateChatHeader'
 import { CombatantRow } from './CombatantRow'
-import { Bubble, RoundDivider, TypingDots } from './MessageBubble'
+import { Bubble, OpeningCard, RoundDivider, TypingDots } from './MessageBubble'
 import { DebateComposer } from './DebateComposer'
+import { OpeningShareCard, shareOpeningCard } from './OpeningShareCard'
 import {
   CLOCK_SECONDS, CHAR_LIMIT, PASTE_GUARD_LEN, ROUND_TYPE_LABELS,
   type Side, type WsMsg, type RoundLabel, type Judgement,
@@ -42,6 +44,29 @@ export default function DebateChatScreen({ route, navigation }: Props) {
   const listRef = useRef<FlatList>(null)
   const inputRef = useRef<TextInput>(null)
   const turnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // The opening round's real DB id — captured from the first message we see,
+  // since the backend never actually uses 0 as a round id.
+  const openingRoundIdRef = useRef<number | null>(null)
+
+  const { data: myProfile } = useUserProfile()
+  const shareCardRef = useRef<View>(null)
+  const [shareData, setShareData] = useState<{ text: string; name: string; avatarUri: string | null } | null>(null)
+
+  useEffect(() => {
+    if (!shareData) return
+    const id = setTimeout(() => {
+      shareOpeningCard(shareCardRef).then(() => setShareData(null))
+    }, 50)
+    return () => clearTimeout(id)
+  }, [shareData])
+
+  const handleShareMessage = (msg: WsMsg) => {
+    setShareData({
+      text: msg.text,
+      name: msg.isMe ? (myProfile?.user.username ?? 'You') : opponentName,
+      avatarUri: msg.isMe && myProfile ? mediaUrl(myProfile.profile_pic) : null,
+    })
+  }
 
   const opSide = (userSide === 'for' ? 'against' : 'for') as Side
 
@@ -49,9 +74,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
     new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })
 
   const [messages, setMessages] = useState<WsMsg[]>([])
-  const [roundLabels, setRoundLabels] = useState<RoundLabel[]>([
-    { roundId: 0, label: 'OPENING ROUND' },
-  ])
+  const [roundLabels, setRoundLabels] = useState<RoundLabel[]>([{ roundId: 0, label: 'Opening' }])
   const [currentRoundType, setCurrentRoundType] = useState<'OPENING' | 'REBUTTAL'>('OPENING')
   const [isMyTurn, setIsMyTurn] = useState(true)
   const [iHaveSentOpening, setIHaveSentOpening] = useState(false)
@@ -82,13 +105,13 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         : Number(j.winner.id) === Number(myUserId) ? 'win'
         : 'loss'
 
-      // Read deltas directly from backend judgement (stored by apply_judgement_outcome).
-      const ratingDelta = j
-        ? (userSide === 'for' ? j.rating_delta_pro : j.rating_delta_con)
-        : 0
-      const xpDelta = j
+      // Backend doesn't return a rating delta directly — derive it from the
+      // side's own overall score, signed by whether that side won.
+      const mySideOverall = j ? (userSide === 'for' ? j.overall_score_pro : j.overall_score_con) : 0
+      const ratingDelta = result === 'draw' ? 0 : roundHalfEven(Number(mySideOverall) || 0) * (result === 'win' ? 1 : -1)
+      const xpDelta = Number(j
         ? (userSide === 'for' ? j.xp_delta_pro : j.xp_delta_con)
-        : 0
+        : 0) || 0
 
       // Profile was fetched before ELO update ran; add the delta to get the new rating.
       const updatedRating = rating + ratingDelta
@@ -109,14 +132,14 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         strongestMoment: j?.strongest_moment,
         coachingTip:     userSide === 'for' ? j?.coaching_tip_pro : j?.coaching_tip_con,
         scores: j ? {
-          argumentPro:  j.argument_score_pro,
-          rebuttalPro:  j.rebuttal_score_pro,
-          clarityPro:   j.clarity_score_pro,
-          persuasionPro: j.persuasion_score_pro,
-          argumentCon:  j.argument_score_con,
-          rebuttalCon:  j.rebuttal_score_con,
-          clarityCon:   j.clarity_score_con,
-          persuasionCon: j.persuasion_score_con,
+          argumentPro:  Number(j.argument_score_pro) || 0,
+          rebuttalPro:  Number(j.rebuttal_score_pro) || 0,
+          clarityPro:   Number(j.clarity_score_pro) || 0,
+          persuasionPro: Number(j.persuasion_score_pro) || 0,
+          argumentCon:  Number(j.argument_score_con) || 0,
+          rebuttalCon:  Number(j.rebuttal_score_con) || 0,
+          clarityCon:   Number(j.clarity_score_con) || 0,
+          persuasionCon: Number(j.persuasion_score_con) || 0,
         } : undefined,
       })
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.userProfile })
@@ -222,12 +245,14 @@ export default function DebateChatScreen({ route, navigation }: Props) {
       if (ev.type === 'message.new' && ev.message) {
         const msg = ev.message
         const isMe = !!myUserId && Number(msg.user?.id) === Number(myUserId)
+        const roundId = msg.round_id ?? 0
+        if (openingRoundIdRef.current === null) openingRoundIdRef.current = roundId
         setMessages(prev => [...prev, {
           id: String(msg.id),
           isMe,
           text: msg.content ?? '',
           time: nowStr(),
-          roundId: msg.round_id ?? 0,
+          roundId,
         }])
         scrollToEnd()
 
@@ -322,6 +347,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
     if (!draft.trim() || over) return
     if (currentRoundType === 'OPENING' && iHaveSentOpening) return
     if (currentRoundType === 'REBUTTAL' && !isMyTurn) return
+
     const ws = debateSession.client()
     if (!ws || ws.readyState !== WebSocket.OPEN) return
     ws.send({ type: 'message', data: { content: draft.trim() } })
@@ -351,10 +377,10 @@ export default function DebateChatScreen({ route, navigation }: Props) {
     type ListItem = { type: 'divider'; id: string; label: string } | (WsMsg & { type: 'msg' })
     const out: ListItem[] = []
     const seenRounds = new Set<number>()
-    out.push({ type: 'divider', id: 'div_opening', label: 'OPENING ROUND' })
+    out.push({ type: 'divider', id: 'div_opening', label: 'Opening' })
 
     messages.forEach(m => {
-      if (m.roundId !== 0 && !seenRounds.has(m.roundId)) {
+      if (m.roundId !== openingRoundIdRef.current && !seenRounds.has(m.roundId)) {
         seenRounds.add(m.roundId)
         const extra = roundLabels.find(r => r.roundId === m.roundId)
         if (extra) out.push({ type: 'divider', id: `div_${m.roundId}`, label: extra.label })
@@ -398,6 +424,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         myTime={myTime}
         showTypingDots={showTypingDots}
         canType={canType}
+        myAvatarUri={myProfile ? mediaUrl(myProfile.profile_pic) : null}
       />
 
       <FlatList
@@ -405,11 +432,19 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         style={{ flex: 1 }}
         data={listData}
         keyExtractor={item => item.id}
-        renderItem={({ item }) =>
-          item.type === 'divider'
-            ? <RoundDivider label={item.label} />
-            : <Bubble message={item} accent={accent} />
-        }
+        renderItem={({ item }) => {
+          if (item.type === 'divider') return <RoundDivider label={item.label} />
+          if (item.roundId === openingRoundIdRef.current) {
+            return (
+              <OpeningCard
+                message={item}
+                name={item.isMe ? 'You' : opponentName}
+                onShare={() => handleShareMessage(item)}
+              />
+            )
+          }
+          return <Bubble message={item} />
+        }}
         ListFooterComponent={showTypingDots ? <TypingDots color={colors.textMuted} /> : null}
         contentContainerStyle={s.list}
         showsVerticalScrollIndicator={false}
@@ -434,7 +469,6 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         canSend={canSend}
         canEndTurn={canEndTurn}
         placeholder={placeholder}
-        accent={accent}
         onSend={send}
         onEndTurn={endTurn}
         kbHeight={kbHeight}
@@ -451,6 +485,17 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         onCancel={() => setLeaveWarning(false)}
       />
 
+      {/* Off-screen — captured by view-shot when sharing an opening statement */}
+      <View style={s.shareCapture} pointerEvents="none">
+        <OpeningShareCard
+          ref={shareCardRef}
+          text={shareData?.text ?? ''}
+          name={shareData?.name ?? ''}
+          avatarUri={shareData?.avatarUri}
+          motion={motion}
+        />
+      </View>
+
     </SafeAreaView>
   )
 }
@@ -465,4 +510,5 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   wsLostText: { color: '#FED7AA' },
+  shareCapture: { position: 'absolute', left: -9999, top: 0 },
 })

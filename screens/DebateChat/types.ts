@@ -15,8 +15,6 @@ export type Judgement = {
   persuasion_score_con: number
   overall_score_pro: number
   overall_score_con: number
-  rating_delta_pro: number
-  rating_delta_con: number
   xp_delta_pro: number
   xp_delta_con: number
   reasoning: string
@@ -25,6 +23,10 @@ export type Judgement = {
   coaching_tip_con: string
   created_at: string
 }
+
+// Fixed "you" accent used throughout the chat (bubbles, send button) —
+// deliberately not tied to the debate's category accent.
+export const USER_BLUE = '#4FA9FF'
 
 export const CLOCK_SECONDS = 2 * 60
 export const CHAR_LIMIT = 400
@@ -40,8 +42,8 @@ export const EMOJIS = [
 ]
 
 export const ROUND_TYPE_LABELS: Record<string, string> = {
-  OPENING:  'OPENING ROUND',
-  REBUTTAL: 'REBUTTAL ROUND',
+  OPENING:  'Opening',
+  REBUTTAL: 'Rebuttal',
 }
 
 export const sideLabel = (s: Side) => (s === 'for' ? 'FOR' : 'AGAINST')

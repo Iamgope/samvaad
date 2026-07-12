@@ -26,6 +26,7 @@ import { DebateHistory, type Match } from '../../components/profile/DebateHistor
 import { MoreMenuModal, type MoreMenuAction } from '../../components/MoreMenuModal';
 import { mediaUrl, logout, fetchDebateJudgement, type UserProfile, type DebateSummary } from '../../services/api';
 import { useUserProfile, useMyDebates } from '../../hooks/useQueries';
+import { roundHalfEven } from '../../utils/math';
 
 const DEFAULT_AVATAR = require('../../assets/defaultprofilepic.png');
 
@@ -475,20 +476,23 @@ export default function ProfileScreen() {
     try {
       const j = await fetchDebateJudgement(match.id);
       const isPro = match.userSide === 'for';
-      ratingDelta = isPro ? j.rating_delta_pro : j.rating_delta_con;
-      xpDelta     = isPro ? j.xp_delta_pro     : j.xp_delta_con;
+      // Backend doesn't return a rating delta directly — derive it from the
+      // side's own overall score, signed by whether that side won.
+      const mySideOverall = isPro ? j.overall_score_pro : j.overall_score_con;
+      ratingDelta = match.outcome === 'draw' ? 0 : roundHalfEven(Number(mySideOverall) || 0) * (match.outcome === 'win' ? 1 : -1);
+      xpDelta     = Number(isPro ? j.xp_delta_pro     : j.xp_delta_con) || 0;
       reasoning        = j.reasoning;
       strongestMoment  = j.strongest_moment;
       coachingTip      = isPro ? j.coaching_tip_pro : j.coaching_tip_con;
       scores = {
-        argumentPro:  j.argument_score_pro,
-        rebuttalPro:  j.rebuttal_score_pro,
-        clarityPro:   j.clarity_score_pro,
-        persuasionPro: j.persuasion_score_pro,
-        argumentCon:  j.argument_score_con,
-        rebuttalCon:  j.rebuttal_score_con,
-        clarityCon:   j.clarity_score_con,
-        persuasionCon: j.persuasion_score_con,
+        argumentPro:  Number(j.argument_score_pro) || 0,
+        rebuttalPro:  Number(j.rebuttal_score_pro) || 0,
+        clarityPro:   Number(j.clarity_score_pro) || 0,
+        persuasionPro: Number(j.persuasion_score_pro) || 0,
+        argumentCon:  Number(j.argument_score_con) || 0,
+        rebuttalCon:  Number(j.rebuttal_score_con) || 0,
+        clarityCon:   Number(j.clarity_score_con) || 0,
+        persuasionCon: Number(j.persuasion_score_con) || 0,
       };
     } catch {
       // judgement unavailable — show zeros and no analysis

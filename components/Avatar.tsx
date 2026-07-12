@@ -14,8 +14,12 @@ type Props = {
   initials?: string
   /** Border colour of the tile — e.g. the tier or active-turn colour. */
   borderColor?: string
-  /** When set, paints a coloured glow behind the tile (active state). */
+  /** When set, paints a coloured glow/shadow behind the tile. */
   glowColor?: string
+  /** Glow strength — lower for a subtle shadow, higher for a strong glow. Default 0.55. */
+  glowOpacity?: number
+  /** Glow blur radius. Default 9. */
+  glowRadius?: number
   backgroundColor?: string
   textColor?: string
   /** Offset of the tactile drop-shadow square. */
@@ -33,6 +37,8 @@ export function Avatar({
   initials = '?',
   borderColor = colors.border,
   glowColor,
+  glowOpacity = 0.55,
+  glowRadius = 9,
   backgroundColor = colors.surface2,
   textColor = colors.textMuted,
   offset = 4,
@@ -51,8 +57,8 @@ export function Avatar({
           { top: offset, left: offset, width: size, height: size, borderRadius: radius },
           glowColor && {
             backgroundColor: 'transparent',
-            shadowColor: glowColor, shadowOpacity: 0.55, shadowRadius: 9,
-            shadowOffset: { width: 0, height: 0 }, elevation: 8,
+            shadowColor: glowColor, shadowOpacity: glowOpacity, shadowRadius: glowRadius,
+            shadowOffset: { width: 0, height: 0 }, elevation: Math.max(2, Math.round(glowRadius)),
           },
         ]}
       />

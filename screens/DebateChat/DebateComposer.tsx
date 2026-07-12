@@ -12,7 +12,7 @@ import { colors } from '../../constants/colors'
 import { fonts } from '../../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../../constants/spacing'
 import { Text } from '../../components/Text'
-import { CHAR_LIMIT, EMOJIS } from './types'
+import { CHAR_LIMIT, EMOJIS, USER_BLUE } from './types'
 
 function ArrowUpIcon({ size = 18, color = colors.black as string }) {
   return (
@@ -56,7 +56,6 @@ export function DebateComposer({
   canSend,
   canEndTurn,
   placeholder,
-  accent,
   onSend,
   onEndTurn,
   kbHeight,
@@ -72,7 +71,6 @@ export function DebateComposer({
   canSend: boolean
   canEndTurn: boolean
   placeholder: string
-  accent: string
   onSend: () => void
   onEndTurn: () => void
   kbHeight: number
@@ -133,7 +131,7 @@ export function DebateComposer({
           <View style={s.inputFooter}>
             {canType && (
               <TouchableOpacity onPress={onToggleEmoji} hitSlop={8} activeOpacity={0.7}>
-                <EmojiIcon size={22} color={showEmoji ? accent : colors.textMuted} />
+                <EmojiIcon size={22} color={showEmoji ? USER_BLUE : colors.textMuted} />
               </TouchableOpacity>
             )}
             <View style={{ flex: 1 }} />
@@ -147,7 +145,7 @@ export function DebateComposer({
               onPress={onSend}
               disabled={!canSend}
               activeOpacity={0.85}
-              style={[s.sendBtn, { backgroundColor: canSend ? accent : colors.surface2 }]}
+              style={[s.sendBtn, { backgroundColor: canSend ? USER_BLUE : colors.surface2 }]}
             >
               <ArrowUpIcon size={18} color={canSend ? colors.black : colors.textSubtle} />
             </TouchableOpacity>

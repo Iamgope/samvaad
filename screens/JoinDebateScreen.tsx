@@ -39,9 +39,9 @@ const DEFAULT_AVATAR = require('../assets/defaultprofilepic.png')
 // ─── DATA ─────────────────────────────────────────────────────────
 
 const STANCES = [
-  { id: 'surprise', label: 'Surprise Me', emoji: '🎲', accent: colors.lime   },
-  { id: 'for',      label: 'Defend',      emoji: '🛡️',  accent: colors.sky    },
-  { id: 'against',  label: 'Attack',      emoji: '⚔️',  accent: colors.streak },
+  { id: 'surprise', label: 'Surprise Me', emoji: '🎲', accent: colors.lime },
+  { id: 'for',      label: 'Defend',      emoji: '🛡️',  accent: '#4ADE80'   },
+  { id: 'against',  label: 'Attack',      emoji: '⚔️',  accent: colors.red  },
 ]
 
 const ALL_CATEGORY_ID = 'all'
@@ -573,6 +573,14 @@ const stanceToSide = (id: string): 'PRO' | 'CON' | null => {
               ))}
             </View>
 
+            <Text style={s.stanceHint}>
+              {selectedStance.id === 'surprise'
+                ? "🎲 We'll randomly assign your stance once you're matched."
+                : selectedStance.id === 'for'
+                  ? "You'll debate FOR this motion, build the case to defend it."
+                  : "You'll debate AGAINST this motion, build the case to attack it."}
+            </Text>
+
           </ScrollView>
 
           <View style={s.footer}>
@@ -652,6 +660,14 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     marginBottom: spacing.xxl + spacing.xl,
+  },
+  stanceHint: {
+    fontFamily: fonts.jakarta.regular,
+    fontSize: 16,
+    color: colors.textMuted,
+    marginTop: spacing.xl,
+    marginBottom: spacing.lg,
+    margin:spacing.lg
   },
   filterSep: {
     fontFamily: fonts.jakarta.regular,

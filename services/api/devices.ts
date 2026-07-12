@@ -43,11 +43,16 @@ export function registerDeviceAsync(): void {
         return;
       }
       const device_type: DeviceType = Platform.OS === 'ios' ? 'IOS' : 'ANDROID';
-      const device_token = (await getNativePushToken()) ?? '';
+      const device_token = await getNativePushToken();
+      if (!device_token) {
+        console.log('[device] no push token — skipping registration');
+        return;
+      }
       console.log('[device] registering', { device_id, device_type, device_token_len: device_token.length });
       await registerDevice({ device_id, device_type, device_token });
       console.log('[device] registered ok');
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.status === 400) return; // already registered
       console.log('[device] register failed =', err);
     }
   })();

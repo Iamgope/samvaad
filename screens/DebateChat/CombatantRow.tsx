@@ -8,7 +8,12 @@ import { Avatar } from '../../components/Avatar'
 import type { Side } from './types'
 import { sideLabel, fmtTime } from './types'
 
-function Combatant({ name, side, isYou, accent, time, active, mirror }: {
+const DEFAULT_AVATAR = require('../../assets/defaultprofilepic.png')
+
+const FOR_COLOR = '#4ADE80'
+const AGAINST_COLOR = colors.red
+
+function Combatant({ name, side, isYou, accent, time, active, mirror, avatarUri }: {
   name: string
   side: Side
   isYou: boolean
@@ -16,20 +21,21 @@ function Combatant({ name, side, isYou, accent, time, active, mirror }: {
   time: number
   active: boolean
   mirror?: boolean
+  avatarUri?: string | null
 }) {
-  const initial = (name?.trim()?.[0] ?? '?').toUpperCase()
-  const ring = isYou ? accent : colors.text
+  const sideColor = side === 'for' ? FOR_COLOR : AGAINST_COLOR
 
   return (
     <View style={[cb.wrap, mirror && { flexDirection: 'row-reverse' }]}>
       <Avatar
         size={44}
         offset={3}
-        initials={initial}
-        borderColor={active ? ring : colors.border}
-        glowColor={active ? ring : undefined}
-        backgroundColor={isYou ? accent + '14' : colors.surface2}
-        textColor={isYou ? accent : colors.textMuted}
+        source={avatarUri ? { uri: avatarUri } : DEFAULT_AVATAR}
+        borderColor={colors.border}
+        glowColor={sideColor}
+        glowOpacity={0.35}
+        glowRadius={4}
+        backgroundColor={colors.surface2}
       />
       <View style={[cb.info, mirror && { alignItems: 'flex-end' }]}>
         <Text style={cb.name} numberOfLines={1}>{name}</Text>
@@ -52,6 +58,7 @@ export function CombatantRow({
   myTime,
   showTypingDots,
   canType,
+  myAvatarUri,
 }: {
   opponentName: string
   opSide: Side
@@ -61,6 +68,7 @@ export function CombatantRow({
   myTime: number
   showTypingDots: boolean
   canType: boolean
+  myAvatarUri?: string | null
 }) {
   return (
     <View style={s.vsRow}>
@@ -81,6 +89,7 @@ export function CombatantRow({
         time={myTime}
         active={canType}
         mirror
+        avatarUri={myAvatarUri}
       />
     </View>
   )

@@ -6,6 +6,7 @@ import {
   View,
   StyleSheet,
   ViewStyle,
+  TextStyle,
   ActivityIndicator,
   Text,
   type LayoutChangeEvent,
@@ -57,6 +58,7 @@ export type ButtonProps = {
   size?: Size;
   style?: ViewStyle;
   notchColor?: string;
+  labelStyle?: TextStyle;
 };
 
 type Tokens = {
@@ -196,6 +198,7 @@ export function Button({
   size = 'lg',
   style,
   notchColor = colors.black,
+  labelStyle,
 }: ButtonProps) {
   const press = useRef(new Animated.Value(0)).current;
   const fade  = useRef(new Animated.Value(1)).current;
@@ -251,6 +254,7 @@ export function Button({
         style={style}
         disabled={disabled}
         isLoading={isLoading}
+        labelStyle={labelStyle}
       />
     );
   }
@@ -533,6 +537,7 @@ function SteelButton({
   style,
   disabled = false,
   isLoading = false,
+  labelStyle,
 }: {
   label: string;
   onPress?: () => void;
@@ -540,6 +545,7 @@ function SteelButton({
   style?: ViewStyle;
   disabled?: boolean;
   isLoading?: boolean;
+  labelStyle?: TextStyle;
 }) {
   const shine = useRef(new Animated.Value(0)).current;
   const press = useRef(new Animated.Value(0)).current;
@@ -610,7 +616,7 @@ function SteelButton({
             />
           </Animated.View>
 
-          <Text style={s.steelLabel}>{label}</Text>
+          <Text style={[s.steelLabel, labelStyle]}>{label}</Text>
           {isLoading && (
             <ActivityIndicator color="#1A1F2C" style={s.iconRight} />
           )}
