@@ -88,6 +88,18 @@ export class WebSocketClient {
     });
   }
 
+  /**
+   * Re-open after a network-loss close, reusing this same instance so every
+   * existing `.on()` listener keeps working with no re-subscription needed.
+   */
+  reconnect(): Promise<void> {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) return Promise.resolve();
+    this.didRefresh = false;
+    return new Promise((resolve, reject) => {
+      this.attempt(resolve, reject);
+    });
+  }
+
   private async attempt(
     resolve: () => void,
     reject: (err: unknown) => void,

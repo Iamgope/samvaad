@@ -24,6 +24,9 @@ import {
   ApiError,
   getCurrentUserId,
   debateSession,
+  reconnectState,
+  onConnectivityRestored,
+  attemptResume,
   mediaUrl,
   type DebateCategory,
 } from '../services/api'
@@ -231,6 +234,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
             if (wsRef.current) {
               debateSession.set(wsRef.current, debate.id)
               debateSession.startBuffering()
+              reconnectState.setViewer(debate.id)
               wsRef.current = null
             }
 
@@ -255,7 +259,6 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
       })
       client.on('close', (info) => {
         console.log('[WS] closed =', info)
-        wsRef.current = null
       })
       client.on('error', (err) => {
         console.log('[WS] error =', err)
@@ -271,6 +274,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
       const side = stanceToSide(selectedStance.id)
       if (side) data.pro_or_con = side
 
+      reconnectState.setQueue(data)
       client.send({ type: 'join_queue', data })
     } catch (err) {
       console.log('[WS] connect failed =', err)
@@ -282,9 +286,24 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
 
   const handleCancelSearch = () => {
     closeSocket()
+    reconnectState.clear()
     setSearching(false)
     setConnecting(false)
   }
+
+  // While searching, resume matchmaking if we briefly lose and regain connectivity.
+  useEffect(() => {
+    if (!searching) return
+    return onConnectivityRestored(() => {
+      if (!wsRef.current) return
+      attemptResume(wsRef.current).then((resumed) => {
+        if (!resumed) {
+          setQueueError('Reconnected but could not resume matchmaking. Please try again.')
+          setSearching(false)
+        }
+      })
+    })
+  }, [searching])
 
   const handleBack = () => {
     if (searching || connecting) handleCancelSearch()

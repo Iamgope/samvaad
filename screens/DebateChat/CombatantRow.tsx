@@ -1,5 +1,5 @@
-import React from 'react'
-import { View, StyleSheet } from 'react-native'
+import React, { useRef, useEffect } from 'react'
+import { View, StyleSheet, Animated } from 'react-native'
 import { colors } from '../../constants/colors'
 import { fonts } from '../../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../../constants/spacing'
@@ -20,7 +20,7 @@ const DEFAULT_AVATAR = require('../../assets/defaultprofilepic.png')
 const FOR_COLOR = colors.lime
 const AGAINST_COLOR = colors.limeMuted
 
-function Combatant({ name, side, isYou, accent, time, active, mirror, avatarUri }: {
+function Combatant({ name, side, isYou, accent, time, active, mirror, avatarUri, disconnected }: {
   name: string
   side: Side
   isYou: boolean
@@ -29,8 +29,22 @@ function Combatant({ name, side, isYou, accent, time, active, mirror, avatarUri 
   active: boolean
   mirror?: boolean
   avatarUri?: string | null
+  disconnected?: boolean
 }) {
   const sideColor = side === 'for' ? FOR_COLOR : AGAINST_COLOR
+  const pulse = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    if (!disconnected) return
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1, duration: 650, useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 0, duration: 650, useNativeDriver: true }),
+    ]))
+    loop.start()
+    return () => loop.stop()
+  }, [disconnected, pulse])
+
+  const reconnectOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] })
 
   return (
     <View style={[cb.wrap, mirror && { flexDirection: 'row-reverse' }]}>
@@ -43,6 +57,7 @@ function Combatant({ name, side, isYou, accent, time, active, mirror, avatarUri 
         glowOpacity={0.35}
         glowRadius={4}
         backgroundColor={colors.surface2}
+        style={disconnected && { opacity: 0.4 }}
       />
       <View style={[cb.info, mirror && { alignItems: 'flex-end' }]}>
         <Text style={cb.name} numberOfLines={1}>{name}</Text>
@@ -51,6 +66,9 @@ function Combatant({ name, side, isYou, accent, time, active, mirror, avatarUri 
           <Text style={cb.sep}>·</Text>
           <Text style={[cb.time, active && { color: isYou ? accent : colors.text }]}>{fmtTime(time)}</Text>
         </View>
+        {disconnected && (
+          <Animated.Text style={[cb.reconnecting, { opacity: reconnectOpacity }]}>Reconnecting…</Animated.Text>
+        )}
       </View>
     </View>
   )
@@ -66,6 +84,7 @@ export function CombatantRow({
   showTypingDots,
   canType,
   myAvatarUri,
+  opponentDisconnected,
 }: {
   opponentName: string
   opSide: Side
@@ -76,6 +95,7 @@ export function CombatantRow({
   showTypingDots: boolean
   canType: boolean
   myAvatarUri?: string | null
+  opponentDisconnected?: boolean
 }) {
   return (
     <View style={s.vsRow}>
@@ -86,6 +106,7 @@ export function CombatantRow({
         accent={accent}
         time={opTime}
         active={showTypingDots}
+        disconnected={opponentDisconnected}
       />
       <Text style={s.vs}>VS</Text>
       <Combatant
@@ -118,4 +139,5 @@ const cb = StyleSheet.create({
   side: { fontFamily: fonts.jakarta.extraBold, fontSize: 9, color: colors.textSubtle, letterSpacing: 1 },
   sep: { fontSize: 9, color: colors.textFaint },
   time: { fontFamily: fonts.jakarta.bold, fontSize: 11, color: colors.textMuted, fontVariant: ['tabular-nums'] },
+  reconnecting: { fontFamily: fonts.jakarta.extraBold, fontSize: 9, color: colors.tierMaster, letterSpacing: 0.5, marginTop: 1 },
 })

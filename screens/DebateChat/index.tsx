@@ -9,7 +9,11 @@ import { TextInput } from 'react-native'
 import { Text } from '../../components/Text'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { useQueryClient } from '@tanstack/react-query'
-import { debateSession, fetchUserProfile, mediaUrl } from '../../services/api'
+import {
+  debateSession, fetchUserProfile, mediaUrl,
+  reconnectState, onConnectivityRestored, attemptResume,
+} from '../../services/api'
+import { Toast } from '../../components/Toast'
 import { QUERY_KEYS, useUserProfile } from '../../hooks/useQueries'
 import { roundHalfEven } from '../../utils/math'
 import { DebateChatHeader } from './DebateChatHeader'
@@ -88,6 +92,9 @@ export default function DebateChatScreen({ route, navigation }: Props) {
   const [draft, setDraft] = useState('')
   const [wsLost, setWsLost] = useState(false)
   const [leaveWarning, setLeaveWarning] = useState(false)
+  const [opponentDisconnected, setOpponentDisconnected] = useState(false)
+  const [leaveToast, setLeaveToast] = useState<string | null>(null)
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const verdictRef = useRef<any>(null)   // stores raw judgement from debate.completed
   // Drives JudgingOverlay independently of `over` — `over` never resets, and RN's
   // Modal renders above the whole app, so relying on `over` would leave it stuck
@@ -205,6 +212,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
 
   const confirmLeave = () => {
     debateSession.clear()
+    reconnectState.clear()
     setLeaveWarning(false)
     bypassLeaveGuard.current = true
     if (pendingNavAction.current) {
@@ -249,6 +257,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
   useEffect(() => {
     const ws = debateSession.client()
     if (!ws) return
+    reconnectState.setViewer(route.params.debateId)
 
     const handleEvent = (raw: unknown) => {
       if (!raw || typeof raw !== 'object') return
@@ -311,6 +320,27 @@ export default function DebateChatScreen({ route, navigation }: Props) {
       if (ev.type === 'debate_result' && ev.data) {
         verdictRef.current = ev.data as Judgement
       }
+
+      if (ev.type === 'opponent.disconnected' && ev.data) {
+        const abandoned = !!ev.data.abandoned
+        if (abandoned) {
+          setLeaveToast('Opponent left the debate')
+          bypassLeaveGuard.current = true
+          exitTimerRef.current = setTimeout(() => {
+            debateSession.clear()
+            reconnectState.clear()
+            navigation.reset({ index: 0, routes: [{ name: 'Main' }] })
+          }, 900)
+        } else {
+          setOpponentDisconnected(true)
+        }
+      }
+
+      // Same event the backend sends when a user first connects to the debate —
+      // reused here as the "opponent is back" signal.
+      if (ev.type === 'opponent.connected') {
+        setOpponentDisconnected(false)
+      }
     }
 
     const off = ws.on('message', handleEvent)
@@ -331,8 +361,21 @@ export default function DebateChatScreen({ route, navigation }: Props) {
       offClose()
       if (turnTimerRef.current) clearTimeout(turnTimerRef.current)
       if (opponentTypingTimer.current) clearTimeout(opponentTypingTimer.current)
+      if (exitTimerRef.current) clearTimeout(exitTimerRef.current)
     }
   }, []) // mount once
+
+  // Resume the debate session if my own connection drops and comes back.
+  useEffect(() => {
+    if (over) return
+    return onConnectivityRestored(() => {
+      const ws = debateSession.client()
+      if (!ws) return
+      attemptResume(ws).then((resumed) => {
+        if (resumed) setWsLost(false)
+      })
+    })
+  }, [over])
 
   const onChangeDraft = (t: string) => {
     if (t.length - draft.length > PASTE_GUARD_LEN) return
@@ -437,7 +480,10 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         showTypingDots={showTypingDots}
         canType={canType}
         myAvatarUri={myProfile ? mediaUrl(myProfile.profile_pic) : null}
+        opponentDisconnected={opponentDisconnected}
       />
+
+      <Toast message={leaveToast} variant="info" onHide={() => setLeaveToast(null)} />
 
       <FlatList
         ref={listRef}
