@@ -21,45 +21,27 @@ type DebateItem = {
   emoji: string
   motion: string
   context: string
-  debating: number
-  forVotes: number
-  againstVotes: number
+  proContext: string | null
+  conContext: string | null
   categoryTag: string
-  isNew?: boolean
-  endsIn?: string
-  xpReward: number
+  isTrending: boolean
   icon: any
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────
 
-const formatCount = (n: number): string =>
-  n >= 1000 ? `${(n / 1000).toFixed(1)}K` : n.toString()
-
-const forPctOf = (d: DebateItem): number => {
-  const total = d.forVotes + d.againstVotes
-  return total > 0 ? Math.round((d.forVotes / total) * 100) : 50
-}
-
-function mockDebateItem(topic: Topic, categoryName: string): DebateItem {
-  const id           = topic.id
-  const forVotes     = ((id * 137) % 8000) + 500
-  const againstVotes = ((id * 91)  % 7000) + 500
-  const debating     = forVotes + againstVotes + ((id * 53) % 4000)
-  const iconUri      = mediaUrl(topic.icon)
+function topicToDebateItem(topic: Topic, categoryName: string): DebateItem {
+  const iconUri = mediaUrl(topic.icon)
   return {
-    id,
-    emoji:        categoryConfig(categoryName).emoji,
-    motion:       topic.title,
-    context:      topic.description ?? '',
-    debating,
-    forVotes,
-    againstVotes,
-    categoryTag:  categoryName,
-    isNew:        id % 7 === 0,
-    endsIn:       id % 5 === 0 ? `${(id % 8) + 1}h` : undefined,
-    xpReward:     ((id % 5) + 1) * 20,
-    icon:         iconUri ? { uri: iconUri } : null,
+    id: topic.id,
+    emoji: categoryConfig(categoryName).emoji,
+    motion: topic.title,
+    context: topic.description ?? '',
+    proContext: topic.pro_context ?? null,
+    conContext: topic.con_context ?? null,
+    categoryTag: categoryName,
+    isTrending: topic.is_trending ?? false,
+    icon: iconUri ? { uri: iconUri } : null,
   }
 }
 
@@ -73,10 +55,10 @@ type Props = {
 export default function TopicScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets()
 
-  const [groups, setGroups]               = useState<Record<string, CategoryGroup> | null>(null)
-  const [loading, setLoading]             = useState(true)
-  const [error, setError]                 = useState<string | null>(null)
-  const [activeCategoryId, setActive]     = useState<string>(route.params?.category ?? '')
+  const [groups, setGroups] = useState<Record<string, CategoryGroup> | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [activeCategoryId, setActive] = useState<string>(route.params?.category ?? '')
 
   useEffect(() => {
     let cancelled = false
@@ -100,38 +82,42 @@ export default function TopicScreen({ navigation, route }: Props) {
     if (!groups) {
       return { chipOptions: [] as ChipOption[], selectedChip: null as ChipOption | null, catAccent: colors.streak, catIcon: null, catPoster: null }
     }
-    const names  = CATEGORY_ORDER.filter(n => n in groups)
+    const names = CATEGORY_ORDER.filter(n => n in groups)
     const chips: ChipOption[] = names.map(name => {
       const cfg = categoryConfig(name)
       return { id: name, label: name, emoji: cfg.emoji, accent: cfg.accent }
     })
     const chip = chips.find(c => c.id === activeCategoryId) ?? chips[0] ?? null
-    const cfg  = categoryConfig(chip?.id ?? '')
+    const cfg = categoryConfig(chip?.id ?? '')
     return { chipOptions: chips, selectedChip: chip, catAccent: cfg.accent, catIcon: cfg.icon, catPoster: cfg.poster }
   }, [groups, activeCategoryId])
 
   const debates: DebateItem[] = useMemo(() => {
     if (!groups || !activeCategoryId) return []
-    return (groups[activeCategoryId]?.topics ?? []).map(t => mockDebateItem(t, activeCategoryId))
+    return (groups[activeCategoryId]?.topics ?? []).map(t => topicToDebateItem(t, activeCategoryId))
   }, [groups, activeCategoryId])
 
   const openDebate = (id: number) => {
     const d = debates.find(x => x.id === id)
     if (!d) return
     navigation.navigate('DebateDetail', {
-      debateId:      String(d.id),
-      categoryId:    activeCategoryId,
-      categoryName:  displayLabel,
+      debateId: String(d.id),
+      categoryId: activeCategoryId,
+      categoryName: displayLabel,
       categoryAccent: catAccent,
-      motion:        d.motion,
-      context:       d.context,
-      agreeCount:    d.forVotes,
-      disagreeCount: d.againstVotes,
-      unsureCount:   0,
+      motion: d.motion,
+      context: d.context,
+      agreeCount: 0,
+      disagreeCount: 0,
+      unsureCount: 0,
+      proBody: d.proContext ?? undefined,
+      conBody: d.conContext ?? undefined,
     })
   }
 
-  const [featured, ...rest] = debates
+  // Trending topic surfaces at the top; remaining topics below
+  const trendingDebate = debates.find(d => d.isTrending) ?? debates[0] ?? null
+  const restDebates = debates.filter(d => d !== trendingDebate)
   const displayLabel = selectedChip?.label ?? activeCategoryId
 
   return (
@@ -178,31 +164,36 @@ export default function TopicScreen({ navigation, route }: Props) {
             <Text style={s.title}>{displayLabel}</Text>
           </View>
 
-          {/* ── Debate of the Day ── */}
-          {featured && (
+          {/* ── Trending Debate ── */}
+          {trendingDebate && (
             <View style={s.heroSection}>
               <DebateHeroCard
-                motion={featured.motion}
-                categoryName={featured.categoryTag}
+                headerLeft={
+                  <View style={s.trendingBadgeRow}>
+                    <Text style={s.trendingBadge}>Trending</Text>
+                  </View>
+                }
+                motion={trendingDebate.motion}
+                categoryName={trendingDebate.categoryTag}
                 categoryAccent={catAccent}
                 image={catPoster}
                 height={272}
                 motionSize={26}
-                onPress={() => openDebate(featured.id)}
+                onPress={() => openDebate(trendingDebate.id)}
                 footer={
                   <Text style={s.heroMeta}>
-                    {formatCount(featured.debating)} debating · {forPctOf(featured)}% for
+                    Tap to debate
                   </Text>
                 }
               />
             </View>
           )}
 
-          {/* ── Popular list ── */}
-          {rest.length > 0 && (
+          {/* ── All topics list ── */}
+          {restDebates.length > 0 && (
             <View style={s.section}>
-              <Text style={s.sectionLabel}>Popular Today</Text>
-              {rest.map((d, i) => (
+              <Text style={s.sectionLabel}>All Topics</Text>
+              {restDebates.map((d, i) => (
                 <View key={d.id}>
                   <DebateHeadline
                     motion={d.motion}
@@ -212,15 +203,8 @@ export default function TopicScreen({ navigation, route }: Props) {
                     categoryIcon={catIcon}
                     headlineSize={17}
                     onPress={() => openDebate(d.id)}
-                    footer={
-                      <Text style={s.headlineMeta}>
-                        {formatCount(d.forVotes)} for · {formatCount(d.againstVotes)} against
-                        {d.isNew ? '  ·  NEW' : ''}
-                        {d.endsIn ? `  ·  ends in ${d.endsIn}` : ''}
-                      </Text>
-                    }
                   />
-                  {i < rest.length - 1 && <View style={s.divider} />}
+                  {i < restDebates.length - 1 && <View style={s.divider} />}
                 </View>
               ))}
             </View>
@@ -247,12 +231,12 @@ export default function TopicScreen({ navigation, route }: Props) {
 // ─── STYLES ───────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: colors.black },
+  safe: { flex: 1, backgroundColor: colors.black },
   scroll: { flex: 1 },
   scrollContent: {
     paddingBottom: 110,
   },
-  center:    { flex: 1, alignItems: 'center', justifyContent: 'center', padding: SCREEN_PADDING },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: SCREEN_PADDING },
   errorText: { textAlign: 'center', color: colors.textMuted },
 
   // ── Header ──
@@ -283,6 +267,20 @@ const s = StyleSheet.create({
     marginTop: spacing.xs,
     paddingHorizontal: SCREEN_PADDING,
   },
+  trendingBadgeRow: {
+    flexDirection: 'row',
+  },
+  trendingBadge: {
+    fontFamily: fonts.jakarta.extraBold,
+    fontSize: 12,
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+    backgroundColor: colors.lime + '40', // Bluish container, increased opacity slightly for white text contrast
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
   section: {
     marginTop: spacing.xl,
     paddingHorizontal: SCREEN_PADDING,
@@ -301,7 +299,7 @@ const s = StyleSheet.create({
     marginTop: spacing.xs,
   },
 
-  // ── Popular list ──
+  // ── Topics list ──
   divider: {
     height: 1,
     backgroundColor: colors.border,

@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
 import {
   Animated,
+  Image,
   Pressable,
   View,
   ScrollView,
   StyleSheet,
-  Image,
   TouchableOpacity,
   type StyleProp,
   type TextStyle,
@@ -16,6 +16,7 @@ import type { RootStackParamList } from '../App'
 import { colors } from '../constants/colors'
 import { fonts } from '../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../constants/spacing'
+import { categoryConfig } from '../constants/categories'
 import { Text } from '../components/Text'
 import { IconButton } from '../components/IconButton'
 import { Button } from '../components/Button'
@@ -30,12 +31,6 @@ const FOR_ACCENT = '#4ADE80'
 const AGAINST_ACCENT = colors.red
 
 const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}K` : `${n}`)
-
-const POSTER: Partial<Record<string, any>> = {
-  politics: require('../assets/poster_politics.png'),
-  sports:   require('../assets/poster_sports.png'),
-  lit:      require('../assets/poster_culture.png'),
-}
 
 export default function DebateDetailScreen({ route, navigation }: Props) {
   const {
@@ -115,24 +110,31 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
         contentContainerStyle={[s.scrollContent, { paddingBottom: 120 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Full-bleed hero (placeholder — artwork TBD) ── */}
+        {/* ── Full-bleed hero ── */}
         <DebateHeroCard
           motion={motion}
           categoryName={categoryName}
           categoryAccent={categoryAccent}
-          image={POSTER[categoryId]}
+          image={categoryConfig(categoryId).poster}
           height={HERO_HEIGHT}
           borderRadius={0}
           motionSize={24}
           style={s.hero}
         />
 
-        {/* ── Split card ── */}
+        {/* ── Stats card ── */}
         <View style={s.card}>
+          <View style={s.cardHeader}>
+            <Text style={s.cardEyebrow}>COMMUNITY VOTE</Text>
+          </View>
           <View style={s.pctGroup}>
             <View style={s.pctSide}>
-              <AvatarStack />
-              <Text style={s.pctMore}>+ {fmt(agreeCount)}</Text>
+              {agreeCount > 0 && (
+                <>
+                  <AvatarStack />
+                  <Text style={s.pctMore}>+ {fmt(agreeCount)}</Text>
+                </>
+              )}
             </View>
             <Text style={s.pctNum}>
               {forPct}<Text style={s.pctSign}>%</Text>
@@ -142,10 +144,17 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
               {againstPct}<Text style={s.pctSign}>%</Text>
             </Text>
             <View style={s.pctSide}>
-              <Text style={s.pctMore}>+ {fmt(disagreeCount)}</Text>
-              <AvatarStack />
+              {disagreeCount > 0 && (
+                <>
+                  <Text style={s.pctMore}>+ {fmt(disagreeCount)}</Text>
+                  <AvatarStack />
+                </>
+              )}
             </View>
           </View>
+          {agreeCount === 0 && disagreeCount === 0 && (
+            <Text style={s.noVotesHint}>Be the first to debate this topic</Text>
+          )}
         </View>
 
         {/* ── Context card ── */}
@@ -169,7 +178,6 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
           <StanceRow
             accent={FOR_ACCENT}
             label="FOR"
-            title={proTitle}
             body={proBody}
             image={require('../assets/forthemotion.png')}
           />
@@ -179,7 +187,6 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
           <StanceRow
             accent={AGAINST_ACCENT}
             label="AGAINST"
-            title={conTitle}
             body={conBody}
             image={require('../assets/againstthemotion.png')}
           />
@@ -398,13 +405,11 @@ function SquareTile({
 function StanceRow({
   accent,
   label,
-  title,
   body,
   image,
 }: {
   accent: string
   label: string
-  title?: string
   body?: string
   image: any
 }) {
@@ -413,8 +418,11 @@ function StanceRow({
       <SquareTile accent={accent} image={image} size={76} />
       <View style={s.stanceBody}>
         <Text style={[s.stanceLabel, { color: accent }]}>{label}</Text>
-        <Text style={s.stanceTitle}>{title}</Text>
-        <ExpandableText text={body ?? ''} style={s.stanceText} lines={3} />
+        {body ? (
+          <ExpandableText text={body} style={s.stanceText} lines={4} />
+        ) : (
+          <Text style={s.stanceText}>No context provided yet.</Text>
+        )}
       </View>
     </View>
   )
@@ -491,6 +499,14 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: colors.textMuted,
     letterSpacing: 0.2,
+  },
+  noVotesHint: {
+    fontFamily: fonts.jakarta.medium,
+    fontSize: 12,
+    color: colors.textFaint,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    letterSpacing: 0.1,
   },
   pctSep: {
     fontFamily: fonts.jakarta.bold,

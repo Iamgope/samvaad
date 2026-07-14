@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View,
   ScrollView,
@@ -8,6 +8,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { colors } from '../constants/colors'
@@ -18,172 +19,66 @@ import { DebateHeadline } from '../components/DebateHeadline'
 import { DebateHeroCard } from '../components/DebateHeroCard'
 import { CategoryCard } from '../components/CategoryCard'
 import { BellIcon, DiceIcon, LearnIcon } from '../components/Icons'
+import { useTopics } from '../hooks/useQueries'
+import { mediaUrl, type Topic } from '../services/api'
+import { categoryConfig, CATEGORY_ORDER } from '../constants/categories'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const TRENDING_CARD_WIDTH = SCREEN_WIDTH - SCREEN_PADDING * 2
 const TOPIC_CARD_WIDTH    = (SCREEN_WIDTH - SCREEN_PADDING * 2 - spacing.sm * 3) / 2.95
 
-type CategoryId = 'politics' | 'sports' | 'lit' | 'philosophy'
+// ─── TYPES ────────────────────────────────────────────────────────
 
-type Category = {
-  id: CategoryId
-  name: string
-  icon: any
-  accent: string
-}
-
-type TrendingDebate = {
-  id: string
-  category: CategoryId
+type HomeTopic = {
+  id: number
+  categoryName: string
   motion: string
-  debating: number
-  forVotes: number
-  againstVotes: number
-  lastArguer: { name: string; avatar: string }
-  lastArgumentTime: string
   context?: string
-  agreeCount: number
-  disagreeCount: number
-  unsureCount: number
-  whyDebate: string
-  proTitle: string
-  proBody: string
-  conTitle: string
-  conBody: string
-}
-
-type CuratedDebate = {
-  id: string
-  category: CategoryId
-  motion: string
-  debating: number
-  forVotes: number
-  againstVotes: number
-  context?: string
-  agreeCount: number
-  disagreeCount: number
-  unsureCount: number
-  isNew?: boolean
-  endsIn?: string
-  whyDebate: string
-  proTitle: string
-  proBody: string
-  conTitle: string
-  conBody: string
-}
-
-// ─── DATA ─────────────────────────────────────────────────────────
-
-const CATEGORIES: Category[] = [
-  { id: 'politics', name: 'Politics', icon: require('../assets/politics_icon.png'), accent: colors.streak },
-  { id: 'sports',   name: 'Sports',   icon: require('../assets/sports_icon.png'),   accent: '#38BDF8' },
-  { id: 'lit',      name: 'Culture',  icon: require('../assets/art_icon.png'),      accent: colors.purple2 },
-]
-
-const TRENDING: TrendingDebate[] = [
-  {
-    id: 't1',
-    category: 'politics',
-    motion: 'Is democracy the best form of government?',
-    debating: 12400,
-    forVotes: 7632, againstVotes: 5412,
-    lastArguer: { name: 'Arjun V.', avatar: '🧔' },
-    lastArgumentTime: '2h ago',
-    context: 'Rising authoritarianism and electoral controversies worldwide have put democracy itself on trial.',
-    agreeCount: 7632, disagreeCount: 5412, unsureCount: 1200,
-    whyDebate: 'Democracy is celebrated as the gold standard, but critics argue it can be gridlocked, manipulated, or captured by populism.',
-    proTitle: 'Power belongs to the people',
-    proBody: 'Democracy holds leaders accountable through elections, enshrines individual rights, and adapts peacefully to change.',
-    conTitle: 'Mob rule over merit',
-    conBody: 'Short-term cycles and money in politics mean popular will rarely translates to good governance.',
-  },
-  {
-    id: 't2',
-    category: 'sports',
-    motion: 'Should cricket be added to the Olympics?',
-    debating: 8200,
-    forVotes: 5910, againstVotes: 2290,
-    lastArguer: { name: 'Riya M.', avatar: '👩' },
-    lastArgumentTime: '15m ago',
-    context: 'With LA 2028 opening the door, boards and broadcasters are weighing whether cricket should accept the Olympic stage.',
-    agreeCount: 5910, disagreeCount: 2290, unsureCount: 800,
-    whyDebate: 'Cricket commands billions of fans but the Olympics has long resisted formats it sees as logistically heavy.',
-    proTitle: 'A global stage',
-    proBody: 'Olympic inclusion pushes cricket into new markets and unlocks funding for smaller cricketing nations.',
-    conTitle: 'Wrong format, wrong moment',
-    conBody: 'Calendars are overcrowded, boards won\'t pause leagues, and a rushed T20 risks watering down both.',
-  },
-  {
-    id: 't3',
-    category: 'lit',
-    motion: 'Are translations betraying the originals?',
-    debating: 4100,
-    forVotes: 1820, againstVotes: 2280,
-    lastArguer: { name: 'Kabir S.', avatar: '🧑' },
-    lastArgumentTime: '1h ago',
-    context: 'As translated film and literature go mainstream, the faithful-vs-localised argument has flared up again.',
-    agreeCount: 1820, disagreeCount: 2280, unsureCount: 600,
-    whyDebate: 'Translation has become a mass-market product, reviving old questions about how much of an original survives.',
-    proTitle: 'Reinvention, not theft',
-    proBody: 'A skilled translator carries voice and context across; without them, world literature reaches only a tiny elite.',
-    conTitle: 'Something is always lost',
-    conBody: 'Metaphor, dialect, and rhyme rarely survive intact — many translations smooth over difficulty in ways that flatten intent.',
-  },
-]
-
-const CURATED: CuratedDebate[] = [
-  {
-    id: 'c1', category: 'politics',
-    motion: 'Is democracy the best form of government?',
-    context: 'Transfer of power controversies in the recent Bengal elections sparked a fresh wave of debate across the country. Allegations of booth capture, lopsided media coverage, and last-minute defections have left even long-time supporters questioning whether the process still works. International observers have weighed in on both sides, and a wave of opinion columns has reignited an older question about whether liberal democracy is a destination — or just one stop on a longer journey.',
-    debating: 6100, forVotes: 3800, againstVotes: 2300,
-    agreeCount: 2100, disagreeCount: 1400, unsureCount: 600,
-    whyDebate: 'While democracy is celebrated as the gold standard of governance, critics argue it can be gridlocked, manipulated, or captured by populism — leaving many questioning whether it delivers on its promise of fair representation.',
-    proTitle: 'Power belongs to the people',
-    proBody: 'Democracy is the only system that holds leaders accountable through elections, enshrines individual rights, and adapts peacefully to change.',
-    conTitle: 'Mob rule over merit',
-    conBody: 'Elected majorities can suppress minorities, short-term voting cycles discourage long-term policy, and money often controls outcomes more than public will.',
-  },
-  {
-    id: 'c2', category: 'lit',
-    motion: 'Do we glorify violence in cinema too much?',
-    context: "Back-to-back blockbusters this season pushed graphic content to new extremes, and streaming algorithms keep surfacing the bloodiest cuts to the top of every watch-next rail. Several state censor boards have flagged scenes that would have been cut outright a decade ago, while filmmakers argue the rating system itself has gone soft. Theatre owners report bigger turnouts for action-heavy fare even as parents' groups petition platforms to tighten age-gating. The conversation has spilled out of film criticism and into living rooms.",
-    debating: 4300, forVotes: 2800, againstVotes: 1500, isNew: true,
-    agreeCount: 1800, disagreeCount: 900, unsureCount: 340,
-    whyDebate: 'Box-office data shows audiences flock to violent films, yet researchers and parents worry about desensitisation, especially as streaming puts this content in front of younger viewers with no friction.',
-    proTitle: 'Art imitates a violent world',
-    proBody: 'Cinema reflects reality. Sanitising violence strips stories of truth, stakes, and empathy — audiences are capable of distinguishing fiction from a call to action.',
-    conTitle: 'Screen violence shapes behaviour',
-    conBody: 'Repeated exposure normalises brutality, reduces empathy, and provides a template for real-world aggression — especially in adolescents still developing moral frameworks.',
-  },
-  {
-    id: 'c3', category: 'sports',
-    motion: 'Should athletes be political role models?',
-    context: "Several cricketers backed opposing parties ahead of IPL, dividing fans and pundits.",
-    debating: 3800, forVotes: 1600, againstVotes: 2200, endsIn: '3h',
-    agreeCount: 980, disagreeCount: 1600, unsureCount: 520,
-    whyDebate: "Athletes command massive audiences and cultural influence. Whether that platform comes with civic responsibilities — or whether mixing sport and politics alienates fans and endangers players — is hotly contested.",
-    proTitle: 'Platform equals responsibility',
-    proBody: 'Athletes who speak out have historically moved public opinion on civil rights, equality, and justice. Staying silent is itself a political choice that props up the status quo.',
-    conTitle: 'Stick to sport',
-    conBody: 'Fans come to sport for shared joy, not political division. Athletes risk their safety and livelihoods, and their influence rarely translates into meaningful policy change.',
-  },
-]
-
-// ─── POSTERS ──────────────────────────────────────────────────────
-
-const POSTER: Partial<Record<CategoryId, any>> = {
-  politics: require('../assets/poster_politics.png'),
-  sports:   require('../assets/poster_sports.png'),
-  lit:      require('../assets/poster_culture.png'),
+  image: any
+  proContext?: string
+  conContext?: string
+  isTrending: boolean
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────
 
-const findCategory = (id: CategoryId): Category =>
-  CATEGORIES.find(c => c.id === id) ?? CATEGORIES[0]
+function toHomeTopic(topic: Topic, categoryName: string): HomeTopic {
+  const uri = mediaUrl(topic.background_image)
+  return {
+    id: topic.id,
+    categoryName,
+    motion: topic.title,
+    context: topic.description || undefined,
+    image: uri ? { uri } : categoryConfig(categoryName).poster,
+    proContext: topic.pro_context ?? undefined,
+    conContext: topic.con_context ?? undefined,
+    isTrending: topic.is_trending,
+  }
+}
 
-const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}K` : `${n}`)
+// Interleaves topics across categories (one from each category in turn, ordered by
+// backend priority) so the list isn't dominated by whichever category has the most topics.
+function interleaveByCategory(groups: Record<string, Topic[]>, order: string[]): HomeTopic[] {
+  const queues = order.map(name =>
+    (groups[name] ?? [])
+      .filter(t => t.is_active !== false)
+      .slice()
+      .sort((a, b) => b.priority - a.priority)
+  )
+  const result: HomeTopic[] = []
+  let remaining = queues.some(q => q.length > 0)
+  while (remaining) {
+    remaining = false
+    for (let i = 0; i < order.length; i++) {
+      const topic = queues[i].shift()
+      if (topic) {
+        result.push(toHomeTopic(topic, order[i]))
+        remaining = remaining || queues[i].length > 0
+      }
+    }
+  }
+  return result
+}
 
 // ─── HEADER ───────────────────────────────────────────────────────
 
@@ -208,10 +103,10 @@ function TrendingSection({
   debates,
   onJoin,
 }: {
-  debates: TrendingDebate[]
-  onJoin: (id: string) => void
+  debates: HomeTopic[]
+  onJoin: (id: number) => void
 }) {
-  const looped = [...debates, debates[0]]
+  const looped = debates.length > 1 ? [...debates, debates[0]] : debates
 
   const [activeIndex, setActiveIndex] = useState(0)
   const scrollRef  = useRef<ScrollView>(null)
@@ -295,24 +190,17 @@ function TrendingSection({
           contentContainerStyle={s.trendingScrollContent}
         >
           {looped.map((d, i) => {
-            const cat = findCategory(d.category)
-            const total = d.forVotes + d.againstVotes
-            const forPct = total > 0 ? Math.round((d.forVotes / total) * 100) : 50
+            const cfg = categoryConfig(d.categoryName)
             return (
               <DebateHeroCard
                 key={`${d.id}-${i}`}
                 motion={d.motion}
-                categoryName={cat.name}
-                categoryAccent={cat.accent}
-                image={POSTER[d.category]}
+                categoryName={d.categoryName}
+                categoryAccent={cfg.accent}
+                image={d.image}
                 height={268}
                 style={{ width: TRENDING_CARD_WIDTH }}
                 onPress={() => onJoin(d.id)}
-                footer={
-                  <Text style={s.trendingMeta}>
-                    {fmt(d.debating)} debating · {forPct}% for
-                  </Text>
-                }
               />
             )
           })}
@@ -321,7 +209,7 @@ function TrendingSection({
           {debates.map((d, i) => (
             <View
               key={i}
-              style={[s.pagerDot, i === activeIndex && { backgroundColor: findCategory(d.category).accent }]}
+              style={[s.pagerDot, i === activeIndex && { backgroundColor: categoryConfig(d.categoryName).accent }]}
             />
           ))}
         </View>
@@ -332,22 +220,31 @@ function TrendingSection({
 
 // ─── EXPLORE TOPICS ──────────────────────────────────────────────
 
-function ExploreTopics({ onPress }: { onPress: (id: CategoryId) => void }) {
+function ExploreTopics({
+  categoryNames,
+  onPress,
+}: {
+  categoryNames: string[]
+  onPress: (name: string) => void
+}) {
   return (
     <View style={s.exploreSection}>
       <Text style={s.sectionLabel}>Explore topics</Text>
       <View style={s.topicsRow}>
-        {CATEGORIES.map((c, i) => (
-          <CategoryCard
-            key={c.id}
-            name={c.name}
-            icon={c.icon}
-            accent={c.accent}
-            delay={i * 250}
-            outerStyle={{ width: TOPIC_CARD_WIDTH, aspectRatio: 1 }}
-            onPress={() => onPress(c.id)}
-          />
-        ))}
+        {categoryNames.map((name, i) => {
+          const cfg = categoryConfig(name)
+          return (
+            <CategoryCard
+              key={name}
+              name={name}
+              icon={cfg.icon}
+              accent={cfg.accent}
+              delay={i * 250}
+              outerStyle={{ width: TOPIC_CARD_WIDTH, aspectRatio: 1 }}
+              onPress={() => onPress(name)}
+            />
+          )
+        })}
       </View>
     </View>
   )
@@ -419,8 +316,8 @@ function ForYouSection({
   debates,
   onPress,
 }: {
-  debates: CuratedDebate[]
-  onPress: (id: string) => void
+  debates: HomeTopic[]
+  onPress: (id: number) => void
 }) {
   return (
     <View style={s.forYouSection}>
@@ -429,18 +326,15 @@ function ForYouSection({
         <Text variant="bodySm" tone="muted">Curated picks</Text>
       </View>
       {debates.map((d, i) => {
-        const cat = findCategory(d.category)
+        const cfg = categoryConfig(d.categoryName)
         return (
           <View key={d.id}>
             <DebateHeadline
               motion={d.motion}
               context={d.context}
-              categoryName={cat.name}
-              categoryAccent={cat.accent}
-              categoryIcon={cat.icon}
-              agreeCount={d.agreeCount}
-              disagreeCount={d.disagreeCount}
-              unsureCount={d.unsureCount}
+              categoryName={d.categoryName}
+              categoryAccent={cfg.accent}
+              categoryIcon={cfg.icon}
               headlineSize={20}
               onPress={() => onPress(d.id)}
             />
@@ -459,62 +353,54 @@ type Props = {
 }
 
 export default function HomeScreen({ navigation }: Props) {
-  const [refreshing, setRefreshing] = useState(false)
   const [hasUnread, setHasUnread] = useState(true)
+  const { data: groups, isLoading, isError, isRefetching, refetch } = useTopics()
 
   const onRefresh = useCallback(async () => {
-    setRefreshing(true)
-    // TODO: call the user-feed API here once it's defined
-    setRefreshing(false)
-  }, [])
+    await refetch()
+  }, [refetch])
 
-  const handleJoin = (id: string) => {
-    const debate = TRENDING.find(d => d.id === id)
-    if (!debate) return
-    const cat = findCategory(debate.category)
+  const categoryNames = useMemo(
+    () => (groups ? CATEGORY_ORDER.filter(name => name in groups) : [...CATEGORY_ORDER]),
+    [groups],
+  )
+
+  const allTopics = useMemo(() => {
+    if (!groups) return []
+    const byCategory: Record<string, Topic[]> = {}
+    categoryNames.forEach(name => { byCategory[name] = groups[name]?.topics ?? [] })
+    const allRaw = Object.values(byCategory).flat()
+    console.log('[DEBUG] total topics:', allRaw.length,
+      'with pro_context:', allRaw.filter(t => !!t.pro_context).length,
+      'with con_context:', allRaw.filter(t => !!t.con_context).length)
+    console.log('[DEBUG] sample keys:', allRaw[0] ? Object.keys(allRaw[0]) : 'none')
+    return interleaveByCategory(byCategory, categoryNames)
+  }, [groups, categoryNames])
+
+  const trending = allTopics.filter(t => t.isTrending)
+  const forYou   = allTopics.filter(t => !t.isTrending)
+
+  const openDebate = (id: number) => {
+    const topic = allTopics.find(t => t.id === id)
+    if (!topic) return
+    const cfg = categoryConfig(topic.categoryName)
     navigation.navigate('DebateDetail', {
-      debateId: id,
-      categoryId: debate.category,
-      categoryName: cat.name,
-      categoryAccent: cat.accent,
-      motion: debate.motion,
-      context: debate.context,
-      agreeCount: debate.agreeCount,
-      disagreeCount: debate.disagreeCount,
-      unsureCount: debate.unsureCount,
-      whyDebate: debate.whyDebate,
-      proTitle: debate.proTitle,
-      proBody: debate.proBody,
-      conTitle: debate.conTitle,
-      conBody: debate.conBody,
+      debateId: String(topic.id),
+      categoryId: topic.categoryName,
+      categoryName: topic.categoryName,
+      categoryAccent: cfg.accent,
+      motion: topic.motion,
+      context: topic.context,
+      proBody: topic.proContext,
+      conBody: topic.conContext,
+      agreeCount: 0,
+      disagreeCount: 0,
+      unsureCount: 0,
     })
   }
 
-  const handleCategoryPress = (id: CategoryId) => {
-    const cat = findCategory(id)
-    navigation.navigate('TopicScreen', { category: cat.name })
-  }
-
-  const handleCuratedPress = (id: string) => {
-    const debate = CURATED.find(d => d.id === id)
-    if (!debate) return
-    const cat = findCategory(debate.category)
-    navigation.navigate('DebateDetail', {
-      debateId: id,
-      categoryId: debate.category,
-      categoryName: cat.name,
-      categoryAccent: cat.accent,
-      motion: debate.motion,
-      context: debate.context,
-      agreeCount: debate.agreeCount,
-      disagreeCount: debate.disagreeCount,
-      unsureCount: debate.unsureCount,
-      whyDebate: debate.whyDebate,
-      proTitle: debate.proTitle,
-      proBody: debate.proBody,
-      conTitle: debate.conTitle,
-      conBody: debate.conBody,
-    })
+  const handleCategoryPress = (name: string) => {
+    navigation.navigate('TopicScreen', { category: name })
   }
 
   return (
@@ -525,7 +411,7 @@ export default function HomeScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
+            refreshing={isRefetching}
             onRefresh={onRefresh}
             tintColor={colors.textMuted}
             colors={[colors.textMuted]}
@@ -536,13 +422,25 @@ export default function HomeScreen({ navigation }: Props) {
           onBellPress={() => { setHasUnread(false); navigation.navigate('Notifications') }}
           hasUnread={hasUnread}
         />
-        <TrendingSection debates={TRENDING} onJoin={handleJoin} />
-        <ExploreTopics onPress={handleCategoryPress} />
-        <ActionSection onPress={(key) => {
-          if (key === 'join') navigation.navigate('JoinDebate')
-          if (key === 'learn') navigation.navigate('LearnScreen')
-        }} />
-        <ForYouSection debates={CURATED} onPress={handleCuratedPress} />
+        {isLoading ? (
+          <View style={s.center}>
+            <ActivityIndicator color={colors.lime} />
+          </View>
+        ) : isError ? (
+          <View style={s.center}>
+            <Text tone="muted">Couldn't load debates. Pull to retry.</Text>
+          </View>
+        ) : (
+          <>
+            {trending.length > 0 && <TrendingSection debates={trending} onJoin={openDebate} />}
+            <ExploreTopics categoryNames={categoryNames} onPress={handleCategoryPress} />
+            <ActionSection onPress={(key) => {
+              if (key === 'join') navigation.navigate('JoinDebate')
+              if (key === 'learn') navigation.navigate('LearnScreen')
+            }} />
+            {forYou.length > 0 && <ForYouSection debates={forYou} onPress={openDebate} />}
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   )
@@ -554,6 +452,7 @@ const s = StyleSheet.create({
   safe:          { flex: 1, backgroundColor: colors.black },
   scroll:        { flex: 1 },
   scrollContent: { paddingBottom: 32 },
+  center:        { paddingVertical: spacing.xl * 2, alignItems: 'center', justifyContent: 'center' },
 
   // ── Header ──
   header: {
@@ -598,12 +497,6 @@ const s = StyleSheet.create({
   // ── Trending ──
   trendingSection:      { marginBottom: spacing.xl },
   trendingScrollContent: { paddingHorizontal: SCREEN_PADDING, gap: spacing.sm },
-  trendingMeta: {
-    fontFamily: fonts.jakarta.medium,
-    fontSize: 13,
-    color: colors.textMuted,
-    marginTop: spacing.xs,
-  },
   pagerOverlay: {
     position: 'absolute',
     left: 0,

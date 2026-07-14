@@ -14,8 +14,13 @@ export type Topic = {
   title: string;
   description: string;
   category: TopicCategory;
+  priority: number;
   background_image: string | null;
   icon?: string | null;
+  pro_context: string | null;
+  con_context: string | null;
+  is_active: boolean;
+  is_trending: boolean;
 };
 
 export type CategoryGroup = {

@@ -26,6 +26,8 @@ type Props = {
   motionSize?: number
   /** Optional content rendered under the motion (e.g. a "12K debating" line). */
   footer?: React.ReactNode
+  /** Optional content rendered in the top-left corner. */
+  headerLeft?: React.ReactNode
   style?: StyleProp<ViewStyle>
   onPress?: () => void
 }
@@ -39,6 +41,7 @@ export function DebateHeroCard({
   borderRadius = 16,
   motionSize = 22,
   footer,
+  headerLeft,
   style,
   onPress,
 }: Props) {
@@ -64,6 +67,12 @@ export function DebateHeroCard({
         style={s.scrim}
         pointerEvents="none"
       />
+
+      {headerLeft && (
+        <View style={s.headerLeft}>
+          {headerLeft}
+        </View>
+      )}
 
       <View
         style={[
@@ -112,6 +121,12 @@ const s = StyleSheet.create({
     fontSize: 12,
     color: colors.textSubtle,
     letterSpacing: 0.4,
+  },
+  headerLeft: {
+    position: 'absolute',
+    top: spacing.md,
+    left: spacing.md,
+    zIndex: 10,
   },
   tag: {
     position: 'absolute',

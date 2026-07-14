@@ -42,9 +42,8 @@ type DebateView = {
   categoryId: string
   motion: string
   context: string
-  agreeCount: number
-  disagreeCount: number
-  unsureCount: number
+  proContext: string | null
+  conContext: string | null
 }
 
 type PillView = {
@@ -52,16 +51,6 @@ type PillView = {
   label: string
   emoji: string
   color: string
-}
-
-// ─── PALETTES & MOCKS ──────────────────────────────────────────────
-
-
-function mockCounts(id: number) {
-  const agreeCount    = ((id * 137) % 6000) + 500
-  const disagreeCount = ((id * 91)  % 5000) + 400
-  const unsureCount   = ((id * 53)  % 1200) + 200
-  return { agreeCount, disagreeCount, unsureCount }
 }
 
 // ─── SEARCH BAR ────────────────────────────────────────────────────
@@ -218,7 +207,8 @@ export default function SearchScreen() {
         categoryId: name,
         motion: t.title,
         context: t.description,
-        ...mockCounts(t.id),
+        proContext: t.pro_context ?? null,
+        conContext: t.con_context ?? null,
       })),
     )
 
@@ -228,15 +218,17 @@ export default function SearchScreen() {
   const handleDebatePress = (d: DebateView) => {
     const cat = categoriesById[d.categoryId]
     navigation.navigate('DebateDetail', {
-      debateId: String(d.id),
-      categoryId: d.categoryId,
-      categoryName: cat?.name ?? d.categoryId,
+      debateId:       String(d.id),
+      categoryId:     d.categoryId,
+      categoryName:   cat?.name ?? d.categoryId,
       categoryAccent: cat?.accent ?? colors.text,
-      motion: d.motion,
-      context: d.context,
-      agreeCount: d.agreeCount,
-      disagreeCount: d.disagreeCount,
-      unsureCount: d.unsureCount,
+      motion:         d.motion,
+      context:        d.context,
+      agreeCount:     0,
+      disagreeCount:  0,
+      unsureCount:    0,
+      proBody:        d.proContext ?? undefined,
+      conBody:        d.conContext ?? undefined,
     })
   }
 
@@ -306,9 +298,6 @@ export default function SearchScreen() {
                   categoryName={cat?.name ?? d.categoryId}
                   categoryAccent={cat?.accent ?? colors.text}
                   categoryIcon={cat?.iconSource ?? undefined}
-                  agreeCount={d.agreeCount}
-                  disagreeCount={d.disagreeCount}
-                  unsureCount={d.unsureCount}
                   headlineSize={17}
                   onPress={() => handleDebatePress(d)}
                 />
