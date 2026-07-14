@@ -25,6 +25,7 @@ type DebateItem = {
   conContext: string | null
   categoryTag: string
   isTrending: boolean
+  backgroundImage: string | null
   icon: any
 }
 
@@ -41,6 +42,7 @@ function topicToDebateItem(topic: Topic, categoryName: string): DebateItem {
     conContext: topic.con_context ?? null,
     categoryTag: categoryName,
     isTrending: topic.is_trending ?? false,
+    backgroundImage: mediaUrl(topic.background_image),
     icon: iconUri ? { uri: iconUri } : null,
   }
 }
@@ -112,6 +114,7 @@ export default function TopicScreen({ navigation, route }: Props) {
       unsureCount: 0,
       proBody: d.proContext ?? undefined,
       conBody: d.conContext ?? undefined,
+      imageUri: d.backgroundImage ?? undefined,
     })
   }
 
@@ -176,7 +179,7 @@ export default function TopicScreen({ navigation, route }: Props) {
                 motion={trendingDebate.motion}
                 categoryName={trendingDebate.categoryTag}
                 categoryAccent={catAccent}
-                image={catPoster}
+                image={trendingDebate.backgroundImage ? { uri: trendingDebate.backgroundImage } : catPoster}
                 height={272}
                 motionSize={26}
                 onPress={() => openDebate(trendingDebate.id)}

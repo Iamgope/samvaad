@@ -46,6 +46,7 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
     proBody,
     conTitle,
     conBody,
+    imageUri,
   } = route.params
 
   const insets = useSafeAreaInsets()
@@ -115,7 +116,7 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
           motion={motion}
           categoryName={categoryName}
           categoryAccent={categoryAccent}
-          image={categoryConfig(categoryId).poster}
+          image={imageUri ? { uri: imageUri } : categoryConfig(categoryId).poster}
           height={HERO_HEIGHT}
           borderRadius={0}
           motionSize={24}
@@ -289,7 +290,7 @@ function VoteIconButton({
     if (voted && !wasVoted) {
       Animated.sequence([
         Animated.spring(scale, { toValue: 1.22, useNativeDriver: true, tension: 600, friction: 5 }),
-        Animated.spring(scale, { toValue: 1,    useNativeDriver: true, tension: 300, friction: 12 }),
+        Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 300, friction: 12 }),
       ]).start()
     }
   }, [voted]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -433,7 +434,7 @@ function StanceRow({
 const HERO_HEIGHT = 320
 
 const s = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: colors.black },
+  safe: { flex: 1, backgroundColor: colors.black },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: SCREEN_PADDING },
 

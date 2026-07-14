@@ -105,6 +105,7 @@ export type RootStackParamList = {
     proBody?: string
     conTitle?: string
     conBody?: string
+    imageUri?: string
   };
   DebateResult: {
     motion: string

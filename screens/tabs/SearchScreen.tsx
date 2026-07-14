@@ -44,6 +44,7 @@ type DebateView = {
   context: string
   proContext: string | null
   conContext: string | null
+  backgroundImage: string | null
 }
 
 type PillView = {
@@ -209,6 +210,7 @@ export default function SearchScreen() {
         context: t.description,
         proContext: t.pro_context ?? null,
         conContext: t.con_context ?? null,
+        backgroundImage: mediaUrl(t.background_image),
       })),
     )
 
@@ -229,6 +231,7 @@ export default function SearchScreen() {
       unsureCount:    0,
       proBody:        d.proContext ?? undefined,
       conBody:        d.conContext ?? undefined,
+      imageUri:       d.backgroundImage ?? undefined,
     })
   }
 

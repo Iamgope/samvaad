@@ -38,6 +38,7 @@ type HomeTopic = {
   proContext?: string
   conContext?: string
   isTrending: boolean
+  backgroundImage?: string | null
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────
@@ -53,6 +54,7 @@ function toHomeTopic(topic: Topic, categoryName: string): HomeTopic {
     proContext: topic.pro_context ?? undefined,
     conContext: topic.con_context ?? undefined,
     isTrending: topic.is_trending,
+    backgroundImage: uri,
   }
 }
 
@@ -393,6 +395,7 @@ export default function HomeScreen({ navigation }: Props) {
       context: topic.context,
       proBody: topic.proContext,
       conBody: topic.conContext,
+      imageUri: topic.backgroundImage ?? undefined,
       agreeCount: 0,
       disagreeCount: 0,
       unsureCount: 0,
