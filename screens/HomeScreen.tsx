@@ -25,7 +25,7 @@ import { categoryConfig, CATEGORY_ORDER } from '../constants/categories'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const TRENDING_CARD_WIDTH = SCREEN_WIDTH - SCREEN_PADDING * 2
-const TOPIC_CARD_WIDTH    = (SCREEN_WIDTH - SCREEN_PADDING * 2 - spacing.sm * 3) / 2.95
+const TOPIC_CARD_WIDTH = (SCREEN_WIDTH - SCREEN_PADDING * 2 - spacing.sm * 3) / 2.95
 
 // ─── TYPES ────────────────────────────────────────────────────────
 
@@ -87,9 +87,9 @@ function interleaveByCategory(groups: Record<string, Topic[]>, order: string[]):
 function Header({ onBellPress, hasUnread }: { onBellPress: () => void; hasUnread?: boolean }) {
   return (
     <View style={s.header}>
-      <Text style={s.wordmark}>Duella<Text style={s.wordmarkDot}>.</Text></Text>
+      <Text style={s.wordmark}>Duella</Text>
       <TouchableOpacity style={s.bellBtn} activeOpacity={0.7} onPress={onBellPress} hitSlop={8}>
-        <BellIcon size={hasUnread?26:22} steel={hasUnread} />
+        <BellIcon size={hasUnread ? 26 : 22} steel={hasUnread} />
         {hasUnread && <View style={s.bellDot} />}
       </TouchableOpacity>
     </View>
@@ -98,7 +98,7 @@ function Header({ onBellPress, hasUnread }: { onBellPress: () => void; hasUnread
 
 // ─── TRENDING SECTION ─────────────────────────────────────────────
 
-const AUTOSCROLL_INTERVAL    = 4500
+const AUTOSCROLL_INTERVAL = 4500
 const AUTOSCROLL_RESUME_AFTER = 6000
 
 function TrendingSection({
@@ -111,12 +111,12 @@ function TrendingSection({
   const looped = debates.length > 1 ? [...debates, debates[0]] : debates
 
   const [activeIndex, setActiveIndex] = useState(0)
-  const scrollRef  = useRef<ScrollView>(null)
-  const indexRef   = useRef(0)
-  const pausedRef  = useRef(false)
-  const isJumping  = useRef(false)
+  const scrollRef = useRef<ScrollView>(null)
+  const indexRef = useRef(0)
+  const pausedRef = useRef(false)
+  const isJumping = useRef(false)
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const jumpTimer   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const jumpTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const stride = TRENDING_CARD_WIDTH + spacing.sm
 
   useEffect(() => {
@@ -143,7 +143,7 @@ function TrendingSection({
     return () => {
       clearInterval(interval)
       if (resumeTimer.current) clearTimeout(resumeTimer.current)
-      if (jumpTimer.current)   clearTimeout(jumpTimer.current)
+      if (jumpTimer.current) clearTimeout(jumpTimer.current)
     }
   }, [])
 
@@ -265,15 +265,15 @@ type ActionItem = {
 
 const ACTIONS: ActionItem[] = [
   {
-    key:      'join',
-    icon:     <DiceIcon />,
-    title:    '',
+    key: 'join',
+    icon: <DiceIcon />,
+    title: '',
     subtitle: 'Join a random debate',
   },
   {
-    key:      'learn',
-    icon:     <LearnIcon />,
-    title:    '',
+    key: 'learn',
+    icon: <LearnIcon />,
+    title: '',
     subtitle: 'Practice Mode',
     comingSoon: true,
   },
@@ -380,7 +380,7 @@ export default function HomeScreen({ navigation }: Props) {
   }, [groups, categoryNames])
 
   const trending = allTopics.filter(t => t.isTrending)
-  const forYou   = allTopics.filter(t => !t.isTrending)
+  const forYou = allTopics.filter(t => !t.isTrending)
 
   const openDebate = (id: number) => {
     const topic = allTopics.find(t => t.id === id)
@@ -452,10 +452,10 @@ export default function HomeScreen({ navigation }: Props) {
 // ─── STYLES ───────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe:          { flex: 1, backgroundColor: colors.black },
-  scroll:        { flex: 1 },
+  safe: { flex: 1, backgroundColor: colors.black },
+  scroll: { flex: 1 },
   scrollContent: { paddingBottom: 32 },
-  center:        { paddingVertical: spacing.xl * 2, alignItems: 'center', justifyContent: 'center' },
+  center: { paddingVertical: spacing.xl * 2, alignItems: 'center', justifyContent: 'center' },
 
   // ── Header ──
   header: {
@@ -498,7 +498,7 @@ const s = StyleSheet.create({
   },
 
   // ── Trending ──
-  trendingSection:      { marginBottom: spacing.xl },
+  trendingSection: { marginBottom: spacing.xl },
   trendingScrollContent: { paddingHorizontal: SCREEN_PADDING, gap: spacing.sm },
   pagerOverlay: {
     position: 'absolute',
