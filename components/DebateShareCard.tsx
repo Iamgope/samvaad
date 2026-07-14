@@ -1,12 +1,11 @@
 import React from 'react'
-import { View, StyleSheet, Alert } from 'react-native'
+import { View, StyleSheet, Alert, Image, type ImageSourcePropType } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as Sharing from 'expo-sharing'
 import { captureRef } from 'react-native-view-shot'
 import { colors } from '../constants/colors'
 import { fonts } from '../constants/fonts'
 import { Text } from './Text'
-import { FakeQR } from './FakeQR'
 
 type Props = {
   motion: string
@@ -14,15 +13,17 @@ type Props = {
   categoryAccent: string
   forPct: number
   againstPct: number
+  image: ImageSourcePropType
 }
 
 export const DebateShareCard = React.forwardRef<View, Props>(
-  ({ motion, categoryName, categoryAccent, forPct, againstPct }, ref) => {
+  ({ motion, categoryName, categoryAccent, forPct, againstPct, image }, ref) => {
     return (
       <View ref={ref} collapsable={false} style={s.card}>
+        <Image source={image} style={StyleSheet.absoluteFill} resizeMode="cover" />
         <LinearGradient
-          colors={[categoryAccent + '55', colors.black]}
-          locations={[0, 0.65]}
+          colors={[categoryAccent + '66', categoryAccent + 'DD', colors.black]}
+          locations={[0, 0.45, 0.8]}
           style={StyleSheet.absoluteFill}
         />
 
@@ -48,7 +49,11 @@ export const DebateShareCard = React.forwardRef<View, Props>(
 
           <View style={s.footer}>
             <View style={s.qrFrame}>
-              <FakeQR size={88} />
+              <Image
+                source={require('../assets/joinduella_qr.png')}
+                style={{ width: 88, height: 88, borderRadius: 8, backgroundColor: colors.text }}
+                resizeMode="cover"
+              />
             </View>
             <View style={s.footerText}>
               <Text style={s.brand}>DUELLA</Text>

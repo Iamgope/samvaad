@@ -261,6 +261,7 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
           categoryAccent={categoryAccent}
           forPct={forPct}
           againstPct={againstPct}
+          image={imageUri ? { uri: imageUri } : categoryConfig(categoryId).poster}
         />
       </View>
     </SafeAreaView>
