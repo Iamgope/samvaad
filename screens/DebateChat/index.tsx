@@ -208,13 +208,15 @@ export default function DebateChatScreen({ route, navigation }: Props) {
   // Chess clock — ticks for whoever can currently act
   useEffect(() => {
     if (over) return
-    const myActive = currentRoundType === 'OPENING' ? !iHaveSentOpening : isMyTurn && !waitingForBotReply
+    if (currentRoundType === 'OPENING') return // Opening phase is handled by OpeningOverlay's 30s timer
+
+    const myActive = isMyTurn && !waitingForBotReply
     const id = setInterval(() => {
       if (myActive) setMyTime(t => Math.max(0, t - 1))
       else setOpTime(t => Math.max(0, t - 1))
     }, 1000)
     return () => clearInterval(id)
-  }, [currentRoundType, iHaveSentOpening, isMyTurn, waitingForBotReply, over])
+  }, [currentRoundType, isMyTurn, waitingForBotReply, over])
 
   useEffect(() => {
     if (!over && (myTime === 0 || opTime === 0)) setOver(true)

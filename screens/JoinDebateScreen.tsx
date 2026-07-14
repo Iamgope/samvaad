@@ -40,13 +40,13 @@ const DEFAULT_AVATAR = require('../assets/defaultprofilepic.png')
 
 const STANCES = [
   { id: 'surprise', label: 'Surprise Me', emoji: '🎲', accent: colors.lime },
-  { id: 'for',      label: 'Defend',      emoji: '🛡️',  accent: '#4ADE80'   },
-  { id: 'against',  label: 'Attack',      emoji: '⚔️',  accent: colors.red  },
+  { id: 'for', label: 'Defend', emoji: '🛡️', accent: '#4ADE80' },
+  { id: 'against', label: 'Attack', emoji: '⚔️', accent: colors.red },
 ]
 
 const ALL_CATEGORY_ID = 'all'
 const CATEGORY_ACCENTS = [colors.streak, colors.sky, colors.purple2, colors.lime, '#F472B6', '#FB923C']
-const CATEGORY_EMOJIS  = ['🏛️', '🏆', '🎭', '🤖', '📚', '🎨', '⚖️', '🌍']
+const CATEGORY_EMOJIS = ['🏛️', '🏆', '🎭', '🤖', '📚', '🎨', '⚖️', '🌍']
 
 type CategoryChip = { id: string; label: string; emoji: string; accent: string }
 
@@ -85,15 +85,15 @@ type CurrentUser = { name: string; initials: string; rating: number; tier: strin
 type VsLockProps = { category: CategoryChip; stance: (typeof STANCES)[0]; user: CurrentUser }
 
 function VsLock({ category, stance, user }: VsLockProps) {
-  const slideLeft  = useRef(new Animated.Value(-220)).current
+  const slideLeft = useRef(new Animated.Value(-220)).current
   const slideRight = useRef(new Animated.Value(220)).current
-  const vsScale    = useRef(new Animated.Value(0)).current
-  const scanLine   = useRef(new Animated.Value(0)).current
+  const vsScale = useRef(new Animated.Value(0)).current
+  const scanLine = useRef(new Animated.Value(0)).current
   const borderGlow = useRef(new Animated.Value(0.25)).current
 
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(slideLeft,  { toValue: 0, useNativeDriver: true, tension: 70, friction: 12 }),
+      Animated.spring(slideLeft, { toValue: 0, useNativeDriver: true, tension: 70, friction: 12 }),
       Animated.spring(slideRight, { toValue: 0, useNativeDriver: true, tension: 70, friction: 12 }),
       Animated.sequence([
         Animated.delay(260),
@@ -128,7 +128,7 @@ function VsLock({ category, stance, user }: VsLockProps) {
     }
   }, [])
 
-  const scanY     = scanLine.interpolate({ inputRange: [0, 1], outputRange: [0, CARD_H] })
+  const scanY = scanLine.interpolate({ inputRange: [0, 1], outputRange: [0, CARD_H] })
   const tierColor = TIER_COLOR[user.tier] ?? colors.text
 
   return (
@@ -136,7 +136,7 @@ function VsLock({ category, stance, user }: VsLockProps) {
 
       {/* ── Left card — YOU ── */}
       <Animated.View style={[vl.outer, {
-        borderColor:       colors.border,
+        borderColor: colors.border,
         borderBottomColor: tierColor + '99',
         transform: [{ translateX: slideLeft }],
       }]}>
@@ -174,7 +174,7 @@ function VsLock({ category, stance, user }: VsLockProps) {
 
       {/* ── Right card — OPPONENT ── */}
       <Animated.View style={[vl.outer, {
-        borderColor:       colors.border,
+        borderColor: colors.border,
         borderBottomColor: colors.lime + '88',
         transform: [{ translateX: slideRight }],
       }]}>
@@ -259,7 +259,7 @@ const vl = StyleSheet.create({
     backgroundColor: colors.surface2,
   },
   tierLabel: { fontFamily: fonts.jakarta.bold, fontSize: 7.5, letterSpacing: 0.8, color: colors.textMuted },
-  ratingDot:  { fontFamily: fonts.jakarta.bold, fontSize: 8, color: colors.textFaint },
+  ratingDot: { fontFamily: fonts.jakarta.bold, fontSize: 8, color: colors.textFaint },
   ratingText: { fontFamily: fonts.jakarta.bold, fontSize: 8.5, color: colors.textMuted },
 
   footer: {
@@ -308,10 +308,10 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
   const { data: myProfile } = useUserProfile()
 
   const currentUser: CurrentUser = {
-    name:      myProfile?.user.first_name || myProfile?.user.username || 'You',
-    initials:  (myProfile?.user.first_name || myProfile?.user.username || '?').slice(0, 2).toUpperCase(),
-    rating:    myProfile ? Math.round(myProfile.elo_rating) : 0,
-    tier:      getTierInfo(myProfile?.elo_rating ?? 0).current.key,
+    name: myProfile?.user.first_name || myProfile?.user.username || 'You',
+    initials: (myProfile?.user.first_name || myProfile?.user.username || '?').slice(0, 2).toUpperCase(),
+    rating: myProfile ? Math.round(myProfile.elo_rating) : 0,
+    tier: getTierInfo(myProfile?.elo_rating ?? 0).current.key,
     avatarUri: myProfile ? mediaUrl(myProfile.profile_pic) : null,
   }
 
@@ -370,7 +370,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
 
   const hasSpecificTopic = !!params?.topicId
 
-const stanceToSide = (id: string): 'PRO' | 'CON' | null => {
+  const stanceToSide = (id: string): 'PRO' | 'CON' | null => {
     if (id === 'for') return 'PRO'
     if (id === 'against') return 'CON'
     return null
@@ -618,7 +618,7 @@ const stanceToSide = (id: string): 'PRO' | 'CON' | null => {
 // ─── STYLES ───────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: colors.black },
+  safe: { flex: 1, backgroundColor: colors.black },
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: SCREEN_PADDING,
@@ -667,7 +667,7 @@ const s = StyleSheet.create({
     color: colors.textMuted,
     marginTop: spacing.xl,
     marginBottom: spacing.lg,
-    margin:spacing.lg
+    margin: spacing.lg
   },
   filterSep: {
     fontFamily: fonts.jakarta.regular,
