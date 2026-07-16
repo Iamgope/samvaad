@@ -417,9 +417,11 @@ function StanceRow({
 }) {
   return (
     <View style={s.stanceRow}>
-      <SquareTile accent={accent} image={image} size={76} />
-      <View style={s.stanceBody}>
+      <View style={s.stanceImageCol}>
+        <SquareTile accent={accent} image={image} size={76} />
         <Text style={[s.stanceLabel, { color: accent }]}>{label}</Text>
+      </View>
+      <View style={s.stanceBody}>
         {body ? (
           <ExpandableText text={body} style={s.stanceText} lines={4} />
         ) : (
@@ -548,9 +550,10 @@ const s = StyleSheet.create({
   },
   cardBody: {
     fontFamily: fonts.jakarta.regular,
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 15.5,
+    lineHeight: 24,
     color: colors.text,
+    letterSpacing: -0.1,
     opacity: 0.85,
   },
   expandToggle: {
@@ -592,8 +595,12 @@ const s = StyleSheet.create({
   // ── Stance row ──
   stanceRow: {
     flexDirection: 'row',
-    gap: spacing.md,
     alignItems: 'flex-start',
+    gap: spacing.md,
+  },
+  stanceImageCol: {
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   stanceBody: {
     flex: 1,
@@ -603,6 +610,7 @@ const s = StyleSheet.create({
     fontFamily: fonts.jakarta.extraBold,
     fontSize: 10,
     letterSpacing: 1.6,
+    textAlign: 'center',
   },
   stanceTitle: {
     fontFamily: fonts.display.bold,
@@ -613,9 +621,10 @@ const s = StyleSheet.create({
   },
   stanceText: {
     fontFamily: fonts.jakarta.regular,
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 14.5,
+    lineHeight: 23,
     color: colors.textMuted,
+    letterSpacing: -0.1,
     marginTop: spacing.xs,
   },
 
