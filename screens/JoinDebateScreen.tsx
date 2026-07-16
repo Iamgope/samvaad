@@ -17,6 +17,7 @@ import { IconButton } from '../components/IconButton'
 import { ChipDropdown } from '../components/ChipDropdown'
 import { ChevronLeftIcon } from '../components/Icons'
 import { Toast } from '../components/Toast'
+import { ConfirmModal } from '../components/ConfirmModal'
 import {
   connectWebSocket,
   WebSocketClient,
@@ -129,6 +130,33 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
   }
   const [matchedDebate, setMatchedDebate] = useState<MatchedDebate | null>(null)
   const [introDone, setIntroDone] = useState(false)
+  const [leaveMatchWarning, setLeaveMatchWarning] = useState(false)
+  const bypassLeaveGuard = useRef(false)
+  const pendingNavAction = useRef<Parameters<typeof navigation.dispatch>[0] | null>(null)
+
+  // Intercept swipe-back / hardware back once a match is found — losing the
+  // WS connection here forfeits the debate, so it needs the same confirmation
+  // as leaving mid-round from DebateChatScreen.
+  useEffect(() => {
+    return navigation.addListener('beforeRemove', (e: any) => {
+      if (!matchedDebate || bypassLeaveGuard.current) return
+      e.preventDefault()
+      pendingNavAction.current = e.data.action
+      setLeaveMatchWarning(true)
+    })
+  }, [navigation, matchedDebate])
+
+  const confirmLeaveMatch = () => {
+    debateSession.clear()
+    setLeaveMatchWarning(false)
+    bypassLeaveGuard.current = true
+    if (pendingNavAction.current) {
+      navigation.dispatch(pendingNavAction.current)
+      pendingNavAction.current = null
+    } else {
+      navigation.goBack()
+    }
+  }
 
   // Reconcile selected category once data arrives — preserve route-param default if it matches.
   useEffect(() => {
@@ -405,6 +433,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
           opponentName={matchedDebate.opponentName}
           opponentStance={STANCES.find(st => st.id === (matchedDebate.userSide === 'for' ? 'against' : 'for')) ?? selectedStance}
           onDone={() => setIntroDone(true)}
+          onCancel={() => navigation.goBack()}
         />
       )}
 
@@ -414,11 +443,28 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
           userSide={matchedDebate.userSide}
           onSubmit={(openingText) => {
             const d = matchedDebate
+            bypassLeaveGuard.current = true
             setMatchedDebate(null)
             navigation.replace('DebateChat', { ...d, pendingOpening: openingText })
           }}
+          onBack={() => navigation.goBack()}
         />
       )}
+
+      <ConfirmModal
+        visible={leaveMatchWarning}
+        title={introDone ? 'Leave debate?' : 'Cancel match?'}
+        message={
+          introDone
+            ? "Your opponent will be declared the winner if you leave now. This can't be undone."
+            : "You'll forfeit this match if you leave now. This can't be undone."
+        }
+        confirmLabel={introDone ? 'Leave' : 'End match'}
+        cancelLabel="Stay"
+        danger
+        onConfirm={confirmLeaveMatch}
+        onCancel={() => setLeaveMatchWarning(false)}
+      />
     </SafeAreaView>
   )
 }

@@ -58,9 +58,10 @@ type Props = {
   motion: string
   userSide: 'for' | 'against'
   onSubmit: (text: string) => void
+  onBack: () => void
 }
 
-export function OpeningOverlay({ motion, userSide, onSubmit }: Props) {
+export function OpeningOverlay({ motion, userSide, onSubmit, onBack }: Props) {
   const insets = useSafeAreaInsets()
   const [text, setText] = useState('')
   const [seconds, setSeconds] = useState(COUNTDOWN)
@@ -114,7 +115,7 @@ export function OpeningOverlay({ motion, userSide, onSubmit }: Props) {
         <IconButton
           icon={<ChevronLeftIcon size={18} color={colors.text} strokeWidth={2.2} />}
           accent={colors.text}
-          onPress={handleSubmit}
+          onPress={onBack}
         />
         <TouchableOpacity onPress={handleSubmit} activeOpacity={0.8} style={s.submitBtn}>
           <View style={s.submitFace}>

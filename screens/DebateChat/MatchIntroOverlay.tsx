@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { View, StyleSheet, Animated } from 'react-native'
+import { View, StyleSheet, Animated, TouchableOpacity } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Text } from '../../components/Text'
 import { ExpandableText } from '../../components/ExpandableText'
@@ -9,7 +9,7 @@ import { spacing, SCREEN_PADDING } from '../../constants/spacing'
 import { VsLock, type VsLockPerson } from './VsLock'
 import { QUOTE_CARD_BG } from './MessageBubble'
 
-const COUNTDOWN_START = 5
+const COUNTDOWN_START = 10
 
 type Stance = { emoji: string; label: string; accent: string }
 
@@ -22,10 +22,11 @@ type Props = {
   opponentName: string
   opponentStance: Stance
   onDone: () => void
+  onCancel: () => void
 }
 
 export function MatchIntroOverlay({
-  motion, description, sideContext, you, youStance, opponentName, opponentStance, onDone,
+  motion, description, sideContext, you, youStance, opponentName, opponentStance, onDone, onCancel,
 }: Props) {
   const insets = useSafeAreaInsets()
   const fadeIn = useRef(new Animated.Value(0)).current
@@ -91,9 +92,6 @@ export function MatchIntroOverlay({
       </View>
 
       <View style={s.middle}>
-        <Text style={[s.missionText, { color: youStance.accent }]}>
-          {youStance.emoji}  {youStance.label.toUpperCase()} THE MOTION
-        </Text>
 
         <VsLock
           you={you}
@@ -105,6 +103,10 @@ export function MatchIntroOverlay({
           breatheDurationMs={420}
         />
         <Text style={s.startsInLabel}>YOUR DEBATE STARTS IN</Text>
+
+        <TouchableOpacity style={s.cancelBtn} onPress={onCancel} activeOpacity={0.7}>
+          <Text style={s.cancelLabel}>Cancel match</Text>
+        </TouchableOpacity>
       </View>
     </Animated.View>
   )
@@ -190,5 +192,18 @@ const s = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 1.6,
     color: colors.textSubtle,
+  },
+  cancelBtn: {
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cancelLabel: {
+    fontFamily: fonts.jakarta.semiBold,
+    fontSize: 13,
+    color: colors.textMuted,
   },
 })

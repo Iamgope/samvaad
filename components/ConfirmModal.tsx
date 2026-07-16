@@ -1,9 +1,10 @@
 import React from 'react';
-import { Modal, View, StyleSheet, Pressable, TouchableOpacity } from 'react-native';
+import { Modal, View, StyleSheet, Pressable } from 'react-native';
 import { colors } from '../constants/colors';
 import { spacing } from '../constants/spacing';
 import { fonts } from '../constants/fonts';
 import { Text } from './Text';
+import { Button } from './Button';
 
 export function ConfirmModal({
   visible,
@@ -31,20 +32,13 @@ export function ConfirmModal({
         <View style={s.card}>
           <Text style={s.title}>{title}</Text>
           <Text style={s.message}>{message}</Text>
-          <View style={s.actions}>
-            <TouchableOpacity style={s.cancelBtn} onPress={onCancel} activeOpacity={0.7}>
-              <Text style={s.cancelLabel}>{cancelLabel}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.confirmBtn, danger ? s.confirmBtnDanger : s.confirmBtnSafe]}
-              onPress={onConfirm}
-              activeOpacity={0.7}
-            >
-              <Text style={[s.confirmLabel, danger ? s.confirmLabelDanger : s.confirmLabelSafe]}>
-                {confirmLabel}
-              </Text>
-            </TouchableOpacity>
-          </View>
+
+          {/* The safe choice gets the app's primary CTA treatment; the destructive
+              choice is deliberately understated so it isn't the easiest thing to tap. */}
+          <Button variant="steel" label={cancelLabel} onPress={onCancel} size="md" style={s.stayBtn} />
+          <Pressable onPress={onConfirm} hitSlop={8} style={s.confirmBtn}>
+            <Text style={[s.confirmLabel, !danger && s.confirmLabelSafe]}>{confirmLabel}</Text>
+          </Pressable>
         </View>
       </View>
     </Modal>
@@ -75,6 +69,13 @@ const s = StyleSheet.create({
     shadowRadius: 20,
     elevation: 16,
   },
+  eyebrow: {
+    fontFamily: fonts.jakarta.bold,
+    fontSize: 11,
+    letterSpacing: 1.6,
+    color: colors.red,
+    marginBottom: 2,
+  },
   title: {
     fontFamily: fonts.display.bold,
     fontSize: 18,
@@ -89,47 +90,17 @@ const s = StyleSheet.create({
     color: colors.textMuted,
     marginBottom: spacing.sm,
   },
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
+  stayBtn: {
     marginTop: spacing.xs,
   },
-  cancelBtn: {
-    flex: 1,
-    height: 44,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelLabel: {
-    fontFamily: fonts.jakarta.semiBold,
-    fontSize: 14,
-    color: colors.textMuted,
-  },
   confirmBtn: {
-    flex: 1,
     height: 44,
-    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  confirmBtnDanger: {
-    backgroundColor: colors.red + '1A',
-    borderWidth: 1,
-    borderColor: colors.red + '55',
-  },
-  confirmBtnSafe: {
-    backgroundColor: colors.lime + '1A',
-    borderWidth: 1,
-    borderColor: colors.lime + '55',
   },
   confirmLabel: {
     fontFamily: fonts.jakarta.semiBold,
     fontSize: 14,
-  },
-  confirmLabelDanger: {
     color: colors.red,
   },
   confirmLabelSafe: {
