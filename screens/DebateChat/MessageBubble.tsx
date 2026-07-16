@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react'
 import { View, StyleSheet, Animated, TouchableOpacity } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
+import { LinearGradient } from 'expo-linear-gradient'
 import { colors } from '../../constants/colors'
 import { fonts } from '../../constants/fonts'
 import { spacing } from '../../constants/spacing'
@@ -59,7 +60,27 @@ export function TypingDots({ color = colors.textMuted }: { color?: string }) {
 export function RoundDivider({ label }: { label: string }) {
   return (
     <View style={s.dividerWrap}>
-      <Text style={s.dividerText}>{label}</Text>
+      <LinearGradient
+        colors={['transparent', colors.steel]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={s.dividerLine}
+      />
+      <View style={s.dividerBanner}>
+        <LinearGradient
+          colors={[colors.steel + '33', colors.steel + '0D']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <Text style={s.dividerText}>{label}</Text>
+      </View>
+      <LinearGradient
+        colors={[colors.steel, 'transparent']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={s.dividerLine}
+      />
     </View>
   )
 }
@@ -107,8 +128,22 @@ const s = StyleSheet.create({
   },
   typingDot: { width: 7, height: 7, borderRadius: 4 },
 
-  dividerWrap: { alignItems: 'center', marginVertical: spacing.md },
-  dividerText: { fontFamily: fonts.jakarta.extraBold, fontSize: 11, color: colors.textSubtle, letterSpacing: 1.4 },
+  dividerWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginVertical: spacing.lg,
+  },
+  dividerLine: { flex: 1, height: 1 },
+  dividerBanner: {
+    overflow: 'hidden',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.steel + '66',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+  },
+  dividerText: { fontFamily: fonts.display.bold, fontSize: 10.5, letterSpacing: 2, color: colors.text },
 
   quoteCard: {
     position: 'relative',

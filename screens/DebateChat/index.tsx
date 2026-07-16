@@ -17,6 +17,7 @@ import { CombatantRow } from './CombatantRow'
 import { Bubble, OpeningCard, RoundDivider, TypingDots } from './MessageBubble'
 import { DebateComposer } from './DebateComposer'
 import { OpeningShareCard, shareOpeningCard } from './OpeningShareCard'
+import { JudgingOverlay } from './JudgingOverlay'
 import {
   CLOCK_SECONDS, CHAR_LIMIT, PASTE_GUARD_LEN, ROUND_TYPE_LABELS,
   type Side, type WsMsg, type RoundLabel, type Judgement,
@@ -88,8 +89,13 @@ export default function DebateChatScreen({ route, navigation }: Props) {
   const [wsLost, setWsLost] = useState(false)
   const [leaveWarning, setLeaveWarning] = useState(false)
   const verdictRef = useRef<any>(null)   // stores raw judgement from debate.completed
+  // Drives JudgingOverlay independently of `over` — `over` never resets, and RN's
+  // Modal renders above the whole app, so relying on `over` would leave it stuck
+  // on screen even after we've navigated to DebateResult (which stays mounted underneath).
+  const [judging, setJudging] = useState(false)
   useEffect(() => {
     if (!over) return
+    setJudging(true)
 
     // Tell the backend the debate is over so it triggers the judge.
     // Safe to call even if end_turn was already used — the backend is idempotent.
@@ -116,7 +122,8 @@ export default function DebateChatScreen({ route, navigation }: Props) {
       // Profile was fetched before ELO update ran; add the delta to get the new rating.
       const updatedRating = rating + ratingDelta
 
-      navigation.navigate('DebateResult', {
+      setJudging(false)
+      navigation.replace('DebateResult', {
         motion,
         categoryId:    '',
         categoryName:  'Debate',
@@ -151,14 +158,17 @@ export default function DebateChatScreen({ route, navigation }: Props) {
       .then(p => ({ username: p.user.username, rating: p.elo_rating }))
       .catch(() => ({ username: 'you', rating: 0 }))
 
-    // Poll for verdictRef up to 18s (judge typically takes ~10s)
+    // Poll for verdictRef up to 18s (judge typically takes ~10s).
+    // Enforce a minimum wait so the JudgingOverlay animation is actually
+    // visible even when the verdict is already in hand the instant we go `over`.
     const MAX_WAIT_MS  = 18_000
+    const MIN_WAIT_MS  = 2_500
     const POLL_MS      = 300
     let elapsed        = 0
 
     const poll = setInterval(async () => {
       elapsed += POLL_MS
-      if (verdictRef.current || elapsed >= MAX_WAIT_MS) {
+      if ((verdictRef.current && elapsed >= MIN_WAIT_MS) || elapsed >= MAX_WAIT_MS) {
         clearInterval(poll)
         const { username, rating } = await profilePromise
         goToResult(username, rating)
@@ -475,6 +485,8 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         onEndTurn={endTurn}
         kbHeight={kbHeight}
       />
+
+      <JudgingOverlay visible={judging} />
 
       <ConfirmModal
         visible={leaveWarning}

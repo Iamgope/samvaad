@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useRef, useState } from 'react'
 import { View, StyleSheet, TouchableOpacity, Dimensions, ScrollView } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
@@ -11,8 +11,11 @@ import { Button } from '../components/Button'
 import { IconButton } from '../components/IconButton'
 import { Avatar } from '../components/Avatar'
 import { DebateHeroCard } from '../components/DebateHeroCard'
-import { DiceIcon, AnalysisIcon, ChevronLeftIcon, ShareIcon } from '../components/Icons'
+import { DiceIcon, AnalysisIcon, ChevronLeftIcon, ShareIcon, ShareNodesIcon } from '../components/Icons'
 import { ResultShareCard, shareResultCard } from '../components/ResultShareCard'
+import { shareOpeningCard } from './DebateChat/OpeningShareCard'
+
+const QUOTE_CARD_BG = '#D7D9DE'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DebateResult'>
 
@@ -36,9 +39,12 @@ export default function DebateResultScreen({ route, navigation }: Props) {
     reasoning, strongestMoment, coachingTip, scores,
   } = route.params
   const insets = useSafeAreaInsets()
+  const [showAnalysis, setShowAnalysis] = useState(false)
 
   const opponentSide: 'for' | 'against' = userSide === 'for' ? 'against' : 'for'
   const shareCardRef = useRef<View>(null)
+  const momentCardRef = useRef<View>(null)
+  const [showCoachingTip, setShowCoachingTip] = useState(false)
   const deltaColor   = ratingDelta >= 0 ? FOR_COLOR : AGAINST_COLOR
   const ratingStr    = ratingDelta >= 0 ? `+${ratingDelta}` : String(ratingDelta)
 
@@ -119,8 +125,8 @@ export default function DebateResultScreen({ route, navigation }: Props) {
             </View>
           </View>
 
-          {/* Analysis — only shown when judgment data is present */}
-          {scores && (
+          {/* Analysis — only shown once the user taps "View Analysis" */}
+          {showAnalysis && scores && (
             <>
               <View style={s.divider} />
               <Text style={s.analysisSectionLabel}>SCORECARD</Text>
@@ -144,7 +150,7 @@ export default function DebateResultScreen({ route, navigation }: Props) {
             </>
           )}
 
-          {!!reasoning && (
+          {showAnalysis && !!reasoning && (
             <>
               <View style={s.divider} />
               <Text style={s.analysisSectionLabel}>REASONING</Text>
@@ -152,17 +158,37 @@ export default function DebateResultScreen({ route, navigation }: Props) {
             </>
           )}
 
-          {!!strongestMoment && (
+          {showAnalysis && !!strongestMoment && (
             <>
               <Text style={[s.analysisSectionLabel, { marginTop: spacing.md }]}>STRONGEST MOMENT</Text>
-              <Text style={s.analysisBody}>{strongestMoment}</Text>
+              <View ref={momentCardRef} collapsable={false} style={s.momentCard}>
+                <Text style={s.momentBody}>{strongestMoment}</Text>
+                <View style={s.momentDivider} />
+                <View style={s.momentFooter}>
+                  <Text style={s.momentAttr}>AI VERDICT</Text>
+                  <TouchableOpacity
+                    onPress={() => shareOpeningCard(momentCardRef)}
+                    hitSlop={8}
+                    style={s.momentShareBtn}
+                  >
+                    <ShareNodesIcon size={13} color={colors.text} />
+                  </TouchableOpacity>
+                </View>
+              </View>
             </>
           )}
 
-          {!!coachingTip && (
+          {showAnalysis && !!coachingTip && (
             <>
-              <Text style={[s.analysisSectionLabel, { marginTop: spacing.md }]}>COACHING TIP FOR YOU</Text>
-              <Text style={s.analysisBody}>{coachingTip}</Text>
+              <View style={s.coachingHeaderRow}>
+                <Text style={[s.analysisSectionLabel, { marginTop: spacing.md }]}>COACHING TIP FOR YOU</Text>
+                {!showCoachingTip && (
+                  <TouchableOpacity onPress={() => setShowCoachingTip(true)} hitSlop={8}>
+                    <Text style={s.viewLink}>View</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {showCoachingTip && <Text style={s.analysisBody}>{coachingTip}</Text>}
             </>
           )}
 
@@ -181,9 +207,9 @@ export default function DebateResultScreen({ route, navigation }: Props) {
         />
         <Button
           variant="darkSteel"
-          label="View Analysis"
+          label={showAnalysis ? 'Hide Analysis' : 'View Analysis'}
           leadingIcon={<AnalysisIcon size={18} color={colors.text} />}
-          onPress={() => {}}
+          onPress={() => setShowAnalysis(v => !v)}
           size="md"
           style={s.outsideBtn}
         />
@@ -452,5 +478,58 @@ const s = StyleSheet.create({
     lineHeight: 19,
     color: colors.textMuted,
     marginTop: 4,
+  },
+
+  // Strongest moment — quote card, same look as the chat's OpeningCard
+  momentCard: {
+    backgroundColor: QUOTE_CARD_BG,
+    borderRadius: 14,
+    padding: spacing.md,
+    marginTop: 4,
+    gap: 6,
+  },
+  momentBody: {
+    fontFamily: fonts.jakarta.regular,
+    fontSize: 15,
+    lineHeight: 20,
+    color: colors.textOnLight,
+    letterSpacing: -0.1,
+  },
+  momentDivider: {
+    height: 1,
+    backgroundColor: '#00000014',
+    marginTop: 2,
+  },
+  momentFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 2,
+  },
+  momentAttr: {
+    fontFamily: fonts.jakarta.semiBold,
+    fontSize: 11.5,
+    color: colors.textOnLightMuted,
+  },
+  momentShareBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.textOnLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Coaching tip — hidden behind a "View" reveal
+  coachingHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  viewLink: {
+    fontFamily: fonts.jakarta.semiBold,
+    fontSize: 11,
+    color: colors.lime,
+    marginTop: spacing.md,
   },
 })
