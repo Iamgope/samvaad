@@ -21,19 +21,12 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DebateResult'>
 
 const SCREEN_H = Dimensions.get('window').height
 
-const POSTER: Record<string, any> = {
-  politics: require('../assets/poster_politics.png'),
-  sports:   require('../assets/poster_sports.png'),
-  lit:      require('../assets/poster_culture.png'),
-  culture:  require('../assets/poster_culture.png'),
-}
-
 const FOR_COLOR     = '#4ADE80'
 const AGAINST_COLOR = '#FF3B5C'
 
 export default function DebateResultScreen({ route, navigation }: Props) {
   const {
-    motion, categoryId, categoryName, categoryAccent,
+    motion, categoryName, categoryAccent,
     userSide, myUsername, myRating, opponentName,
     result, ratingDelta, xpDelta,
     reasoning, strongestMoment, coachingTip, scores,
@@ -89,7 +82,6 @@ export default function DebateResultScreen({ route, navigation }: Props) {
           motion={motion}
           categoryName={categoryName}
           categoryAccent={categoryAccent}
-          image={POSTER[categoryId]}
           height={180}
           borderRadius={0}
           motionSize={17}

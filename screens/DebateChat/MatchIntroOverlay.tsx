@@ -9,7 +9,7 @@ import { spacing, SCREEN_PADDING } from '../../constants/spacing'
 import { VsLock, type VsLockPerson } from './VsLock'
 import { QUOTE_CARD_BG } from './MessageBubble'
 
-const COUNTDOWN_START = 30
+const COUNTDOWN_START = 5
 
 type Stance = { emoji: string; label: string; accent: string }
 

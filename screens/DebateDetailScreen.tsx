@@ -16,7 +16,6 @@ import type { RootStackParamList } from '../App'
 import { colors } from '../constants/colors'
 import { fonts } from '../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../constants/spacing'
-import { categoryConfig } from '../constants/categories'
 import { Text } from '../components/Text'
 import { IconButton } from '../components/IconButton'
 import { Button } from '../components/Button'
@@ -116,7 +115,7 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
           motion={motion}
           categoryName={categoryName}
           categoryAccent={categoryAccent}
-          image={imageUri ? { uri: imageUri } : categoryConfig(categoryId).poster}
+          image={imageUri ? { uri: imageUri } : undefined}
           height={HERO_HEIGHT}
           borderRadius={0}
           motionSize={24}
@@ -261,7 +260,7 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
           categoryAccent={categoryAccent}
           forPct={forPct}
           againstPct={againstPct}
-          image={imageUri ? { uri: imageUri } : categoryConfig(categoryId).poster}
+          image={imageUri ? { uri: imageUri } : undefined}
         />
       </View>
     </SafeAreaView>

@@ -80,9 +80,9 @@ export default function TopicScreen({ navigation, route }: Props) {
     return () => { cancelled = true }
   }, [])
 
-  const { chipOptions, selectedChip, catAccent, catIcon, catPoster } = useMemo(() => {
+  const { chipOptions, selectedChip, catAccent, catIcon } = useMemo(() => {
     if (!groups) {
-      return { chipOptions: [] as ChipOption[], selectedChip: null as ChipOption | null, catAccent: colors.streak, catIcon: null, catPoster: null }
+      return { chipOptions: [] as ChipOption[], selectedChip: null as ChipOption | null, catAccent: colors.streak, catIcon: null }
     }
     const names = CATEGORY_ORDER.filter(n => n in groups)
     const chips: ChipOption[] = names.map(name => {
@@ -91,7 +91,7 @@ export default function TopicScreen({ navigation, route }: Props) {
     })
     const chip = chips.find(c => c.id === activeCategoryId) ?? chips[0] ?? null
     const cfg = categoryConfig(chip?.id ?? '')
-    return { chipOptions: chips, selectedChip: chip, catAccent: cfg.accent, catIcon: cfg.icon, catPoster: cfg.poster }
+    return { chipOptions: chips, selectedChip: chip, catAccent: cfg.accent, catIcon: cfg.icon }
   }, [groups, activeCategoryId])
 
   const debates: DebateItem[] = useMemo(() => {
@@ -179,7 +179,7 @@ export default function TopicScreen({ navigation, route }: Props) {
                 motion={trendingDebate.motion}
                 categoryName={trendingDebate.categoryTag}
                 categoryAccent={catAccent}
-                image={trendingDebate.backgroundImage ? { uri: trendingDebate.backgroundImage } : catPoster}
+                image={trendingDebate.backgroundImage ? { uri: trendingDebate.backgroundImage } : undefined}
                 height={272}
                 motionSize={26}
                 onPress={() => openDebate(trendingDebate.id)}

@@ -13,14 +13,14 @@ type Props = {
   categoryAccent: string
   forPct: number
   againstPct: number
-  image: ImageSourcePropType
+  image?: ImageSourcePropType
 }
 
 export const DebateShareCard = React.forwardRef<View, Props>(
   ({ motion, categoryName, categoryAccent, forPct, againstPct, image }, ref) => {
     return (
       <View ref={ref} collapsable={false} style={s.card}>
-        <Image source={image} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        {image && <Image source={image} style={StyleSheet.absoluteFill} resizeMode="cover" />}
         <LinearGradient
           colors={[categoryAccent + '66', categoryAccent + 'DD', colors.black]}
           locations={[0, 0.45, 0.8]}

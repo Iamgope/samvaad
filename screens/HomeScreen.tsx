@@ -50,7 +50,7 @@ function toHomeTopic(topic: Topic, categoryName: string): HomeTopic {
     categoryName,
     motion: topic.title,
     context: topic.description || undefined,
-    image: uri ? { uri } : categoryConfig(categoryName).poster,
+    image: uri ? { uri } : undefined,
     proContext: topic.pro_context ?? undefined,
     conContext: topic.con_context ?? undefined,
     isTrending: topic.is_trending,

@@ -97,7 +97,7 @@ export function OpeningCard({
       <View style={s.quoteFooter}>
         <Text style={s.quoteAttrName} numberOfLines={1}>{isMe ? 'You' : name}</Text>
         <TouchableOpacity onPress={onShare} hitSlop={8} style={s.shareBtn}>
-          <ShareNodesIcon size={13} color={colors.text} />
+          <ShareNodesIcon size={13} color={colors.textOnLight} />
         </TouchableOpacity>
       </View>
     </View>
@@ -158,8 +158,6 @@ const s = StyleSheet.create({
     bottom: 2,
   },
   shareBtn: {
-    width: 24, height: 24, borderRadius: 12,
-    backgroundColor: colors.textOnLight,
     alignItems: 'center', justifyContent: 'center',
   },
   quoteBody: {
