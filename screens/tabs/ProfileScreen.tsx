@@ -32,7 +32,7 @@ const DEFAULT_AVATAR = require('../../assets/defaultprofilepic.png');
 
 // ─── TYPES ─────────────────────────────────────────────────────────
 
-type ProfileData = {
+export type ProfileData = {
   isOwn: boolean;
   name: string;
   handle: string;
@@ -51,7 +51,7 @@ type ProfileData = {
 
 // ─── HERO ─────────────────────────────────────────────────────────
 
-function ProfileHero({
+export function ProfileHero({
   profile,
   avatarUri,
   onPickAvatar,
@@ -59,7 +59,7 @@ function ProfileHero({
 }: {
   profile: ProfileData;
   avatarUri: string | null;
-  onPickAvatar: () => void;
+  onPickAvatar?: () => void;
   onOpenMenu?: () => void;
 }) {
   const { current } = getTierInfo(profile.rating);
@@ -222,7 +222,7 @@ const hero = StyleSheet.create({
 
 // ─── STAT ROW ─────────────────────────────────────────────────────
 
-function StatRow({ profile }: { profile: ProfileData }) {
+export function StatRow({ profile }: { profile: ProfileData }) {
   const winRate = profile.debates === 0 ? 0 : Math.round((profile.wins / profile.debates) * 100);
   const items = [
     { label: 'Debates', value: String(profile.debates) },

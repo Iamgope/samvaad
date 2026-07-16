@@ -39,7 +39,9 @@ import DebateResultScreen from './screens/DebateResultScreen'
 import DebateChatScreen from './screens/DebateChat';
 import NotificationsScreen from './screens/NotificationsScreen';
 import LearnScreen from './screens/LearnScreen';
+import UserProfileScreen from './screens/UserProfileScreen';
 import type { Badge } from './components/profile/TrophyCase';
+import type { LeaderboardEntry } from './services/api';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TabNavigator } from './navigation/TabNavigator';
 import { colors } from './constants/colors';
@@ -81,6 +83,7 @@ export type RootStackParamList = {
   HelpSupport: undefined;
   Notifications: undefined;
   LearnScreen: undefined;
+  UserProfile: { profile: LeaderboardEntry };
   DebateChat: {
     debateId: string
     motion: string
@@ -203,6 +206,7 @@ export default function App() {
             <Stack.Screen name="DebateChat" component={DebateChatScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="LearnScreen" component={LearnScreen} />
+            <Stack.Screen name="UserProfile" component={UserProfileScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </View>

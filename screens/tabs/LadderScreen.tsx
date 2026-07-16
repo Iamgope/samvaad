@@ -4,6 +4,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Polygon, Text as SvgText } from 'react-native-svg';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../App';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import { spacing, SCREEN_PADDING } from '../../constants/spacing';
@@ -17,6 +20,7 @@ import { ChevronUpIcon, ChevronDownIcon } from '../../components/Icons';
 type Player = {
   rank: number; name: string; initials: string;
   wins: number; debates: number; streak: number;
+  entry: LeaderboardEntry;
 };
 
 function toPlayer(entry: LeaderboardEntry): Player {
@@ -28,6 +32,7 @@ function toPlayer(entry: LeaderboardEntry): Player {
     wins: entry.wins,
     debates: entry.total_debates,
     streak: entry.streak,
+    entry,
   };
 }
 
@@ -117,18 +122,18 @@ function Block3D({ height, position, label, accent }: { height: number; position
   );
 }
 
-function PodiumColumn({ player, position, accent }: { player: Player; position: 1 | 2 | 3; accent: string }) {
+function PodiumColumn({ player, position, accent, onPress }: { player: Player; position: 1 | 2 | 3; accent: string; onPress: () => void }) {
   return (
-    <View style={styles.podiumCol}>
+    <TouchableOpacity style={styles.podiumCol} onPress={onPress} activeOpacity={0.8}>
       <View style={styles.podiumAvatarSlot}>
         <Avatar initials={player.initials} size={AVATAR_S[position]} isFirst={position === 1} />
       </View>
       <Block3D height={STEP_H[position]} position={position} label={String(position)} accent={accent} />
-    </View>
+    </TouchableOpacity>
   );
 }
 
-function Podium({ players, accent }: { players: Player[]; accent: string }) {
+function Podium({ players, accent, onPressPlayer }: { players: Player[]; accent: string; onPressPlayer: (player: Player) => void }) {
   if (players.length === 0) {
     return (
       <View style={styles.podiumEmpty}>
@@ -145,7 +150,15 @@ function Podium({ players, accent }: { players: Player[]; accent: string }) {
   return (
     <View>
       <View style={styles.podiumRow}>
-        {order.map(o => <PodiumColumn key={o.position} player={o.player} position={o.position} accent={accent} />)}
+        {order.map(o => (
+          <PodiumColumn
+            key={o.position}
+            player={o.player}
+            position={o.position}
+            accent={accent}
+            onPress={() => onPressPlayer(o.player)}
+          />
+        ))}
       </View>
       <View style={styles.podiumNameRow}>
         {order.map(o => (
@@ -162,11 +175,15 @@ function Podium({ players, accent }: { players: Player[]; accent: string }) {
 const ACCENT = colors.lime;
 
 export default function LadderScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [timeFrame, setTimeFrame] = useState<'weekly' | 'allTime'>('weekly');
   const [isExpanded, setIsExpanded] = useState(false);
 
   const apiTimeframe: Timeframe = timeFrame === 'weekly' ? 'weekly' : 'all_time';
   const { data: leaderboard } = useLeaderboard(apiTimeframe);
+
+  const goToPlayerProfile = (player: Player) =>
+    navigation.navigate('UserProfile', { profile: player.entry });
 
   const players: Player[] = (leaderboard ?? []).map(toPlayer);
   const topThree = players.slice(0, 3);
@@ -239,7 +256,7 @@ export default function LadderScreen() {
       </View>
 
       <View style={styles.podiumSection}>
-        <Podium players={topThree} accent={ACCENT} />
+        <Podium players={topThree} accent={ACCENT} onPressPlayer={goToPlayerProfile} />
       </View>
 
       <Animated.View style={[styles.sheet, { top: sheetY }]}>
@@ -282,6 +299,7 @@ export default function LadderScreen() {
                 metaText={`${p.wins} wins`}
                 accent={ACCENT}
                 isLast={i === restOfList.length - 1}
+                onPress={() => goToPlayerProfile(p)}
               />
             ))
           )}
