@@ -83,7 +83,7 @@ export type RootStackParamList = {
   HelpSupport: undefined;
   Notifications: undefined;
   LearnScreen: undefined;
-  UserProfile: { profile: LeaderboardEntry };
+  UserProfile: { userId: number; initialProfile?: LeaderboardEntry };
   DebateChat: {
     debateId: string
     motion: string

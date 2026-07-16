@@ -1,19 +1,26 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   fetchUserProfile,
+  fetchUserProfileById,
   fetchMyDebates,
   fetchCategoryAndRules,
   fetchTopics,
   fetchLeaderboard,
+  fetchTopicComments,
+  fetchTopicVotes,
   type Timeframe,
+  type UserProfile,
 } from '../services/api'
 
 export const QUERY_KEYS = {
   userProfile: ['userProfile'] as const,
+  userProfileById: (userId: number) => ['userProfileById', userId] as const,
   myDebates:   ['myDebates']   as const,
   categories:  ['categories']  as const,
   topics:      ['topics']      as const,
   leaderboard: (timeframe: Timeframe) => ['leaderboard', timeframe] as const,
+  topicComments: (topicId: number) => ['topicComments', topicId] as const,
+  topicVotes:    (topicId: number) => ['topicVotes', topicId] as const,
 }
 
 export const useUserProfile = () =>
@@ -21,6 +28,17 @@ export const useUserProfile = () =>
     queryKey: QUERY_KEYS.userProfile,
     queryFn:  fetchUserProfile,
     staleTime: 1000 * 60 * 30,         // 30 min — refresh after debate or manual pull
+  })
+
+// `initialData` lets callers who already have the profile (e.g. a leaderboard
+// row) paint instantly while this still refetches in the background; callers
+// with only a user id (e.g. a comment author) just get a normal fetch.
+export const useUserProfileById = (userId: number, initialData?: UserProfile) =>
+  useQuery({
+    queryKey: QUERY_KEYS.userProfileById(userId),
+    queryFn:  () => fetchUserProfileById(userId),
+    initialData,
+    staleTime: 1000 * 60 * 5,          // 5 min
   })
 
 export const useMyDebates = () =>
@@ -49,6 +67,20 @@ export const useLeaderboard = (timeframe: Timeframe) =>
     queryKey: QUERY_KEYS.leaderboard(timeframe),
     queryFn:  () => fetchLeaderboard(timeframe),
     staleTime: 1000 * 60 * 5,          // 5 min
+  })
+
+export const useTopicComments = (topicId: number) =>
+  useQuery({
+    queryKey: QUERY_KEYS.topicComments(topicId),
+    queryFn:  () => fetchTopicComments(topicId),
+    staleTime: 1000 * 30,              // 30s — comments come in during a live discussion
+  })
+
+export const useTopicVotes = (topicId: number) =>
+  useQuery({
+    queryKey: QUERY_KEYS.topicVotes(topicId),
+    queryFn:  () => fetchTopicVotes(topicId),
+    staleTime: 1000 * 30,
   })
 
 export const useInvalidateAfterDebate = () => {

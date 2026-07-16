@@ -37,8 +37,8 @@ import { VsLock, type VsLockPerson } from './DebateChat/VsLock'
 
 const STANCES = [
   { id: 'surprise', label: 'Surprise Me', emoji: '🎲', accent: colors.lime },
-  { id: 'for', label: 'Defend', emoji: '🛡️', accent: '#4ADE80' },
-  { id: 'against', label: 'Attack', emoji: '⚔️', accent: colors.red },
+  { id: 'for', label: 'Defend', emoji: '🛡️', accent: colors.lime },
+  { id: 'against', label: 'Attack', emoji: '⚔️', accent: colors.limeMuted },
 ]
 
 const ALL_CATEGORY_ID = 'all'

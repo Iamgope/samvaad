@@ -30,6 +30,12 @@ export async function fetchUserProfile(): Promise<UserProfile> {
   return res.data.user;
 }
 
+// Read-only — no edit/logout affordance exists for another user's profile.
+export async function fetchUserProfileById(userId: number): Promise<UserProfile> {
+  const res = await api.get<ApiResponse>(`/users/getProfile/${userId}/`);
+  return res.data.user;
+}
+
 export type Timeframe = 'weekly' | 'all_time';
 
 export type LeaderboardEntry = UserProfile & { rank: number };
@@ -70,4 +76,68 @@ export async function updateUserProfile(payload: UpdateProfilePayload): Promise<
     form.append('profile_pic', { uri, name, type: mimeFromUri(uri) } as unknown as Blob);
   }
   await api.post('/users/getProfile/', form);
+}
+
+export type TopicSide = 'PRO' | 'CON';
+
+export type TopicComment = {
+  id: number;
+  topic: number;
+  user: UserAccount;
+  comment: string;
+  side: TopicSide;
+  created_at: string;
+};
+
+type TopicCommentsResponse = {
+  message?: string;
+  data: { comments: TopicComment[] };
+};
+
+export async function fetchTopicComments(topicId: number): Promise<TopicComment[]> {
+  const res = await api.get<TopicCommentsResponse>(`/users/topics/comments/?topic_id=${topicId}`);
+  return res.data.comments;
+}
+
+type TopicCommentResponse = {
+  message?: string;
+  data: { comment: TopicComment };
+};
+
+export async function postTopicComment(
+  topicId: number,
+  comment: string,
+  side: TopicSide,
+): Promise<TopicComment> {
+  const res = await api.post<TopicCommentResponse>('/users/topics/comments/', {
+    topic: topicId,
+    comment,
+    side,
+  });
+  return res.data.comment;
+}
+
+export async function deleteTopicComment(commentId: number): Promise<void> {
+  await api.delete(`/users/topics/comments/${commentId}/`);
+}
+
+export type TopicVoteSummary = {
+  pro_count: number;
+  con_count: number;
+  my_vote: TopicSide | null;
+};
+
+type TopicVoteResponse = {
+  message?: string;
+  data: TopicVoteSummary;
+};
+
+export async function fetchTopicVotes(topicId: number): Promise<TopicVoteSummary> {
+  const res = await api.get<TopicVoteResponse>(`/users/topics/votes/?topic_id=${topicId}`);
+  return res.data;
+}
+
+export async function castTopicVote(topicId: number, side: TopicSide): Promise<TopicVoteSummary> {
+  const res = await api.post<TopicVoteResponse>('/users/topics/votes/', { topic: topicId, side });
+  return res.data;
 }

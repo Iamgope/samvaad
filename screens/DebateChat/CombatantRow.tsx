@@ -10,8 +10,8 @@ import { sideLabel, fmtTime } from './types'
 
 const DEFAULT_AVATAR = require('../../assets/defaultprofilepic.png')
 
-const FOR_COLOR = '#4ADE80'
-const AGAINST_COLOR = colors.red
+const FOR_COLOR = colors.lime
+const AGAINST_COLOR = colors.limeMuted
 
 function Combatant({ name, side, isYou, accent, time, active, mirror, avatarUri }: {
   name: string

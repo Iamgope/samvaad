@@ -183,7 +183,7 @@ export default function LadderScreen() {
   const { data: leaderboard } = useLeaderboard(apiTimeframe);
 
   const goToPlayerProfile = (player: Player) =>
-    navigation.navigate('UserProfile', { profile: player.entry });
+    navigation.navigate('UserProfile', { userId: player.entry.user.id, initialProfile: player.entry });
 
   const players: Player[] = (leaderboard ?? []).map(toPlayer);
   const topThree = players.slice(0, 3);

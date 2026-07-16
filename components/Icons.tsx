@@ -137,6 +137,24 @@ export function FlagIcon({
   );
 }
 
+export function TrashIcon({
+  size = 16,
+  color = colors.text,
+  strokeWidth = 1.8,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 7h16 M9 7V4h6v3 M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13 M10 11v6 M14 11v6"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 export function EyeOffIcon({
   size = 16,
   color = colors.text,
