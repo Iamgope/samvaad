@@ -18,7 +18,7 @@ async function doRefresh(): Promise<string> {
       'Content-Type': 'application/json',
       'X-App-Version': APP_VERSION,
     },
-    body: JSON.stringify({ refresh }),
+    body: JSON.stringify({ refresh_token: refresh }),
   });
 
   if (!res.ok) {
@@ -26,10 +26,9 @@ async function doRefresh(): Promise<string> {
     throw new ApiError(401, 'SESSION_EXPIRED', 'Please log in again');
   }
 
-  const data = await res.json();
-  await tokens.setAccess(data.access);
-  if (data.refresh) await tokens.setRefresh(data.refresh);
-  return data.access;
+  const { data } = await res.json();
+  await tokens.setAccess(data.access_token);
+  return data.access_token;
 }
 
 export function refreshAccessToken(): Promise<string> {

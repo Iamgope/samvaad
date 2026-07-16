@@ -9,7 +9,7 @@ import { Text } from '../../components/Text'
 import { ShareNodesIcon } from '../../components/Icons'
 import { USER_BLUE, type WsMsg } from './types'
 
-const QUOTE_CARD_BG = '#D7D9DE'
+export const QUOTE_CARD_BG = '#D7D9DE'
 
 function QuoteTail({ side, color = QUOTE_CARD_BG }: { side: 'left' | 'right'; color?: string }) {
   return (

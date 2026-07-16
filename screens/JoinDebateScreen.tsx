@@ -4,8 +4,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Animated,
-  Easing,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native'
@@ -13,12 +11,10 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { colors } from '../constants/colors'
 import { fonts } from '../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../constants/spacing'
-import { TIER_COLOR } from '../constants/tiers'
 import { Text } from '../components/Text'
 import { Button } from '../components/Button'
 import { IconButton } from '../components/IconButton'
 import { ChipDropdown } from '../components/ChipDropdown'
-import { Avatar } from '../components/Avatar'
 import { ChevronLeftIcon } from '../components/Icons'
 import { Toast } from '../components/Toast'
 import {
@@ -33,8 +29,8 @@ import {
 import { useCategories, useUserProfile } from '../hooks/useQueries'
 import { getTierInfo } from '../constants/tiers'
 import { OpeningOverlay } from './DebateChat/OpeningOverlay'
-
-const DEFAULT_AVATAR = require('../assets/defaultprofilepic.png')
+import { MatchIntroOverlay } from './DebateChat/MatchIntroOverlay'
+import { VsLock, type VsLockPerson } from './DebateChat/VsLock'
 
 // ─── DATA ─────────────────────────────────────────────────────────
 
@@ -75,220 +71,6 @@ const ETIQUETTE = [
   'Concede what you must. It earns more respect.',
 ]
 
-// ─── VS LOCK ANIMATION ────────────────────────────────────────────
-
-const CARD_W = 132
-const CARD_H = 182
-
-type CurrentUser = { name: string; initials: string; rating: number; tier: string; avatarUri: string | null }
-
-type VsLockProps = { category: CategoryChip; stance: (typeof STANCES)[0]; user: CurrentUser }
-
-function VsLock({ category, stance, user }: VsLockProps) {
-  const slideLeft = useRef(new Animated.Value(-220)).current
-  const slideRight = useRef(new Animated.Value(220)).current
-  const vsScale = useRef(new Animated.Value(0)).current
-  const scanLine = useRef(new Animated.Value(0)).current
-  const borderGlow = useRef(new Animated.Value(0.25)).current
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.spring(slideLeft, { toValue: 0, useNativeDriver: true, tension: 70, friction: 12 }),
-      Animated.spring(slideRight, { toValue: 0, useNativeDriver: true, tension: 70, friction: 12 }),
-      Animated.sequence([
-        Animated.delay(260),
-        Animated.spring(vsScale, { toValue: 1, useNativeDriver: true, tension: 150, friction: 7 }),
-      ]),
-    ]).start(() => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(vsScale, { toValue: 1.08, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(vsScale, { toValue: 1.00, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        ])
-      ).start()
-    })
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(scanLine, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(scanLine, { toValue: 0, duration: 0, useNativeDriver: true }),
-        Animated.delay(500),
-      ])
-    ).start()
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(borderGlow, { toValue: 0.9, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(borderGlow, { toValue: 0.2, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])
-    ).start()
-
-    return () => {
-      [slideLeft, slideRight, vsScale, scanLine, borderGlow].forEach(a => a.stopAnimation())
-    }
-  }, [])
-
-  const scanY = scanLine.interpolate({ inputRange: [0, 1], outputRange: [0, CARD_H] })
-  const tierColor = TIER_COLOR[user.tier] ?? colors.text
-
-  return (
-    <View style={vl.row}>
-
-      {/* ── Left card — YOU ── */}
-      <Animated.View style={[vl.outer, {
-        borderColor: colors.border,
-        borderBottomColor: tierColor + '99',
-        transform: [{ translateX: slideLeft }],
-      }]}>
-        <View style={vl.inner}>
-          <View style={vl.cardTop}>
-            <Text style={vl.eyebrow}>YOU</Text>
-            <Avatar
-              size={52}
-              source={user.avatarUri ? { uri: user.avatarUri } : DEFAULT_AVATAR}
-              borderColor={colors.borderStrong}
-              offset={3}
-            />
-            <View style={vl.nameBlock}>
-              <Text style={vl.playerName} numberOfLines={1}>{user.name}</Text>
-              <View style={vl.tierChip}>
-                <Text style={vl.tierLabel}>{user.tier.toUpperCase()}</Text>
-                <Text style={vl.ratingDot}>·</Text>
-                <Text style={vl.ratingText}>{user.rating}</Text>
-              </View>
-            </View>
-          </View>
-          <View style={vl.footer}>
-            <Text style={vl.footerEmoji}>{stance.emoji}</Text>
-            <Text style={[vl.footerLabel, { color: stance.accent }]} numberOfLines={1}>
-              {stance.label.toUpperCase()}
-            </Text>
-          </View>
-        </View>
-      </Animated.View>
-
-      {/* ── VS badge ── */}
-      <Animated.View style={[vl.vsWrap, { transform: [{ scale: vsScale }] }]}>
-        <Text style={vl.vsText}>VS</Text>
-      </Animated.View>
-
-      {/* ── Right card — OPPONENT ── */}
-      <Animated.View style={[vl.outer, {
-        borderColor: colors.border,
-        borderBottomColor: colors.lime + '88',
-        transform: [{ translateX: slideRight }],
-      }]}>
-        <View style={[vl.inner, { overflow: 'hidden' }]}>
-          <Animated.View
-            style={[StyleSheet.absoluteFill, vl.glowBorder, { borderColor: colors.lime, opacity: borderGlow }]}
-            pointerEvents="none"
-          />
-          <Animated.View
-            style={[vl.scanBar, { transform: [{ translateY: scanY }] }]}
-            pointerEvents="none"
-          />
-          <View style={vl.cardTop}>
-            <Text style={[vl.eyebrow, { color: colors.textFaint }]}>OPPONENT</Text>
-            <Avatar
-              size={52}
-              initials="?"
-              borderColor={colors.borderStrong}
-              backgroundColor={colors.surface2}
-              textColor={colors.textFaint}
-              offset={3}
-            />
-            <View style={vl.nameBlock}>
-              <Text style={[vl.playerName, { color: colors.textFaint }]}>· · ·</Text>
-              <View style={vl.tierChip}>
-                <Text style={[vl.tierLabel, { color: colors.textFaint }]}>SEARCHING</Text>
-              </View>
-            </View>
-          </View>
-          <View style={vl.footer}>
-            <Text style={vl.footerEmoji}>{category.emoji}</Text>
-            <Text style={[vl.footerLabel, { color: colors.textSubtle }]} numberOfLines={1}>
-              {category.label.toUpperCase()}
-            </Text>
-          </View>
-        </View>
-      </Animated.View>
-
-    </View>
-  )
-}
-
-const vl = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-
-  outer: {
-    width: CARD_W, height: CARD_H,
-    borderRadius: 16,
-    borderWidth: 1.5, borderBottomWidth: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 3, height: 4 },
-    shadowOpacity: 0.55, shadowRadius: 0,
-    elevation: 6,
-  },
-  inner: {
-    flex: 1,
-    borderRadius: 13,
-    backgroundColor: colors.surface,
-    justifyContent: 'space-between',
-  },
-  glowBorder: { borderRadius: 13, borderWidth: 1.5 },
-
-  cardTop: {
-    alignItems: 'center',
-    paddingTop: 13, paddingHorizontal: 10,
-    gap: 7,
-  },
-  eyebrow: {
-    fontFamily: fonts.jakarta.bold,
-    fontSize: 8.5, letterSpacing: 2.2,
-    color: colors.textSubtle,
-  },
-  nameBlock: { alignItems: 'center', gap: 5 },
-  playerName: {
-    fontFamily: fonts.jakarta.semiBold,
-    fontSize: 12.5, color: colors.text, letterSpacing: -0.2,
-  },
-  tierChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    paddingHorizontal: 7, paddingVertical: 3,
-    borderRadius: 5,
-    backgroundColor: colors.surface2,
-  },
-  tierLabel: { fontFamily: fonts.jakarta.bold, fontSize: 7.5, letterSpacing: 0.8, color: colors.textMuted },
-  ratingDot: { fontFamily: fonts.jakarta.bold, fontSize: 8, color: colors.textFaint },
-  ratingText: { fontFamily: fonts.jakarta.bold, fontSize: 8.5, color: colors.textMuted },
-
-  footer: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    justifyContent: 'center',
-    paddingVertical: 9, paddingHorizontal: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  footerEmoji: { fontSize: 11 },
-  footerLabel: {
-    fontFamily: fonts.jakarta.bold,
-    fontSize: 8, letterSpacing: 0.8, flexShrink: 1,
-  },
-
-  vsWrap: { width: 40, alignItems: 'center', justifyContent: 'center' },
-  vsText: {
-    fontFamily: fonts.display.black,
-    fontSize: 28, color: colors.lime, letterSpacing: -1.5,
-    textShadowColor: colors.lime, textShadowRadius: 16,
-    textShadowOffset: { width: 0, height: 0 },
-  },
-
-  scanBar: {
-    position: 'absolute', left: 0, right: 0, height: 2,
-    backgroundColor: colors.lime, opacity: 0.4,
-  },
-})
-
 // ─── SCREEN ───────────────────────────────────────────────────────
 
 type RouteParams = { categoryId?: string; stanceId?: string; topicId?: number; categoryAccent?: string; topicTitle?: string }
@@ -307,9 +89,8 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
 
   const { data: myProfile } = useUserProfile()
 
-  const currentUser: CurrentUser = {
+  const currentUser: VsLockPerson = {
     name: myProfile?.user.first_name || myProfile?.user.username || 'You',
-    initials: (myProfile?.user.first_name || myProfile?.user.username || '?').slice(0, 2).toUpperCase(),
     rating: myProfile ? Math.round(myProfile.elo_rating) : 0,
     tier: getTierInfo(myProfile?.elo_rating ?? 0).current.key,
     avatarUri: myProfile ? mediaUrl(myProfile.profile_pic) : null,
@@ -338,12 +119,16 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
   type MatchedDebate = {
     debateId: string
     motion: string
+    topicDescription: string | null
+    proContext: string | null
+    conContext: string | null
     userSide: 'for' | 'against'
     opponentName: string
     categoryAccent: string
     myUserId: number
   }
   const [matchedDebate, setMatchedDebate] = useState<MatchedDebate | null>(null)
+  const [introDone, setIntroDone] = useState(false)
 
   // Reconcile selected category once data arrives — preserve route-param default if it matches.
   useEffect(() => {
@@ -422,9 +207,13 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
             }
 
             setConnecting(false)
+            setIntroDone(false)
             setMatchedDebate({
               debateId: String(debate.id),
               motion: debate.topic?.title ?? 'Debate',
+              topicDescription: debate.topic?.description ?? null,
+              proContext: debate.topic?.pro_context ?? null,
+              conContext: debate.topic?.con_context ?? null,
               userSide: isUserPro ? 'for' : 'against',
               opponentName: opponent?.username ?? 'Opponent',
               categoryAccent: category.accent,
@@ -492,7 +281,13 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
         /* ── Searching state ── */
         <View style={s.searchingContainer}>
           <Text style={s.searchingTitle}>FINDING{'\n'}YOUR MATCH.</Text>
-          <VsLock category={category} stance={selectedStance} user={currentUser} />
+          <VsLock
+            you={currentUser}
+            youFooter={{ emoji: selectedStance.emoji, label: selectedStance.label.toUpperCase(), color: selectedStance.accent }}
+            opponent={null}
+            opponentFooter={{ emoji: category.emoji, label: category.label.toUpperCase() }}
+            center={<Text style={s.vsText}>VS</Text>}
+          />
           <Text style={s.searchingMeta}>
             {category.emoji}  {category.label}  ·  {selectedStance.emoji}  {selectedStance.label}
           </Text>
@@ -600,7 +395,20 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
         </>
       )}
 
-      {matchedDebate && (
+      {matchedDebate && !introDone && (
+        <MatchIntroOverlay
+          motion={matchedDebate.motion}
+          description={matchedDebate.topicDescription}
+          sideContext={matchedDebate.userSide === 'for' ? matchedDebate.proContext : matchedDebate.conContext}
+          you={currentUser}
+          youStance={STANCES.find(st => st.id === matchedDebate.userSide) ?? selectedStance}
+          opponentName={matchedDebate.opponentName}
+          opponentStance={STANCES.find(st => st.id === (matchedDebate.userSide === 'for' ? 'against' : 'for')) ?? selectedStance}
+          onDone={() => setIntroDone(true)}
+        />
+      )}
+
+      {matchedDebate && introDone && (
         <OpeningOverlay
           motion={matchedDebate.motion}
           userSide={matchedDebate.userSide}
@@ -776,6 +584,12 @@ const s = StyleSheet.create({
   searchingMeta: {
     fontFamily: fonts.jakarta.medium,
     fontSize: 13, color: colors.textSubtle, letterSpacing: 0.3,
+  },
+  vsText: {
+    fontFamily: fonts.display.black,
+    fontSize: 28, color: colors.lime, letterSpacing: -1.5,
+    textShadowColor: colors.lime, textShadowRadius: 16,
+    textShadowOffset: { width: 0, height: 0 },
   },
   cancelBtn: {
     marginTop: spacing.md,
