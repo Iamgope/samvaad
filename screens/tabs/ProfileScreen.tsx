@@ -24,7 +24,7 @@ import { ShareCard, shareProfileCard } from '../../components/profile/ShareCard'
 import { TrophyCase, type Badge } from '../../components/profile/TrophyCase';
 import { DebateHistory, type Match } from '../../components/profile/DebateHistory';
 import { MoreMenuModal, type MoreMenuAction } from '../../components/MoreMenuModal';
-import { mediaUrl, logout, fetchDebateJudgement, type UserProfile, type DebateSummary } from '../../services/api';
+import { mediaUrl, logout, fetchDebateJudgement, updateUserProfile, type UserProfile, type DebateSummary } from '../../services/api';
 import { useUserProfile, useMyDebates } from '../../hooks/useQueries';
 import { roundHalfEven } from '../../utils/math';
 
@@ -457,7 +457,20 @@ export default function ProfileScreen() {
 
   const handlePickAvatar = async () => {
     const uri = await pickSquareImage();
-    if (uri) setLocalAvatarUri(uri);
+    if (!uri) return;
+    setLocalAvatarUri(uri);
+    try {
+      await updateUserProfile({
+        name: profile.name,
+        username: profile.handle.replace(/^@/, ''),
+        bio: profile.bio,
+        profilePicUri: uri,
+      });
+      void refetchProfile();
+    } catch {
+      setLocalAvatarUri(null);
+      Alert.alert("Couldn't update photo", 'Please try again.');
+    }
   };
 
   const handleShareProfile = () => shareProfileCard(shareCardRef, profile.name);
