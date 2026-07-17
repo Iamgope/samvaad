@@ -42,6 +42,7 @@ import LearnScreen from './screens/LearnScreen';
 import UserProfileScreen from './screens/UserProfileScreen';
 import type { Badge } from './components/profile/TrophyCase';
 import type { LeaderboardEntry } from './services/api';
+import type { ResumeRound } from './screens/DebateChat/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TabNavigator } from './navigation/TabNavigator';
 import { colors } from './constants/colors';
@@ -92,6 +93,7 @@ export type RootStackParamList = {
     categoryAccent: string
     myUserId: number
     pendingOpening?: string
+    resumeRounds?: ResumeRound[]
   };
   DebateDetail: {
     debateId: string
