@@ -87,13 +87,13 @@ export default function LoginScreen({ navigation }: Props) {
       </View>
 
       <View style={s.footer}>
-        <Button
+        {/* <Button
           variant="pillBrand"
           label="Sign in with Phone"
           onPress={() => navigation.navigate('Phone')}
           shadowColor={colors.lime}
           disabled={loading}
-        />
+        /> */}
 
         <Button
           variant="pillBrand"

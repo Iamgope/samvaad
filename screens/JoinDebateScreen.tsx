@@ -398,10 +398,10 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
 
             <Text style={s.stanceHint}>
               {selectedStance.id === 'surprise'
-                ? "🎲 We'll randomly assign your stance once you're matched."
+                ? "We'll randomly assign your stance once you're matched 🎲."
                 : selectedStance.id === 'for'
-                  ? "You'll debate FOR this motion, build the case to defend it."
-                  : "You'll debate AGAINST this motion, build the case to attack it."}
+                  ? "You'll debate FOR THIS MOTION."
+                  : "You'll debate AGAINST THIS MOTION."}
             </Text>
 
           </ScrollView>

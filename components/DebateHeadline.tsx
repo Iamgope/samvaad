@@ -10,6 +10,9 @@ type Props = {
   context?: string
   categoryName: string
   categoryAccent: string
+  /** Real topic photo — preferred over categoryIcon when present. */
+  image?: any
+  /** Static per-category placeholder — used only when image is absent. */
   categoryIcon?: any
   agreeCount?: number
   disagreeCount?: number
@@ -29,6 +32,7 @@ export function DebateHeadline({
   context,
   categoryName,
   categoryAccent,
+  image,
   categoryIcon,
   agreeCount,
   disagreeCount,
@@ -74,9 +78,9 @@ export function DebateHeadline({
           </View>
         </View>
 
-        {categoryIcon ? (
+        {(image || categoryIcon) ? (
           <View style={s.thumb}>
-            <Image source={categoryIcon} style={s.thumbImage} resizeMode="cover" />
+            <Image source={image ?? categoryIcon} style={s.thumbImage} resizeMode="cover" />
           </View>
         ) : null}
       </View>

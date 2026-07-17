@@ -300,7 +300,6 @@ export default function SearchScreen() {
                   context={d.context}
                   categoryName={cat?.name ?? d.categoryId}
                   categoryAccent={cat?.accent ?? colors.text}
-                  categoryIcon={cat?.iconSource ?? undefined}
                   headlineSize={17}
                   onPress={() => handleDebatePress(d)}
                 />

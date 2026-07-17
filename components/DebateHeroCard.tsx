@@ -20,6 +20,8 @@ type Props = {
   categoryAccent: string
   /** Optional artwork. Falls back to a tinted placeholder when omitted. */
   image?: ImageSourcePropType
+  /** SVG illustration shown when there's no artwork. */
+  categoryIllustration?: React.ComponentType<{ size?: number; color?: string }>
   height?: number
   /** Corner radius. Use 0 for a full-bleed hero. */
   borderRadius?: number
@@ -37,6 +39,7 @@ export function DebateHeroCard({
   categoryName,
   categoryAccent,
   image,
+  categoryIllustration: CategoryIllustration,
   height = 210,
   borderRadius = 16,
   motionSize = 22,
@@ -55,6 +58,10 @@ export function DebateHeroCard({
     >
       {image ? (
         <Image source={image} style={s.image} resizeMode="cover" />
+      ) : CategoryIllustration ? (
+        <View style={s.placeholder}>
+          <CategoryIllustration size={Math.min(height * 0.55, 140)} color={categoryAccent} />
+        </View>
       ) : (
         <View style={s.placeholder}>
           <Text style={s.placeholderText}>Hero artwork placeholder</Text>
