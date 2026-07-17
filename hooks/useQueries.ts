@@ -33,11 +33,12 @@ export const useUserProfile = () =>
 // `initialData` lets callers who already have the profile (e.g. a leaderboard
 // row) paint instantly while this still refetches in the background; callers
 // with only a user id (e.g. a comment author) just get a normal fetch.
-export const useUserProfileById = (userId: number, initialData?: UserProfile) =>
+export const useUserProfileById = (userId: number, initialData?: UserProfile, enabled = true) =>
   useQuery({
     queryKey: QUERY_KEYS.userProfileById(userId),
     queryFn:  () => fetchUserProfileById(userId),
     initialData,
+    enabled,
     staleTime: 1000 * 60 * 5,          // 5 min
   })
 

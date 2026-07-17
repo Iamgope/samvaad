@@ -3,11 +3,12 @@ import { View, StyleSheet, Animated, TouchableOpacity, ScrollView } from 'react-
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Text } from '../../components/Text'
 import { ExpandableText } from '../../components/ExpandableText'
+import { IconButton } from '../../components/IconButton'
+import { ChevronLeftIcon } from '../../components/Icons'
 import { colors } from '../../constants/colors'
 import { fonts } from '../../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../../constants/spacing'
-import { VsLock, type VsLockPerson } from './VsLock'
-import { QUOTE_CARD_BG } from './MessageBubble'
+import type { VsLockPerson } from './VsLock'
 
 const COUNTDOWN_START = 10
 
@@ -20,16 +21,17 @@ type Props = {
   you: VsLockPerson
   youStance: Stance
   opponentName: string
-  opponentStance: Stance
+  opponentRating?: number
   onDone: () => void
   onCancel: () => void
 }
 
 export function MatchIntroOverlay({
-  motion, description, sideContext, you, youStance, opponentName, opponentStance, onDone, onCancel,
+  motion, description, sideContext, you, youStance, opponentName, opponentRating, onDone, onCancel,
 }: Props) {
   const insets = useSafeAreaInsets()
   const fadeIn = useRef(new Animated.Value(0)).current
+  const tickFade = useRef(new Animated.Value(1)).current
   const [count, setCount] = useState(COUNTDOWN_START)
   const done = useRef(false)
 
@@ -47,8 +49,31 @@ export function MatchIntroOverlay({
     return () => clearTimeout(id)
   }, [count])
 
+  // A brief fade on each tick — simple feedback that the number changed, nothing fancier.
+  useEffect(() => {
+    tickFade.setValue(0.35)
+    Animated.timing(tickFade, { toValue: 1, duration: 220, useNativeDriver: true }).start()
+  }, [count])
+
   return (
     <Animated.View style={[s.overlay, { opacity: fadeIn }]}>
+      <View style={[s.backBtnWrap, { top: insets.top + spacing.sm }]}>
+        <IconButton
+          size="md"
+          icon={<ChevronLeftIcon size={18} color={colors.text} />}
+          onPress={onCancel}
+          accent={colors.text}
+        />
+      </View>
+
+      <View style={[s.topBar, { top: insets.top + spacing.sm }]}>
+        <View style={s.timerBadge}>
+          <Animated.Text style={[s.timerBadgeDigit, { opacity: tickFade }]} allowFontScaling={false}>
+            Starts in {count}s
+          </Animated.Text>
+        </View>
+      </View>
+
       {/*
         Scrollable instead of a fixed space-between layout: when description/sideContext
         are long (or expanded via "Read more"), the old layout could push the cancel
@@ -58,22 +83,23 @@ export function MatchIntroOverlay({
       <ScrollView
         contentContainerStyle={[
           s.scrollContent,
-          { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl },
+          { paddingTop: insets.top + spacing.xxl + 36, paddingBottom: insets.bottom + spacing.xl },
         ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={s.top}>
-          <Text style={s.eyebrow} allowFontScaling={false}>MATCH FOUND</Text>
-          <Text style={s.motion} numberOfLines={4}>{motion}</Text>
+          <View style={s.motionBlock}>
+            <Text style={s.motion} numberOfLines={4}>{motion}</Text>
+          </View>
 
           {!!(description || sideContext) && (
-            <View style={s.contextBox}>
+            <View style={s.contextBlock}>
               {!!description && (
-                <View style={s.angleBlock}>
-                  <Text style={s.angleHeading} allowFontScaling={false}>CONTEXT</Text>
+                <View style={s.card}>
+                  <Text style={s.cardEyebrow} allowFontScaling={false}>CONTEXT</Text>
                   <ExpandableText
                     text={description}
-                    style={s.contextText}
+                    style={s.cardBody}
                     lines={3}
                     toggleTone="accent"
                     moreLabel="Read more"
@@ -81,15 +107,14 @@ export function MatchIntroOverlay({
                   />
                 </View>
               )}
-              {!!description && !!sideContext && <View style={s.divider} />}
               {!!sideContext && (
-                <View style={s.angleBlock}>
-                  <Text style={[s.angleHeading, { color: youStance.accent }]} allowFontScaling={false}>
-                    YOUR ANGLE
+                <View style={s.card}>
+                  <Text style={[s.cardEyebrow, { color: youStance.accent }]} allowFontScaling={false}>
+                    YOUR ANGLE · {youStance.label.toUpperCase()}
                   </Text>
                   <ExpandableText
                     text={sideContext}
-                    style={s.contextText}
+                    style={s.cardBody}
                     lines={2}
                     toggleTone="accent"
                     moreLabel="Read more"
@@ -99,25 +124,31 @@ export function MatchIntroOverlay({
               )}
             </View>
           )}
+
+          <Text style={s.eyebrow} allowFontScaling={false}>MATCH FOUND</Text>
+
+          <View style={[s.card, s.matchup]}>
+            <View style={s.playerCol}>
+              <Text style={s.playerName} numberOfLines={1} allowFontScaling={false}>{you.name}</Text>
+              <Text style={s.playerRating} allowFontScaling={false}>
+                {you.rating != null ? `${you.rating} rating` : ' '}
+              </Text>
+            </View>
+
+            <Text style={s.vsText} allowFontScaling={false}>VS</Text>
+
+            <View style={s.playerCol}>
+              <Text style={s.playerName} numberOfLines={1} allowFontScaling={false}>{opponentName}</Text>
+              <Text style={s.playerRating} allowFontScaling={false}>
+                {opponentRating != null ? `${opponentRating} rating` : ' '}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        <View style={s.middle}>
-
-          <VsLock
-            you={you}
-            youFooter={{ emoji: youStance.emoji, label: youStance.label.toUpperCase(), color: youStance.accent }}
-            opponent={{ name: opponentName, avatarUri: null }}
-            opponentFooter={{ emoji: opponentStance.emoji, label: opponentStance.label.toUpperCase(), color: opponentStance.accent }}
-            center={<Text style={[s.countdownDigit, { textShadowColor: youStance.accent }]} allowFontScaling={false}>{count}</Text>}
-            centerKey={count}
-            breatheDurationMs={420}
-          />
-          <Text style={s.startsInLabel} allowFontScaling={false}>YOUR DEBATE STARTS IN</Text>
-
-          <TouchableOpacity style={s.cancelBtn} onPress={onCancel} activeOpacity={0.7}>
-            <Text style={s.cancelLabel}>Cancel match</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={s.cancelBtn} onPress={onCancel} activeOpacity={0.7}>
+          <Text style={s.cancelLabel}>Cancel match</Text>
+        </TouchableOpacity>
       </ScrollView>
     </Animated.View>
   )
@@ -129,11 +160,38 @@ const s = StyleSheet.create({
     backgroundColor: colors.black,
     zIndex: 100,
   },
+  backBtnWrap: {
+    position: 'absolute',
+    left: SCREEN_PADDING,
+    zIndex: 11,
+  },
+  topBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    alignItems: 'center',
+  },
+  timerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  timerBadgeDigit: {
+    fontFamily: fonts.jakarta.bold,
+    fontSize: 14,
+    color: colors.text,
+    letterSpacing: -0.2,
+  },
   scrollContent: {
-    flexGrow: 1,
     paddingHorizontal: SCREEN_PADDING,
-    justifyContent: 'space-between',
-    gap: spacing.xl,
+    gap: spacing.xxl,
   },
 
   top: {
@@ -146,65 +204,78 @@ const s = StyleSheet.create({
     letterSpacing: 2.4,
     color: colors.lime,
   },
+  motionBlock: {
+    alignItems: 'center',
+    gap: 6,
+  },
   motion: {
     fontFamily: fonts.jakarta.semiBold,
-    fontSize: 24,
-    lineHeight: 32,
+    fontSize: 19,
+    lineHeight: 26,
     color: colors.text,
     textAlign: 'center',
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
 
-  contextBox: {
+  contextBlock: {
     width: '100%',
-    marginTop: spacing.xs,
-    padding: spacing.lg,
-    borderRadius: 14,
-    backgroundColor: QUOTE_CARD_BG,
+    marginTop: spacing.sm,
     gap: spacing.md,
   },
-  contextText: {
+  card: {
+    width: '100%',
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
+  cardEyebrow: {
+    fontFamily: fonts.jakarta.extraBold,
+    fontSize: 10,
+    color: colors.textMuted,
+    letterSpacing: 1.4,
+  },
+  cardBody: {
     fontFamily: fonts.jakarta.regular,
     fontSize: 15.5,
     lineHeight: 24,
-    color: colors.textOnLight,
+    color: colors.text,
     letterSpacing: -0.1,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#00000014',
-  },
-  angleBlock: {
-    gap: 6,
-  },
-  angleHeading: {
-    fontFamily: fonts.jakarta.bold,
-    fontSize: 10,
-    letterSpacing: 1.6,
-    color: colors.textOnLightMuted,
+    opacity: 0.85,
   },
 
-  middle: {
+  matchup: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xl,
+    justifyContent: 'center',
+    gap: spacing.lg,
+    marginTop: spacing.xs,
   },
-  countdownDigit: {
-    fontFamily: fonts.display.black,
-    fontSize: 30,
+  playerCol: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  playerName: {
+    fontFamily: fonts.jakarta.semiBold,
+    fontSize: 16,
     color: colors.text,
-    letterSpacing: -1.5,
-    textAlign: 'center',
-    textShadowRadius: 16,
-    textShadowOffset: { width: 0, height: 0 },
+    letterSpacing: -0.2,
   },
-  startsInLabel: {
-    fontFamily: fonts.jakarta.bold,
+  playerRating: {
+    fontFamily: fonts.jakarta.medium,
     fontSize: 12,
-    letterSpacing: 1.6,
     color: colors.textSubtle,
   },
+  vsText: {
+    fontFamily: fonts.jakarta.bold,
+    fontSize: 12,
+    letterSpacing: 1.2,
+    color: colors.textFaint,
+  },
+
   cancelBtn: {
-    marginTop: spacing.sm,
+    alignSelf: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: 6,
