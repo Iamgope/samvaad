@@ -10,6 +10,13 @@ import { sideLabel, fmtTime } from './types'
 
 const DEFAULT_AVATAR = require('../../assets/defaultprofilepic.png')
 
+// NOTE: this is a second, independent definition of the for/against color pair —
+// MatchIntroOverlay/VsLock derive theirs from `youStance.accent` / `opponentStance.accent`.
+// If those get updated (e.g. to a lime/coral pair for clearer distinction), this file
+// won't follow automatically and the avatar glow here will drift out of sync with what
+// the player just saw on the match-intro screen. Once the real color values are settled,
+// pull both from one shared constant (e.g. colors.ts: DEBATE_FOR / DEBATE_AGAINST) instead
+// of defining them independently in each file.
 const FOR_COLOR = colors.lime
 const AGAINST_COLOR = colors.limeMuted
 

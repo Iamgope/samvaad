@@ -14,17 +14,12 @@ type Props = {
   agreeCount?: number
   disagreeCount?: number
   unsureCount?: number
-  /** Custom footer node — replaces the default for/against/unsure stats row. */
+  /** Custom footer node — replaces the default byline/stats row. */
   footer?: React.ReactNode
   headlineSize?: number
   onPress?: () => void
-}
-
-const CATEGORY_EMOJI: Record<string, string> = {
-  'politics':    '🏛️',
-  'sports':      '🏆',
-  'culture':     '🎭',
-  'philosophy':  '🧠',
+  /** Show the hairline divider below the card (default true, like a feed list). */
+  divider?: boolean
 }
 
 const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : `${n}`
@@ -39,48 +34,54 @@ export function DebateHeadline({
   disagreeCount,
   unsureCount,
   footer,
-  headlineSize = 20,
+  headlineSize = 21,
   onPress,
+  divider = true,
 }: Props) {
-  const emoji = CATEGORY_EMOJI[categoryName.toLowerCase()] ?? '💬'
   const hasStats = agreeCount !== undefined && disagreeCount !== undefined && unsureCount !== undefined
+  const totalVotes = hasStats ? agreeCount! + disagreeCount! + unsureCount! : 0
 
   return (
-    <TouchableOpacity style={s.root} onPress={onPress} activeOpacity={0.7}>
-      {/* Category label row */}
-      <View style={s.labelRow}>
-        <Text style={[s.categoryLabel, { color: categoryAccent, opacity: 0.45 }]}>
-          {emoji}  {categoryName}
-        </Text>
-      </View>
-
-      {/* Headline + thumbnail */}
+    <TouchableOpacity
+      style={[s.root, divider && s.rootDivider]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       <View style={s.mainRow}>
         <View style={s.mainLeft}>
-          <Text style={[s.headline, { fontSize: headlineSize, lineHeight: headlineSize * 1.3 }]} numberOfLines={3}>{motion}</Text>
+          <Text
+            style={[s.headline, { fontSize: headlineSize, lineHeight: headlineSize * 1.28 }]}
+            numberOfLines={3}
+          >
+            {motion}
+          </Text>
+
           {context ? (
             <Text style={s.context} numberOfLines={2}>{context}</Text>
           ) : null}
+
+          {/* Byline: category + stat, understated, below the headline */}
+          <View style={s.bylineRow}>
+            <Text style={[s.bylineCategory, { color: categoryAccent }]}>
+              {categoryName}
+            </Text>
+            {hasStats ? (
+              <>
+                <Text style={s.bylineDot}>·</Text>
+                <Text style={s.bylineMeta}>{fmt(totalVotes)} weighed in</Text>
+              </>
+            ) : null}
+          </View>
         </View>
-        <View style={[s.thumb, { backgroundColor: categoryAccent + '18' }]}>
-          {categoryIcon
-            ? <Image source={categoryIcon} style={s.thumbIcon} resizeMode="contain" />
-            : <Text style={s.thumbEmoji}>{emoji}</Text>
-          }
-        </View>
+
+        {categoryIcon ? (
+          <View style={s.thumb}>
+            <Image source={categoryIcon} style={s.thumbImage} resizeMode="cover" />
+          </View>
+        ) : null}
       </View>
 
-      {footer ? (
-        <View style={s.footerSlot}>{footer}</View>
-      ) : hasStats ? (
-        <View style={s.statsRow}>
-          <Text style={[s.statFor]}>{fmt(agreeCount)} for</Text>
-          <Text style={s.statSep}>·</Text>
-          <Text style={[s.statAgainst]}>{fmt(disagreeCount)} against</Text>
-          <Text style={s.statSep}>·</Text>
-          <Text style={s.statNeutral}>{fmt(unsureCount)} unsure</Text>
-        </View>
-      ) : null}
+      {footer ? <View style={s.footerSlot}>{footer}</View> : null}
     </TouchableOpacity>
   )
 }
@@ -89,85 +90,68 @@ const s = StyleSheet.create({
   root: {
     paddingVertical: spacing.lg,
   },
+  rootDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.textFaint + '40',
+  },
 
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.sm,
-  },
-  categoryLabel: {
-    fontFamily: fonts.jakarta.semiBold,
-    fontSize: 11,
-    letterSpacing: 0.2,
-  },
   mainRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.md,
-    marginBottom: spacing.sm,
   },
   mainLeft: {
     flex: 1,
-    gap: 4,
-  },
-  headline: {
-    fontFamily: fonts.display.black,
-    fontSize: 20,
-    lineHeight: 26,
-    color: colors.text,
-    letterSpacing: -0.4,
-  },
-  thumb: {
-    width: 68,
-    height: 68,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexShrink: 0,
-    overflow: 'hidden',
-  },
-  thumbIcon: {
-    width: 56,
-    height: 56,
-  },
-  thumbEmoji: {
-    fontSize: 28,
+    gap: 6,
   },
 
+  headline: {
+    fontFamily: fonts.display.black,
+    color: colors.text,
+    letterSpacing: -0.3,
+  },
   context: {
     fontFamily: fonts.jakarta.regular,
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 13,
+    lineHeight: 18,
     color: colors.textSubtle,
   },
 
-  statsRow: {
+  bylineRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingTop: spacing.md,
+    gap: 6,
+    marginTop: 2,
   },
-  footerSlot: {
-    paddingTop: spacing.sm,
-  },
-  statFor: {
+  bylineCategory: {
     fontFamily: fonts.jakarta.semiBold,
     fontSize: 12,
-    color: colors.textMuted
   },
-  statAgainst: {
-    fontFamily: fonts.jakarta.semiBold,
+  bylineDot: {
     fontSize: 12,
-    color: colors.textMuted
+    color: colors.textFaint,
   },
-  statNeutral: {
+  bylineMeta: {
     fontFamily: fonts.jakarta.medium,
     fontSize: 12,
     color: colors.textFaint,
   },
-  statSep: {
-    fontSize: 10,
-    color: colors.textFaint,
+
+  thumb: {
+    width: 64,
+    height: 64,
+    borderRadius: 6,
+    overflow: 'hidden',
+    flexShrink: 0,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.textFaint + '30',
+  },
+  thumbImage: {
+    width: '100%',
+    height: '100%',
+  },
+
+  footerSlot: {
+    paddingTop: spacing.sm,
   },
 })

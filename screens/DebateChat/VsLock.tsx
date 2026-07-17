@@ -107,7 +107,7 @@ export function VsLock({
       }]}>
         <View style={s.inner}>
           <View style={s.cardTop}>
-            <Text style={s.eyebrow}>YOU</Text>
+            <Text style={s.eyebrow} allowFontScaling={false}>YOU</Text>
             <Avatar
               size={52}
               source={you.avatarUri ? { uri: you.avatarUri } : DEFAULT_AVATAR}
@@ -115,14 +115,14 @@ export function VsLock({
               offset={3}
             />
             <View style={s.nameBlock}>
-              <Text style={s.playerName} numberOfLines={1}>{you.name}</Text>
+              <Text style={s.playerName} numberOfLines={1} allowFontScaling={false}>{you.name}</Text>
               {you.tier && (
                 <View style={s.tierChip}>
-                  <Text style={s.tierLabel}>{you.tier.toUpperCase()}</Text>
+                  <Text style={s.tierLabel} numberOfLines={1} allowFontScaling={false}>{you.tier.toUpperCase()}</Text>
                   {you.rating != null && (
                     <>
-                      <Text style={s.ratingDot}>·</Text>
-                      <Text style={s.ratingText}>{you.rating}</Text>
+                      <Text style={s.ratingDot} allowFontScaling={false}>·</Text>
+                      <Text style={s.ratingText} allowFontScaling={false}>{you.rating}</Text>
                     </>
                   )}
                 </View>
@@ -131,14 +131,21 @@ export function VsLock({
           </View>
           <View style={s.footer}>
             <Text style={s.footerEmoji}>{youFooter.emoji}</Text>
-            <Text style={[s.footerLabel, { color: youFooter.color ?? colors.textMuted }]} numberOfLines={1}>
+            <Text
+              style={[s.footerLabel, { color: youFooter.color ?? colors.textMuted }]}
+              numberOfLines={1}
+              allowFontScaling={false}
+            >
               {youFooter.label}
             </Text>
           </View>
         </View>
       </Animated.View>
 
-      {/* ── Center badge ── */}
+      {/* ── Center badge ──
+          Widened from 40 to 56: a two-digit countdown value (e.g. "10") at fontSize 30
+          overflowed the old 40px box and visually bled into the side cards since neither
+          this view nor its parent clip overflow. 56px comfortably fits two digits. */}
       <Animated.View style={[s.centerWrap, { transform: [{ scale: badgeScale }] }]}>
         {center}
       </Animated.View>
@@ -163,7 +170,9 @@ export function VsLock({
             </>
           )}
           <View style={s.cardTop}>
-            <Text style={[s.eyebrow, !opponent && { color: colors.textFaint }]}>OPPONENT</Text>
+            <Text style={[s.eyebrow, !opponent && { color: colors.textFaint }]} allowFontScaling={false}>
+              OPPONENT
+            </Text>
             {opponent ? (
               <Avatar
                 size={52}
@@ -182,12 +191,23 @@ export function VsLock({
               />
             )}
             <View style={s.nameBlock}>
-              <Text style={[s.playerName, !opponent && { color: colors.textFaint }]} numberOfLines={1}>
+              <Text
+                style={[s.playerName, !opponent && { color: colors.textFaint }]}
+                numberOfLines={1}
+                allowFontScaling={false}
+              >
                 {opponent ? opponent.name : '· · ·'}
               </Text>
               {!opponent && (
                 <View style={s.tierChip}>
-                  <Text style={[s.tierLabel, { color: colors.textFaint }]}>SEARCHING</Text>
+                  <Text
+                    style={[s.tierLabel, { color: colors.textFaint }]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    allowFontScaling={false}
+                  >
+                    SEARCHING
+                  </Text>
                 </View>
               )}
             </View>
@@ -197,6 +217,7 @@ export function VsLock({
             <Text
               style={[s.footerLabel, { color: opponent ? (opponentFooter.color ?? colors.textMuted) : colors.textSubtle }]}
               numberOfLines={1}
+              allowFontScaling={false}
             >
               {opponentFooter.label}
             </Text>
@@ -248,6 +269,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 7, paddingVertical: 3,
     borderRadius: 5,
     backgroundColor: colors.surface2,
+    maxWidth: CARD_W - 20,
   },
   tierLabel: { fontFamily: fonts.jakarta.bold, fontSize: 7.5, letterSpacing: 0.8, color: colors.textMuted },
   ratingDot: { fontFamily: fonts.jakarta.bold, fontSize: 8, color: colors.textFaint },
@@ -266,7 +288,7 @@ const s = StyleSheet.create({
     fontSize: 8, letterSpacing: 0.8, flexShrink: 1,
   },
 
-  centerWrap: { width: 40, alignItems: 'center', justifyContent: 'center' },
+  centerWrap: { width: 56, alignItems: 'center', justifyContent: 'center' },
 
   scanBar: {
     position: 'absolute', left: 0, right: 0, height: 2,

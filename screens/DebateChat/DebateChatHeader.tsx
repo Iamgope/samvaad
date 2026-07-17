@@ -53,21 +53,31 @@ export function DebateChatHeader({
           <>
             <Pressable style={s.menuBackdrop} onPress={() => setMenuOpen(false)} />
             <View style={s.menu}>
+              {/*
+                Report is a lower-stakes moderation action — its icon carries the
+                red accent, but the label stays neutral so it doesn't compete with
+                the genuinely consequential action below.
+              */}
               <TouchableOpacity
                 style={s.menuItem}
                 activeOpacity={0.7}
                 onPress={() => { setMenuOpen(false); onReport() }}
               >
                 <FlagIcon size={15} color={colors.red} />
-                <Text style={s.menuLabel}>Report user</Text>
+                <Text style={s.menuLabelNeutral}>Report user</Text>
               </TouchableOpacity>
               {!over && (
+                /*
+                  Forfeiting ends the debate as a loss — the actual destructive
+                  action here — so it gets the red/danger treatment, matching how
+                  ConfirmModal already flags forfeit as `danger` elsewhere.
+                */
                 <TouchableOpacity
                   style={[s.menuItem, s.menuItemDivider]}
                   activeOpacity={0.7}
                   onPress={() => { setMenuOpen(false); onForfeit() }}
                 >
-                  <Text style={s.menuLabel}>Forfeit debate</Text>
+                  <Text style={s.menuLabelDanger}>Forfeit debate</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -87,7 +97,7 @@ const s = StyleSheet.create({
     gap: spacing.sm,
     zIndex: 20,
   },
-  headerCenter: { flex: 1, alignItems: 'center', gap: 3 },
+  headerCenter: { flex: 1, alignItems: 'center' },
   motion: {
     fontFamily: fonts.display.bold, fontSize: 16, lineHeight: 21,
     color: colors.text, letterSpacing: -0.3, textAlign: 'center',
@@ -120,7 +130,8 @@ const s = StyleSheet.create({
   },
   menuItemDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: colors.border,
   },
-  menuLabel: { fontFamily: fonts.jakarta.medium, fontSize: 14, color: colors.red },
+  menuLabelNeutral: { fontFamily: fonts.jakarta.medium, fontSize: 14, color: colors.text },
+  menuLabelDanger: { fontFamily: fonts.jakarta.medium, fontSize: 14, color: colors.red },
 })

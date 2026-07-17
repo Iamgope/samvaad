@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { View, StyleSheet, Animated, TouchableOpacity } from 'react-native'
+import { View, StyleSheet, Animated, TouchableOpacity, ScrollView } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Text } from '../../components/Text'
 import { ExpandableText } from '../../components/ExpandableText'
@@ -48,66 +48,77 @@ export function MatchIntroOverlay({
   }, [count])
 
   return (
-    <Animated.View
-      style={[
-        s.overlay,
-        { opacity: fadeIn, paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl },
-      ]}
-    >
-      <View style={s.top}>
-        <Text style={s.eyebrow}>MATCH FOUND</Text>
-        <Text style={s.motion} numberOfLines={4}>{motion}</Text>
+    <Animated.View style={[s.overlay, { opacity: fadeIn }]}>
+      {/*
+        Scrollable instead of a fixed space-between layout: when description/sideContext
+        are long (or expanded via "Read more"), the old layout could push the cancel
+        button toward or past the bottom safe area with no way to reach it. Scrolling
+        degrades gracefully instead of clipping or overlapping content.
+      */}
+      <ScrollView
+        contentContainerStyle={[
+          s.scrollContent,
+          { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={s.top}>
+          <Text style={s.eyebrow} allowFontScaling={false}>MATCH FOUND</Text>
+          <Text style={s.motion} numberOfLines={4}>{motion}</Text>
 
-        {!!(description || sideContext) && (
-          <View style={s.contextBox}>
-            {!!description && (
-              <View style={s.angleBlock}>
-                <Text style={s.angleHeading}>CONTEXT</Text>
-                <ExpandableText
-                  text={description}
-                  style={s.contextText}
-                  lines={3}
-                  toggleTone="accent"
-                  moreLabel="Read more"
-                  lessLabel="Show less"
-                />
-              </View>
-            )}
-            {!!description && !!sideContext && <View style={s.divider} />}
-            {!!sideContext && (
-              <View style={s.angleBlock}>
-                <Text style={[s.angleHeading, { color: youStance.accent }]}>YOUR ANGLE</Text>
-                <ExpandableText
-                  text={sideContext}
-                  style={s.contextText}
-                  lines={2}
-                  toggleTone="accent"
-                  moreLabel="Read more"
-                  lessLabel="Show less"
-                />
-              </View>
-            )}
-          </View>
-        )}
-      </View>
+          {!!(description || sideContext) && (
+            <View style={s.contextBox}>
+              {!!description && (
+                <View style={s.angleBlock}>
+                  <Text style={s.angleHeading} allowFontScaling={false}>CONTEXT</Text>
+                  <ExpandableText
+                    text={description}
+                    style={s.contextText}
+                    lines={3}
+                    toggleTone="accent"
+                    moreLabel="Read more"
+                    lessLabel="Show less"
+                  />
+                </View>
+              )}
+              {!!description && !!sideContext && <View style={s.divider} />}
+              {!!sideContext && (
+                <View style={s.angleBlock}>
+                  <Text style={[s.angleHeading, { color: youStance.accent }]} allowFontScaling={false}>
+                    YOUR ANGLE
+                  </Text>
+                  <ExpandableText
+                    text={sideContext}
+                    style={s.contextText}
+                    lines={2}
+                    toggleTone="accent"
+                    moreLabel="Read more"
+                    lessLabel="Show less"
+                  />
+                </View>
+              )}
+            </View>
+          )}
+        </View>
 
-      <View style={s.middle}>
+        <View style={s.middle}>
 
-        <VsLock
-          you={you}
-          youFooter={{ emoji: youStance.emoji, label: youStance.label.toUpperCase(), color: youStance.accent }}
-          opponent={{ name: opponentName, avatarUri: null }}
-          opponentFooter={{ emoji: opponentStance.emoji, label: opponentStance.label.toUpperCase(), color: opponentStance.accent }}
-          center={<Text style={[s.countdownDigit, { textShadowColor: youStance.accent }]}>{count}</Text>}
-          centerKey={count}
-          breatheDurationMs={420}
-        />
-        <Text style={s.startsInLabel}>YOUR DEBATE STARTS IN</Text>
+          <VsLock
+            you={you}
+            youFooter={{ emoji: youStance.emoji, label: youStance.label.toUpperCase(), color: youStance.accent }}
+            opponent={{ name: opponentName, avatarUri: null }}
+            opponentFooter={{ emoji: opponentStance.emoji, label: opponentStance.label.toUpperCase(), color: opponentStance.accent }}
+            center={<Text style={[s.countdownDigit, { textShadowColor: youStance.accent }]} allowFontScaling={false}>{count}</Text>}
+            centerKey={count}
+            breatheDurationMs={420}
+          />
+          <Text style={s.startsInLabel} allowFontScaling={false}>YOUR DEBATE STARTS IN</Text>
 
-        <TouchableOpacity style={s.cancelBtn} onPress={onCancel} activeOpacity={0.7}>
-          <Text style={s.cancelLabel}>Cancel match</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity style={s.cancelBtn} onPress={onCancel} activeOpacity={0.7}>
+            <Text style={s.cancelLabel}>Cancel match</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </Animated.View>
   )
 }
@@ -117,8 +128,12 @@ const s = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: colors.black,
     zIndex: 100,
+  },
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: SCREEN_PADDING,
     justifyContent: 'space-between',
+    gap: spacing.xl,
   },
 
   top: {
@@ -173,17 +188,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xl,
   },
-  missionText: {
-    fontFamily: fonts.jakarta.extraBold,
-    fontSize: 15,
-    letterSpacing: 1,
-    textAlign: 'center',
-  },
   countdownDigit: {
     fontFamily: fonts.display.black,
     fontSize: 30,
     color: colors.text,
     letterSpacing: -1.5,
+    textAlign: 'center',
     textShadowRadius: 16,
     textShadowOffset: { width: 0, height: 0 },
   },
