@@ -172,6 +172,11 @@ export default function DebateChatScreen({ route, navigation }: Props) {
       const updatedRating = rating + ratingDelta
 
       setJudging(false)
+      // The debate is fully resolved at this point — clear the socket/session
+      // state here too, not just on explicit leave/abandon, so no debate's
+      // WS connection ever outlives this screen.
+      debateSession.clear()
+      reconnectState.clear()
       navigation.replace('DebateResult', {
         motion,
         categoryId:    '',
