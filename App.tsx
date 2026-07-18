@@ -94,6 +94,7 @@ export type RootStackParamList = {
     myUserId: number
     pendingOpening?: string
     resumeRounds?: ResumeRound[]
+    debateTime?: number
   };
   DebateDetail: {
     debateId: string

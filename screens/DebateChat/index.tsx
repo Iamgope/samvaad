@@ -82,7 +82,7 @@ function useKeyboardHeight() {
 }
 
 export default function DebateChatScreen({ route, navigation }: Props) {
-  const { motion, userSide, opponentName, categoryAccent, myUserId, pendingOpening, resumeRounds } = route.params
+  const { motion, userSide, opponentName, categoryAccent, myUserId, pendingOpening, resumeRounds, debateTime } = route.params
   const resumeState = useMemo(
     () => (resumeRounds && resumeRounds.length > 0 ? buildResumeState(resumeRounds, myUserId) : null),
     [] // route.params for this screen instance never change — compute once
@@ -127,8 +127,8 @@ export default function DebateChatScreen({ route, navigation }: Props) {
   const [iHaveSentOpening, setIHaveSentOpening] = useState(resumeState?.iHaveSentOpening ?? false)
   const [hasSentInCurrentRound, setHasSentInCurrentRound] = useState(resumeState?.hasSentInCurrentRound ?? false)
   const [waitingForBotReply, setWaitingForBotReply] = useState(resumeState?.waitingForBotReply ?? false)
-  const [myTime, setMyTime] = useState(CLOCK_SECONDS)
-  const [opTime, setOpTime] = useState(CLOCK_SECONDS)
+  const [myTime, setMyTime] = useState(debateTime ?? CLOCK_SECONDS)
+  const [opTime, setOpTime] = useState(debateTime ?? CLOCK_SECONDS)
   const [over, setOver] = useState(false)
   const completedSentRef = useRef(false)
   const [draft, setDraft] = useState('')

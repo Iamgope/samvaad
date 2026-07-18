@@ -102,6 +102,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
 
   const categories: DebateCategory[] = categoriesData?.categories ?? []
   const rules: string[] = categoriesData?.rules ?? []
+  const debateTime: number | undefined = categoriesData?.debate_time
   const fetchError = categoriesError
     ? ((categoriesError as ApiError).message ?? 'Failed to load categories')
     : null
@@ -131,6 +132,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
     opponentId: number
     categoryAccent: string
     myUserId: number
+    debateTime?: number
   }
   const [matchedDebate, setMatchedDebate] = useState<MatchedDebate | null>(null)
   const { data: opponentProfile } = useUserProfileById(
@@ -265,6 +267,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
                 categoryAccent: category.accent,
                 myUserId: myUserId ?? 0,
                 resumeRounds: rounds,
+                debateTime,
               })
               return
             }
@@ -281,6 +284,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
               opponentId: opponent?.id ?? 0,
               categoryAccent: category.accent,
               myUserId: myUserId ?? 0,
+              debateTime,
             })
           } catch (navErr) {
             console.error('[WS] queue.matched handler error:', navErr)
