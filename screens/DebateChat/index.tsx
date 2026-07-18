@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../../App'
 import { colors } from '../../constants/colors'
+import { fonts } from '../../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../../constants/spacing'
 import { TextInput } from 'react-native'
 import { Text } from '../../components/Text'
@@ -13,7 +14,6 @@ import { debateSession, fetchUserProfile, mediaUrl } from '../../services/api'
 import { QUERY_KEYS, useUserProfile } from '../../hooks/useQueries'
 import { roundHalfEven } from '../../utils/math'
 import { DebateChatHeader } from './DebateChatHeader'
-import { CombatantRow } from './CombatantRow'
 import { Bubble, OpeningCard, RoundDivider, TypingDots } from './MessageBubble'
 import { DebateComposer } from './DebateComposer'
 import { OpeningShareCard, shareOpeningCard } from './OpeningShareCard'
@@ -41,7 +41,6 @@ export default function DebateChatScreen({ route, navigation }: Props) {
   const { motion, userSide, opponentName, categoryAccent, myUserId, pendingOpening } = route.params
 
   const queryClient = useQueryClient()
-  const accent = !categoryAccent || categoryAccent === colors.lime ? colors.purple : categoryAccent
   const listRef = useRef<FlatList>(null)
   const inputRef = useRef<TextInput>(null)
   const turnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -420,24 +419,19 @@ export default function DebateChatScreen({ route, navigation }: Props) {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <DebateChatHeader
-        motion={motion}
-        over={over}
-        onBack={() => over ? navigation.goBack() : setLeaveWarning(true)}
-        onForfeit={() => setLeaveWarning(true)}
-        onReport={() => { /* TODO: report flow */ }}
-      />
-
-      <CombatantRow
         opponentName={opponentName}
-        opSide={opSide}
-        userSide={userSide}
-        accent={accent}
+        myAvatarUri={myProfile ? mediaUrl(myProfile.profile_pic) : null}
+        opponentSide={opSide}
+        mySide={userSide}
         opTime={opTime}
         myTime={myTime}
-        showTypingDots={showTypingDots}
-        canType={canType}
-        myAvatarUri={myProfile ? mediaUrl(myProfile.profile_pic) : null}
+        opponentActive={showTypingDots}
+        myActive={canType}
       />
+
+      <View style={s.motionBar}>
+        <Text style={s.motionText} numberOfLines={2}>{motion}</Text>
+      </View>
 
       <FlatList
         ref={listRef}
@@ -516,6 +510,21 @@ export default function DebateChatScreen({ route, navigation }: Props) {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.black },
+  motionBar: {
+    paddingHorizontal: SCREEN_PADDING,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  motionText: {
+    fontFamily: fonts.jakarta.medium,
+    fontSize: 14.5,
+    lineHeight: 19,
+    color: colors.textMuted,
+    textAlign: 'center',
+    letterSpacing: -0.1,
+  },
   list: { paddingHorizontal: SCREEN_PADDING, paddingTop: spacing.xs, paddingBottom: spacing.md },
   wsLostBanner: {
     backgroundColor: '#7C2D12',
