@@ -73,17 +73,22 @@ export default function LoginScreen({ navigation }: Props) {
 
       <View style={s.heroArea}>
         <Image
-          source={require('../assets/login.png')}
+          source={require('../assets/login_mascot.png')}
           style={s.heroImage}
           resizeMode="contain"
         />
       </View>
 
       <View style={s.brand}>
-        <Text style={s.wordmark}>samvaad</Text>
-        <Text style={s.tagline}>
-          Make <Text style={s.taglineAccent}>better</Text> arguments.
-        </Text>
+        <Text style={s.welcomeText}>Welcome to</Text>
+        <View style={s.logoRow}>
+          <Image
+            source={require('../assets/adaptive-icon.png')}
+            style={s.logoIcon}
+            resizeMode="contain"
+          />
+          <Text style={s.wordmark}>Duella</Text>
+        </View>
       </View>
 
       <View style={s.footer}>
@@ -99,7 +104,7 @@ export default function LoginScreen({ navigation }: Props) {
           variant="pillBrand"
           label="Sign in with Google"
           onPress={handleGoogleSignIn}
-          shadowColor={colors.purple2}
+          shadowColor={colors.lime}
           leadingIcon={<GoogleLogo size={18} />}
           isLoading={loading}
           disabled={loading}
@@ -134,12 +139,27 @@ const s = StyleSheet.create({
     paddingHorizontal: HORIZONTAL,
     paddingTop: spacing.lg,
   },
-  heroImage: { width: '100%', height: '100%' },
+  heroImage: { width: '90%', height: '90%' },
 
   brand: {
+    alignItems: 'center',
     paddingHorizontal: HORIZONTAL,
     paddingBottom: spacing.xl,
     gap: 6,
+  },
+  welcomeText: {
+    fontFamily: fonts.jakarta.medium,
+    fontSize: 18,
+    color: colors.textMuted,
+  },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  logoIcon: {
+    width: 80,
+    height: 80,
   },
   wordmark: {
     fontFamily: fonts.display.black,
@@ -147,17 +167,6 @@ const s = StyleSheet.create({
     lineHeight: 46,
     color: colors.text,
     letterSpacing: -1.6,
-  },
-  tagline: {
-    fontFamily: fonts.serif.italic,
-    fontSize: 22,
-    lineHeight: 30,
-    color: colors.textMuted,
-    letterSpacing: -0.3,
-  },
-  taglineAccent: {
-    fontFamily: fonts.serif.italic,
-    color: colors.lime,
   },
 
   footer: {
@@ -173,7 +182,7 @@ const s = StyleSheet.create({
     marginTop: spacing.sm,
   },
   termsLink: {
-    color: colors.purple2,
+    color: colors.lime,
     fontFamily: fonts.jakarta.semiBold,
   },
 });
