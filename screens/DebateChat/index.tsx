@@ -24,10 +24,50 @@ import { OpeningShareCard, shareOpeningCard } from './OpeningShareCard'
 import { JudgingOverlay } from './JudgingOverlay'
 import {
   CLOCK_SECONDS, CHAR_LIMIT, PASTE_GUARD_LEN, ROUND_TYPE_LABELS,
-  type Side, type WsMsg, type RoundLabel, type Judgement,
+  type Side, type WsMsg, type RoundLabel, type Judgement, type ResumeRound,
 } from './types'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DebateChat'>
+
+const timeStr = (iso?: string) =>
+  (iso ? new Date(iso) : new Date()).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })
+
+// Reconstructs chat/turn state from the round/message history the backend
+// sends back on `queue.matched` when reconnecting into a debate already in
+// progress — so the user sees everything that happened before the drop.
+function buildResumeState(rounds: ResumeRound[], myUserId: number) {
+  const messages: WsMsg[] = []
+  const roundLabels: RoundLabel[] = []
+  let openingRoundId: number | null = null
+
+  rounds.forEach(round => {
+    if (round.round_type === 'OPENING') {
+      openingRoundId = round.round_id
+    } else {
+      roundLabels.push({ roundId: round.round_id, label: ROUND_TYPE_LABELS[round.round_type] ?? round.round_type })
+    }
+    round.messages.forEach(msg => {
+      messages.push({
+        id: String(msg.id),
+        isMe: Number(msg.user?.id) === Number(myUserId),
+        text: msg.content ?? '',
+        time: timeStr(msg.created_at),
+        roundId: msg.round_id,
+      })
+    })
+  })
+
+  const lastRound = rounds[rounds.length - 1]
+  const currentRoundType: 'OPENING' | 'REBUTTAL' = lastRound.round_type === 'OPENING' ? 'OPENING' : 'REBUTTAL'
+  const lastMessage = messages[messages.length - 1] ?? null
+  const isMyTurn = lastMessage ? !lastMessage.isMe : true
+  const iHaveSentOpening = rounds.some(r =>
+    r.round_type === 'OPENING' && r.messages.some(m => Number(m.user?.id) === Number(myUserId)))
+  const hasSentInCurrentRound = lastRound.messages.some(m => Number(m.user?.id) === Number(myUserId))
+  const waitingForBotReply = currentRoundType === 'REBUTTAL' && !isMyTurn && hasSentInCurrentRound
+
+  return { messages, roundLabels, currentRoundType, isMyTurn, iHaveSentOpening, hasSentInCurrentRound, waitingForBotReply, openingRoundId }
+}
 
 function useKeyboardHeight() {
   const [height, setHeight] = useState(0)
@@ -42,15 +82,20 @@ function useKeyboardHeight() {
 }
 
 export default function DebateChatScreen({ route, navigation }: Props) {
-  const { motion, userSide, opponentName, categoryAccent, myUserId, pendingOpening } = route.params
+  const { motion, userSide, opponentName, categoryAccent, myUserId, pendingOpening, resumeRounds } = route.params
+  const resumeState = useMemo(
+    () => (resumeRounds && resumeRounds.length > 0 ? buildResumeState(resumeRounds, myUserId) : null),
+    [] // route.params for this screen instance never change — compute once
+  )
 
   const queryClient = useQueryClient()
   const listRef = useRef<FlatList>(null)
   const inputRef = useRef<TextInput>(null)
   const turnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // The opening round's real DB id — captured from the first message we see,
-  // since the backend never actually uses 0 as a round id.
-  const openingRoundIdRef = useRef<number | null>(null)
+  // since the backend never actually uses 0 as a round id. Seeded from resume
+  // history when reconnecting mid-debate.
+  const openingRoundIdRef = useRef<number | null>(resumeState?.openingRoundId ?? null)
 
   const { data: myProfile } = useUserProfile()
   const shareCardRef = useRef<View>(null)
@@ -74,16 +119,14 @@ export default function DebateChatScreen({ route, navigation }: Props) {
 
   const opSide = (userSide === 'for' ? 'against' : 'for') as Side
 
-  const nowStr = () =>
-    new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })
-
-  const [messages, setMessages] = useState<WsMsg[]>([])
-  const [roundLabels, setRoundLabels] = useState<RoundLabel[]>([{ roundId: 0, label: 'Opening' }])
-  const [currentRoundType, setCurrentRoundType] = useState<'OPENING' | 'REBUTTAL'>('OPENING')
-  const [isMyTurn, setIsMyTurn] = useState(true)
-  const [iHaveSentOpening, setIHaveSentOpening] = useState(false)
-  const [hasSentInCurrentRound, setHasSentInCurrentRound] = useState(false)
-  const [waitingForBotReply, setWaitingForBotReply] = useState(false)
+  const [messages, setMessages] = useState<WsMsg[]>(resumeState?.messages ?? [])
+  const [roundLabels, setRoundLabels] = useState<RoundLabel[]>(
+    resumeState?.roundLabels.length ? resumeState.roundLabels : [{ roundId: 0, label: 'Opening' }])
+  const [currentRoundType, setCurrentRoundType] = useState<'OPENING' | 'REBUTTAL'>(resumeState?.currentRoundType ?? 'OPENING')
+  const [isMyTurn, setIsMyTurn] = useState(resumeState?.isMyTurn ?? true)
+  const [iHaveSentOpening, setIHaveSentOpening] = useState(resumeState?.iHaveSentOpening ?? false)
+  const [hasSentInCurrentRound, setHasSentInCurrentRound] = useState(resumeState?.hasSentInCurrentRound ?? false)
+  const [waitingForBotReply, setWaitingForBotReply] = useState(resumeState?.waitingForBotReply ?? false)
   const [myTime, setMyTime] = useState(CLOCK_SECONDS)
   const [opTime, setOpTime] = useState(CLOCK_SECONDS)
   const [over, setOver] = useState(false)
@@ -256,7 +299,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
   useEffect(() => {
     const ws = debateSession.client()
     if (!ws) return
-    reconnectState.setViewer(route.params.debateId)
+    reconnectState.setQueue({}, route.params.debateId)
 
     const handleEvent = (raw: unknown) => {
       if (!raw || typeof raw !== 'object') return
@@ -271,7 +314,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
           id: String(msg.id),
           isMe,
           text: msg.content ?? '',
-          time: nowStr(),
+          time: timeStr(),
           roundId,
         }])
         scrollToEnd()
@@ -280,15 +323,8 @@ export default function DebateChatScreen({ route, navigation }: Props) {
           setOpponentTyping(false)
           if (opponentTypingTimer.current) clearTimeout(opponentTypingTimer.current)
           setWaitingForBotReply(false)
-          setCurrentRoundType(rt => {
-            if (rt === 'REBUTTAL') {
-              if (turnTimerRef.current) clearTimeout(turnTimerRef.current)
-              turnTimerRef.current = setTimeout(() => {
-                setIsMyTurn(prev => prev ? prev : true)
-              }, 700)
-            }
-            return rt
-          })
+          if (turnTimerRef.current) { clearTimeout(turnTimerRef.current); turnTimerRef.current = null }
+          setIsMyTurn(true)
         }
       }
 
@@ -348,8 +384,9 @@ export default function DebateChatScreen({ route, navigation }: Props) {
     // Replay any events that arrived during the opening overlay
     debateSession.drainBuffer().forEach(handleEvent)
 
-    // Auto-send the opening statement written before match
-    if (pendingOpening && ws.readyState === WebSocket.OPEN) {
+    // Auto-send the opening statement written before match (never applies
+    // when resuming an in-progress debate — the opening's already done)
+    if (pendingOpening && !resumeState && ws.readyState === WebSocket.OPEN) {
       ws.send({ type: 'message', data: { content: pendingOpening } })
       setIHaveSentOpening(true)
       setIsMyTurn(false)

@@ -2,21 +2,21 @@ import NetInfo from '@react-native-community/netinfo';
 import type { WebSocketClient } from './ws';
 
 type LastJoinState =
-  | { type: 'join_queue'; data: Record<string, number | string> }
-  | { type: 'join_viewer'; data: { debate_id: number } }
+  | { type: 'join_queue'; data: Record<string, number | string | null> }
   | null;
 
 let _state: LastJoinState = null;
 
 // Tracks what the user was doing right before a connection drop, so a
-// reconnect can resend the matching join event and the backend can resume
-// the right session (matchmaking queue vs. an active debate).
+// reconnect can resend join_queue and the backend can resume the right
+// session — matchmaking queue (debate_id null) or an active debate the user
+// is a participant in (debate_id set).
 export const reconnectState = {
-  setQueue(data: Record<string, number | string>) {
-    _state = { type: 'join_queue', data };
-  },
-  setViewer(debateId: number | string) {
-    _state = { type: 'join_viewer', data: { debate_id: Number(debateId) } };
+  setQueue(data: Record<string, number | string>, debateId?: number | string | null) {
+    _state = {
+      type: 'join_queue',
+      data: { ...data, debate_id: debateId != null ? Number(debateId) : null },
+    };
   },
   get(): LastJoinState {
     return _state;

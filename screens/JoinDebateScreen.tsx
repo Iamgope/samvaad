@@ -230,6 +230,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
         if (m.type === 'queue.matched') {
           try {
             const debate = (m.data as any)?.debate
+            const rounds = (m.data as any)?.rounds
             console.log('[WS] queue.matched debate =', JSON.stringify(debate))
             if (!debate) { setConnecting(false); return }
 
@@ -240,11 +241,28 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
             if (wsRef.current) {
               debateSession.set(wsRef.current, debate.id)
               debateSession.startBuffering()
-              reconnectState.setViewer(debate.id)
+              reconnectState.setQueue({}, debate.id)
               wsRef.current = null
             }
 
             setConnecting(false)
+
+            // A `rounds` array means this debate was already in progress —
+            // we're reconnecting, not freshly matched. Skip the intro/opening
+            // flow entirely and drop straight into DebateChat with history.
+            if (Array.isArray(rounds) && rounds.length > 0) {
+              navigation.replace('DebateChat', {
+                debateId: String(debate.id),
+                motion: debate.topic?.title ?? 'Debate',
+                userSide: isUserPro ? 'for' : 'against',
+                opponentName: opponent?.username ?? 'Opponent',
+                categoryAccent: category.accent,
+                myUserId: myUserId ?? 0,
+                resumeRounds: rounds,
+              })
+              return
+            }
+
             setIntroDone(false)
             setMatchedDebate({
               debateId: String(debate.id),
@@ -282,7 +300,8 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
       if (side) data.pro_or_con = side
 
       reconnectState.setQueue(data)
-      client.send({ type: 'join_queue', data })
+      const queueState = reconnectState.get()
+      client.send({ type: 'join_queue', data: queueState?.data ?? data })
     } catch (err) {
       console.log('[WS] connect failed =', err)
       setQueueError('Could not connect to matchmaking. Please try again.')
