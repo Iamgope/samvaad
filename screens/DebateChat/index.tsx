@@ -454,15 +454,6 @@ export default function DebateChatScreen({ route, navigation }: Props) {
     }
   }
 
-  const endTurn = () => {
-    if (!isMyTurn || over || currentRoundType !== 'REBUTTAL') return
-    const ws = debateSession.client()
-    if (!ws || ws.readyState !== WebSocket.OPEN) return
-    ws.send({ type: 'end_turn', data: {} })
-    setIsMyTurn(false)
-    Keyboard.dismiss()
-  }
-
   const listData = useMemo(() => {
     type ListItem = { type: 'divider'; id: string; label: string } | (WsMsg & { type: 'msg' })
     const out: ListItem[] = []
@@ -483,7 +474,6 @@ export default function DebateChatScreen({ route, navigation }: Props) {
 
   const canType = !over && (currentRoundType === 'OPENING' ? !iHaveSentOpening : isMyTurn && !waitingForBotReply)
   const canSend = canType && !!draft.trim()
-  const canEndTurn = !over && currentRoundType === 'REBUTTAL' && isMyTurn && !waitingForBotReply && hasSentInCurrentRound
   const showTypingDots = !over && (
     opponentTyping ||
     (currentRoundType === 'OPENING' && iHaveSentOpening) ||
@@ -555,10 +545,9 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         over={over}
         canType={canType}
         canSend={canSend}
-        canEndTurn={canEndTurn}
         placeholder={placeholder}
         onSend={send}
-        onEndTurn={endTurn}
+        onEndDebate={() => setLeaveWarning(true)}
         kbHeight={kbHeight}
       />
 

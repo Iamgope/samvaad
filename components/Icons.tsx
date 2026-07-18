@@ -101,6 +101,24 @@ export function ChevronLeftIcon({
   );
 }
 
+export function CloseIcon({
+  size = 14,
+  color = colors.text,
+  strokeWidth = 2,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M6 6 L18 18 M18 6 L6 18"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 export function EditIcon({
   size = 14,
   color = colors.text,
