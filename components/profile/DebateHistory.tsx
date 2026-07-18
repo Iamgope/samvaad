@@ -8,7 +8,7 @@ import { DebateHeadline } from '../DebateHeadline';
 import { TOPICS, TopicId } from '../../constants/topics';
 
 export type FormatKey = 'stronger' | 'counter' | 'clash';
-export type TopicKey  = 'all' | 'politics' | 'sports' | 'culture';
+export type TopicKey = 'all' | 'politics' | 'sports' | 'culture';
 
 export type Match = {
   id: string;
@@ -24,8 +24,8 @@ export type Match = {
 
 const FORMAT_LABELS: Record<FormatKey, string> = {
   stronger: 'Stronger',
-  clash:    'Clash',
-  counter:  'Counter',
+  clash: 'Clash',
+  counter: 'Counter',
 };
 
 export function DebateHistory({
@@ -83,10 +83,10 @@ export function DebateHistory({
           const t = TOPICS.find(t => t.id === m.topic) ?? TOPICS[0];
           const chipStyle = m.outcome === 'win' ? styles.outcomeWin
             : m.outcome === 'loss' ? styles.outcomeLoss
-            : styles.outcomeDraw;
+              : styles.outcomeDraw;
           const chipColor = m.outcome === 'win' ? '#7FE0AA'
             : m.outcome === 'loss' ? '#E08A8A'
-            : '#93C5FD';
+              : '#93C5FD';
           return (
             <View
               key={m.id}
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   },
   outcomeChip: {
     position: 'absolute',
-    top: spacing.lg,
+    bottom: spacing.lg,
     right: 0,
     flexDirection: 'row',
     alignItems: 'center',
