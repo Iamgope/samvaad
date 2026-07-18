@@ -44,7 +44,7 @@ type HomeTopic = {
 // ─── HELPERS ──────────────────────────────────────────────────────
 
 function toHomeTopic(topic: Topic, categoryName: string): HomeTopic {
-  const uri = mediaUrl(topic.background_image)
+  const uri = mediaUrl(topic.background_image) ?? mediaUrl(topic.icon)
   return {
     id: topic.id,
     categoryName,
@@ -88,10 +88,10 @@ function Header({ onBellPress, hasUnread }: { onBellPress: () => void; hasUnread
   return (
     <View style={s.header}>
       <Text style={s.wordmark}>Duella</Text>
-      <TouchableOpacity style={s.bellBtn} activeOpacity={0.7} onPress={onBellPress} hitSlop={8}>
+      {/* <TouchableOpacity style={s.bellBtn} activeOpacity={0.7} onPress={onBellPress} hitSlop={8}>
         <BellIcon size={hasUnread ? 26 : 22} steel={hasUnread} />
         {hasUnread && <View style={s.bellDot} />}
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   )
 }
@@ -200,6 +200,7 @@ function TrendingSection({
                 categoryName={d.categoryName}
                 categoryAccent={cfg.accent}
                 image={d.image}
+                categoryIllustration={cfg.Illustration}
                 height={268}
                 style={{ width: TRENDING_CARD_WIDTH }}
                 onPress={() => onJoin(d.id)}
@@ -336,8 +337,9 @@ function ForYouSection({
               context={d.context}
               categoryName={d.categoryName}
               categoryAccent={cfg.accent}
+              image={d.image}
               categoryIcon={cfg.icon}
-              headlineSize={20}
+              headlineSize={18}
               onPress={() => onPress(d.id)}
             />
             {i < debates.length - 1 && <View style={s.headlineDivider} />}

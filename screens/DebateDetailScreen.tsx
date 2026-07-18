@@ -27,6 +27,7 @@ import { FlagIcon, EyeOffIcon, ShareIcon, ShareNodesIcon, ThumbUpIcon, ThumbDown
 import { DebateShareCard, shareDebateCard } from '../components/DebateShareCard'
 import { CommentShareCard, shareCommentCard } from '../components/CommentShareCard'
 import { DebateHeroCard } from '../components/DebateHeroCard'
+import { categoryConfig } from '../constants/categories'
 import { QUERY_KEYS, useTopicComments, useTopicVotes, useUserProfile } from '../hooks/useQueries'
 import { postTopicComment, castTopicVote, deleteTopicComment, type TopicComment, type TopicSide } from '../services/api'
 
@@ -192,6 +193,7 @@ export default function DebateDetailScreen({ route, navigation }: Props) {
           categoryName={categoryName}
           categoryAccent={categoryAccent}
           image={imageUri ? { uri: imageUri } : undefined}
+          categoryIllustration={categoryConfig(categoryId).Illustration}
           height={HERO_HEIGHT}
           borderRadius={0}
           motionSize={24}

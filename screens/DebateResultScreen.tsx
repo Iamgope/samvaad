@@ -11,6 +11,7 @@ import { Button } from '../components/Button'
 import { IconButton } from '../components/IconButton'
 import { Avatar } from '../components/Avatar'
 import { DebateHeroCard } from '../components/DebateHeroCard'
+import { categoryConfig } from '../constants/categories'
 import { DiceIcon, AnalysisIcon, ChevronLeftIcon, ShareIcon, ShareNodesIcon } from '../components/Icons'
 import { ResultShareCard, shareResultCard } from '../components/ResultShareCard'
 import { shareOpeningCard } from './DebateChat/OpeningShareCard'
@@ -82,6 +83,7 @@ export default function DebateResultScreen({ route, navigation }: Props) {
           motion={motion}
           categoryName={categoryName}
           categoryAccent={categoryAccent}
+          categoryIllustration={categoryConfig(categoryName).Illustration}
           height={180}
           borderRadius={0}
           motionSize={17}

@@ -30,7 +30,7 @@ import {
   mediaUrl,
   type DebateCategory,
 } from '../services/api'
-import { useCategories, useUserProfile } from '../hooks/useQueries'
+import { useCategories, useUserProfile, useUserProfileById } from '../hooks/useQueries'
 import { getTierInfo } from '../constants/tiers'
 import { OpeningOverlay } from './DebateChat/OpeningOverlay'
 import { MatchIntroOverlay } from './DebateChat/MatchIntroOverlay'
@@ -128,10 +128,16 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
     conContext: string | null
     userSide: 'for' | 'against'
     opponentName: string
+    opponentId: number
     categoryAccent: string
     myUserId: number
   }
   const [matchedDebate, setMatchedDebate] = useState<MatchedDebate | null>(null)
+  const { data: opponentProfile } = useUserProfileById(
+    matchedDebate?.opponentId ?? 0,
+    undefined,
+    !!matchedDebate?.opponentId,
+  )
   const [introDone, setIntroDone] = useState(false)
   const [leaveMatchWarning, setLeaveMatchWarning] = useState(false)
   const bypassLeaveGuard = useRef(false)
@@ -248,6 +254,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
               conContext: debate.topic?.con_context ?? null,
               userSide: isUserPro ? 'for' : 'against',
               opponentName: opponent?.username ?? 'Opponent',
+              opponentId: opponent?.id ?? 0,
               categoryAccent: category.accent,
               myUserId: myUserId ?? 0,
             })
@@ -417,10 +424,10 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
 
             <Text style={s.stanceHint}>
               {selectedStance.id === 'surprise'
-                ? "🎲 We'll randomly assign your stance once you're matched."
+                ? "We'll randomly assign your stance once you're matched 🎲."
                 : selectedStance.id === 'for'
-                  ? "You'll debate FOR this motion, build the case to defend it."
-                  : "You'll debate AGAINST this motion, build the case to attack it."}
+                  ? "You'll debate FOR THIS MOTION."
+                  : "You'll debate AGAINST THIS MOTION."}
             </Text>
 
           </ScrollView>
@@ -450,7 +457,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
           you={currentUser}
           youStance={STANCES.find(st => st.id === matchedDebate.userSide) ?? selectedStance}
           opponentName={matchedDebate.opponentName}
-          opponentStance={STANCES.find(st => st.id === (matchedDebate.userSide === 'for' ? 'against' : 'for')) ?? selectedStance}
+          opponentRating={opponentProfile ? Math.round(opponentProfile.elo_rating) : undefined}
           onDone={() => setIntroDone(true)}
           onCancel={() => navigation.goBack()}
         />

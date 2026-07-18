@@ -26,13 +26,11 @@ type DebateItem = {
   categoryTag: string
   isTrending: boolean
   backgroundImage: string | null
-  icon: any
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────
 
 function topicToDebateItem(topic: Topic, categoryName: string): DebateItem {
-  const iconUri = mediaUrl(topic.icon)
   return {
     id: topic.id,
     emoji: categoryConfig(categoryName).emoji,
@@ -42,8 +40,7 @@ function topicToDebateItem(topic: Topic, categoryName: string): DebateItem {
     conContext: topic.con_context ?? null,
     categoryTag: categoryName,
     isTrending: topic.is_trending ?? false,
-    backgroundImage: mediaUrl(topic.background_image),
-    icon: iconUri ? { uri: iconUri } : null,
+    backgroundImage: mediaUrl(topic.background_image) ?? mediaUrl(topic.icon),
   }
 }
 
@@ -80,9 +77,9 @@ export default function TopicScreen({ navigation, route }: Props) {
     return () => { cancelled = true }
   }, [])
 
-  const { chipOptions, selectedChip, catAccent, catIcon } = useMemo(() => {
+  const { chipOptions, selectedChip, catAccent, catIcon, catIllustration } = useMemo(() => {
     if (!groups) {
-      return { chipOptions: [] as ChipOption[], selectedChip: null as ChipOption | null, catAccent: colors.streak, catIcon: null }
+      return { chipOptions: [] as ChipOption[], selectedChip: null as ChipOption | null, catAccent: colors.streak, catIcon: null, catIllustration: undefined }
     }
     const names = CATEGORY_ORDER.filter(n => n in groups)
     const chips: ChipOption[] = names.map(name => {
@@ -91,7 +88,7 @@ export default function TopicScreen({ navigation, route }: Props) {
     })
     const chip = chips.find(c => c.id === activeCategoryId) ?? chips[0] ?? null
     const cfg = categoryConfig(chip?.id ?? '')
-    return { chipOptions: chips, selectedChip: chip, catAccent: cfg.accent, catIcon: cfg.icon }
+    return { chipOptions: chips, selectedChip: chip, catAccent: cfg.accent, catIcon: cfg.icon, catIllustration: cfg.Illustration }
   }, [groups, activeCategoryId])
 
   const debates: DebateItem[] = useMemo(() => {
@@ -180,6 +177,7 @@ export default function TopicScreen({ navigation, route }: Props) {
                 categoryName={trendingDebate.categoryTag}
                 categoryAccent={catAccent}
                 image={trendingDebate.backgroundImage ? { uri: trendingDebate.backgroundImage } : undefined}
+                categoryIllustration={catIllustration}
                 height={272}
                 motionSize={26}
                 onPress={() => openDebate(trendingDebate.id)}
@@ -203,6 +201,7 @@ export default function TopicScreen({ navigation, route }: Props) {
                     context={d.context}
                     categoryName={displayLabel}
                     categoryAccent={catAccent}
+                    image={d.backgroundImage ? { uri: d.backgroundImage } : undefined}
                     categoryIcon={catIcon}
                     headlineSize={17}
                     onPress={() => openDebate(d.id)}

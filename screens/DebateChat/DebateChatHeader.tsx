@@ -1,89 +1,105 @@
-import React, { useState } from 'react'
-import { View, StyleSheet, TouchableOpacity, Pressable } from 'react-native'
-import Svg, { Circle } from 'react-native-svg'
+import React, { useEffect, useRef } from 'react'
+import { View, StyleSheet, Animated } from 'react-native'
 import { colors } from '../../constants/colors'
 import { fonts } from '../../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../../constants/spacing'
 import { Text } from '../../components/Text'
-import { IconButton } from '../../components/IconButton'
-import { ChevronLeftIcon, FlagIcon } from '../../components/Icons'
+import { Avatar } from '../../components/Avatar'
+import type { Side } from './types'
+import { sideLabel, fmtTime, USER_BLUE } from './types'
 
-function DotsVerticalIcon({ size = 18, color = colors.text as string }) {
+const DEFAULT_AVATAR = require('../../assets/defaultprofilepic.png')
+
+// FOR = green, AGAINST = red — a clearer, more universal pair than the app's
+// blue/light-blue stance accent used elsewhere, since these two need to read
+// as distinct at a glance in a small badge.
+const FOR_COLOR = '#4ADE80'
+const AGAINST_COLOR = colors.red
+
+function PlayerBadge({ name, avatarUri, side, disconnected }: {
+  name: string
+  avatarUri?: string | null
+  side: Side
+  disconnected?: boolean
+}) {
+  const stanceColor = side === 'for' ? FOR_COLOR : AGAINST_COLOR
+  const pulse = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    if (!disconnected) return
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1, duration: 650, useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 0, duration: 650, useNativeDriver: true }),
+    ]))
+    loop.start()
+    return () => loop.stop()
+  }, [disconnected, pulse])
+
+  const reconnectOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] })
+
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx="12" cy="5" r="1.8" fill={color} />
-      <Circle cx="12" cy="12" r="1.8" fill={color} />
-      <Circle cx="12" cy="19" r="1.8" fill={color} />
-    </Svg>
+    <View style={s.playerBadge}>
+      <View style={s.avatarWrap}>
+        <Avatar
+          size={44}
+          source={avatarUri ? { uri: avatarUri } : DEFAULT_AVATAR}
+          borderColor={colors.border}
+          backgroundColor={colors.surface2}
+          style={disconnected ? { opacity: 0.4 } : undefined}
+        />
+        <View style={[s.stanceBox, { backgroundColor: stanceColor }]}>
+          <Text style={s.stanceText}>{sideLabel(side)}</Text>
+        </View>
+      </View>
+      <Text style={s.playerName} numberOfLines={1}>{name}</Text>
+      {disconnected && (
+        <Animated.Text style={[s.reconnecting, { opacity: reconnectOpacity }]} numberOfLines={1}>
+          Reconnecting…
+        </Animated.Text>
+      )}
+    </View>
   )
 }
 
 export function DebateChatHeader({
-  motion,
-  over,
-  onBack,
-  onForfeit,
-  onReport,
+  opponentName,
+  opponentAvatarUri,
+  opponentSide,
+  opponentActive,
+  opponentDisconnected,
+  opTime,
+  myAvatarUri,
+  mySide,
+  myActive,
+  myTime,
 }: {
-  motion: string
-  over: boolean
-  onBack: () => void
-  onForfeit: () => void
-  onReport: () => void
+  opponentName: string
+  opponentAvatarUri?: string | null
+  opponentSide: Side
+  opponentActive: boolean
+  opponentDisconnected?: boolean
+  opTime: number
+  myAvatarUri?: string | null
+  mySide: Side
+  myActive: boolean
+  myTime: number
 }) {
-  const [menuOpen, setMenuOpen] = useState(false)
-
   return (
     <View style={s.header}>
-      <IconButton
-        icon={<ChevronLeftIcon size={18} color={colors.text} strokeWidth={2.2} />}
-        accent={colors.text}
-        onPress={onBack}
+      <PlayerBadge
+        name={opponentName}
+        avatarUri={opponentAvatarUri}
+        side={opponentSide}
+        disconnected={opponentDisconnected}
       />
-      <View style={s.headerCenter}>
-        <Text style={s.motion} numberOfLines={2}>{motion}</Text>
+      <View style={s.timerCenter}>
+        <View style={s.timerBadge}>
+          <Text style={[s.timerText, opponentActive && { color: colors.text }]}>{fmtTime(opTime)}</Text>
+          <Text style={s.timerSep}>·</Text>
+          <Text style={[s.timerText, myActive && { color: USER_BLUE }]}>{fmtTime(myTime)}</Text>
+        </View>
       </View>
-      <View style={s.menuWrap}>
-        <IconButton
-          icon={<DotsVerticalIcon size={18} color={colors.text} />}
-          accent={colors.text}
-          onPress={() => setMenuOpen(v => !v)}
-        />
-        {menuOpen && (
-          <>
-            <Pressable style={s.menuBackdrop} onPress={() => setMenuOpen(false)} />
-            <View style={s.menu}>
-              {/*
-                Report is a lower-stakes moderation action — its icon carries the
-                red accent, but the label stays neutral so it doesn't compete with
-                the genuinely consequential action below.
-              */}
-              <TouchableOpacity
-                style={s.menuItem}
-                activeOpacity={0.7}
-                onPress={() => { setMenuOpen(false); onReport() }}
-              >
-                <FlagIcon size={15} color={colors.red} />
-                <Text style={s.menuLabelNeutral}>Report user</Text>
-              </TouchableOpacity>
-              {!over && (
-                /*
-                  Forfeiting ends the debate as a loss — the actual destructive
-                  action here — so it gets the red/danger treatment, matching how
-                  ConfirmModal already flags forfeit as `danger` elsewhere.
-                */
-                <TouchableOpacity
-                  style={[s.menuItem, s.menuItemDivider]}
-                  activeOpacity={0.7}
-                  onPress={() => { setMenuOpen(false); onForfeit() }}
-                >
-                  <Text style={s.menuLabelDanger}>Forfeit debate</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </>
-        )}
-      </View>
+      <PlayerBadge name="You" avatarUri={myAvatarUri} side={mySide} />
     </View>
   )
 }
@@ -91,47 +107,72 @@ export function DebateChatHeader({
 const s = StyleSheet.create({
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingHorizontal: SCREEN_PADDING,
     paddingVertical: spacing.sm,
     gap: spacing.sm,
     zIndex: 20,
   },
-  headerCenter: { flex: 1, alignItems: 'center' },
-  motion: {
-    fontFamily: fonts.display.bold, fontSize: 16, lineHeight: 21,
-    color: colors.text, letterSpacing: -0.3, textAlign: 'center',
+  timerCenter: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
-  menuWrap: { position: 'relative' },
-  menuBackdrop: { position: 'absolute', top: -1000, left: -2000, right: -2000, height: 4000 },
-  menu: {
-    position: 'absolute',
-    top: '100%',
-    right: 0,
-    marginTop: 6,
-    minWidth: 168,
-    backgroundColor: colors.surface2,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: 10,
-    overflow: 'hidden',
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 12,
-  },
-  menuItem: {
+  timerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 6,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.sm,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  menuItemDivider: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+  timerText: {
+    fontFamily: fonts.jakarta.extraBold,
+    fontSize: 17,
+    color: colors.text,
+    fontVariant: ['tabular-nums'],
   },
-  menuLabelNeutral: { fontFamily: fonts.jakarta.medium, fontSize: 14, color: colors.text },
-  menuLabelDanger: { fontFamily: fonts.jakarta.medium, fontSize: 14, color: colors.red },
+  timerSep: {
+    fontSize: 15,
+    fontFamily: fonts.jakarta.bold,
+    color: colors.textSubtle,
+  },
+  playerBadge: {
+    alignItems: 'center',
+    gap: 9,
+    width: 64,
+  },
+  avatarWrap: {
+    alignItems: 'center',
+  },
+  playerName: {
+    fontFamily: fonts.jakarta.medium,
+    fontSize: 10,
+    color: colors.textMuted,
+    letterSpacing: -0.1,
+  },
+  reconnecting: {
+    fontFamily: fonts.jakarta.extraBold,
+    fontSize: 8,
+    color: colors.tierMaster,
+    letterSpacing: 0.3,
+  },
+  stanceBox: {
+    position: 'absolute',
+    bottom: -5,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: colors.black,
+  },
+  stanceText: {
+    fontFamily: fonts.jakarta.extraBold,
+    fontSize: 8,
+    color: colors.text,
+    letterSpacing: 0.4,
+  },
 })
