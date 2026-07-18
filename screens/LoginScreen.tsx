@@ -139,7 +139,7 @@ const s = StyleSheet.create({
     paddingHorizontal: HORIZONTAL,
     paddingTop: spacing.lg,
   },
-  heroImage: { width: '90%', height: '90%' },
+  heroImage: { width: '80%', height: '80%' },
 
   brand: {
     alignItems: 'center',
