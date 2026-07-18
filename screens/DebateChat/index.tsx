@@ -257,12 +257,11 @@ export default function DebateChatScreen({ route, navigation }: Props) {
     reconnectState.clear()
     setLeaveWarning(false)
     bypassLeaveGuard.current = true
-    if (pendingNavAction.current) {
-      navigation.dispatch(pendingNavAction.current)
-      pendingNavAction.current = null
-    } else {
-      navigation.goBack()
-    }
+    pendingNavAction.current = null
+    // Always return home on confirmed exit — matches the behavior used when
+    // the opponent abandons the debate, regardless of how the leave was
+    // triggered (swipe-back, hardware back, or an explicit exit action).
+    navigation.reset({ index: 0, routes: [{ name: 'Main' }] })
   }
 
   // Chess clock — ticks for whoever can currently act

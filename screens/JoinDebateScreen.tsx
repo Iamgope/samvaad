@@ -175,7 +175,13 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
       if (stillExists) { setCategory(stillExists); return }
     }
     if (params?.categoryId) {
-      const match = categoryChips.find(c => c.id === params.categoryId)
+      // params.categoryId is actually the category *name* (e.g. "Politics") —
+      // it comes from TopicScreen, which keys categories by name off the
+      // /debate/topics/ endpoint, whereas these chips are built from
+      // /debate/getCategoryAndRules/ and keyed by numeric db id. Match on
+      // label instead of id, or a real category's name would never match
+      // and this would silently fall back to "All".
+      const match = categoryChips.find(c => c.label.toLowerCase() === params.categoryId!.toLowerCase())
       if (match) setCategory(match)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -410,6 +416,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
                 onSelect={setSelectedStance}
                 accent={selectedStance.accent}
                 zIndex={10}
+                menuAlign={hasSpecificTopic ? 'left' : 'right'}
               />
             </View>
 
