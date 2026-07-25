@@ -380,6 +380,23 @@ export default function DebateChatScreen({ route, navigation }: Props) {
       if (ev.type === 'opponent.connected') {
         setOpponentDisconnected(false)
       }
+
+      // Sent in reply to the `join_queue` resend from attemptResume() when our
+      // own connection drops mid-debate and comes back — carries the full
+      // round/message history so anything sent while we were offline (e.g. an
+      // opponent message that arrived during the outage) isn't lost.
+      if (ev.type === 'queue.matched' && Array.isArray(ev.data?.rounds) && ev.data.rounds.length > 0) {
+        const resumed = buildResumeState(ev.data.rounds as ResumeRound[], myUserId)
+        setMessages(resumed.messages)
+        setRoundLabels(resumed.roundLabels.length ? resumed.roundLabels : [{ roundId: 0, label: 'Opening' }])
+        setCurrentRoundType(resumed.currentRoundType)
+        setIsMyTurn(resumed.isMyTurn)
+        setIHaveSentOpening(resumed.iHaveSentOpening)
+        setHasSentInCurrentRound(resumed.hasSentInCurrentRound)
+        setWaitingForBotReply(resumed.waitingForBotReply)
+        if (resumed.openingRoundId !== null) openingRoundIdRef.current = resumed.openingRoundId
+        scrollToEnd()
+      }
     }
 
     const off = ws.on('message', handleEvent)
