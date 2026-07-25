@@ -10,7 +10,11 @@ import { TextInput } from 'react-native'
 import { Text } from '../../components/Text'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { useQueryClient } from '@tanstack/react-query'
-import { debateSession, fetchUserProfile, mediaUrl } from '../../services/api'
+import {
+  debateSession, fetchUserProfile, mediaUrl,
+  reconnectState, onConnectivityRestored, attemptResume,
+} from '../../services/api'
+import { Toast } from '../../components/Toast'
 import { QUERY_KEYS, useUserProfile } from '../../hooks/useQueries'
 import { roundHalfEven } from '../../utils/math'
 import { DebateChatHeader } from './DebateChatHeader'
@@ -20,10 +24,50 @@ import { OpeningShareCard, shareOpeningCard } from './OpeningShareCard'
 import { JudgingOverlay } from './JudgingOverlay'
 import {
   CLOCK_SECONDS, CHAR_LIMIT, PASTE_GUARD_LEN, ROUND_TYPE_LABELS,
-  type Side, type WsMsg, type RoundLabel, type Judgement,
+  type Side, type WsMsg, type RoundLabel, type Judgement, type ResumeRound,
 } from './types'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DebateChat'>
+
+const timeStr = (iso?: string) =>
+  (iso ? new Date(iso) : new Date()).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })
+
+// Reconstructs chat/turn state from the round/message history the backend
+// sends back on `queue.matched` when reconnecting into a debate already in
+// progress — so the user sees everything that happened before the drop.
+function buildResumeState(rounds: ResumeRound[], myUserId: number) {
+  const messages: WsMsg[] = []
+  const roundLabels: RoundLabel[] = []
+  let openingRoundId: number | null = null
+
+  rounds.forEach(round => {
+    if (round.round_type === 'OPENING') {
+      openingRoundId = round.round_id
+    } else {
+      roundLabels.push({ roundId: round.round_id, label: ROUND_TYPE_LABELS[round.round_type] ?? round.round_type })
+    }
+    round.messages.forEach(msg => {
+      messages.push({
+        id: String(msg.id),
+        isMe: Number(msg.user?.id) === Number(myUserId),
+        text: msg.content ?? '',
+        time: timeStr(msg.created_at),
+        roundId: msg.round_id,
+      })
+    })
+  })
+
+  const lastRound = rounds[rounds.length - 1]
+  const currentRoundType: 'OPENING' | 'REBUTTAL' = lastRound.round_type === 'OPENING' ? 'OPENING' : 'REBUTTAL'
+  const lastMessage = messages[messages.length - 1] ?? null
+  const isMyTurn = lastMessage ? !lastMessage.isMe : true
+  const iHaveSentOpening = rounds.some(r =>
+    r.round_type === 'OPENING' && r.messages.some(m => Number(m.user?.id) === Number(myUserId)))
+  const hasSentInCurrentRound = lastRound.messages.some(m => Number(m.user?.id) === Number(myUserId))
+  const waitingForBotReply = currentRoundType === 'REBUTTAL' && !isMyTurn && hasSentInCurrentRound
+
+  return { messages, roundLabels, currentRoundType, isMyTurn, iHaveSentOpening, hasSentInCurrentRound, waitingForBotReply, openingRoundId }
+}
 
 function useKeyboardHeight() {
   const [height, setHeight] = useState(0)
@@ -38,15 +82,20 @@ function useKeyboardHeight() {
 }
 
 export default function DebateChatScreen({ route, navigation }: Props) {
-  const { motion, userSide, opponentName, categoryAccent, myUserId, pendingOpening } = route.params
+  const { motion, userSide, opponentName, categoryAccent, myUserId, pendingOpening, resumeRounds, debateTime } = route.params
+  const resumeState = useMemo(
+    () => (resumeRounds && resumeRounds.length > 0 ? buildResumeState(resumeRounds, myUserId) : null),
+    [] // route.params for this screen instance never change — compute once
+  )
 
   const queryClient = useQueryClient()
   const listRef = useRef<FlatList>(null)
   const inputRef = useRef<TextInput>(null)
   const turnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // The opening round's real DB id — captured from the first message we see,
-  // since the backend never actually uses 0 as a round id.
-  const openingRoundIdRef = useRef<number | null>(null)
+  // since the backend never actually uses 0 as a round id. Seeded from resume
+  // history when reconnecting mid-debate.
+  const openingRoundIdRef = useRef<number | null>(resumeState?.openingRoundId ?? null)
 
   const { data: myProfile } = useUserProfile()
   const shareCardRef = useRef<View>(null)
@@ -70,23 +119,24 @@ export default function DebateChatScreen({ route, navigation }: Props) {
 
   const opSide = (userSide === 'for' ? 'against' : 'for') as Side
 
-  const nowStr = () =>
-    new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })
-
-  const [messages, setMessages] = useState<WsMsg[]>([])
-  const [roundLabels, setRoundLabels] = useState<RoundLabel[]>([{ roundId: 0, label: 'Opening' }])
-  const [currentRoundType, setCurrentRoundType] = useState<'OPENING' | 'REBUTTAL'>('OPENING')
-  const [isMyTurn, setIsMyTurn] = useState(true)
-  const [iHaveSentOpening, setIHaveSentOpening] = useState(false)
-  const [hasSentInCurrentRound, setHasSentInCurrentRound] = useState(false)
-  const [waitingForBotReply, setWaitingForBotReply] = useState(false)
-  const [myTime, setMyTime] = useState(CLOCK_SECONDS)
-  const [opTime, setOpTime] = useState(CLOCK_SECONDS)
+  const [messages, setMessages] = useState<WsMsg[]>(resumeState?.messages ?? [])
+  const [roundLabels, setRoundLabels] = useState<RoundLabel[]>(
+    resumeState?.roundLabels.length ? resumeState.roundLabels : [{ roundId: 0, label: 'Opening' }])
+  const [currentRoundType, setCurrentRoundType] = useState<'OPENING' | 'REBUTTAL'>(resumeState?.currentRoundType ?? 'OPENING')
+  const [isMyTurn, setIsMyTurn] = useState(resumeState?.isMyTurn ?? true)
+  const [iHaveSentOpening, setIHaveSentOpening] = useState(resumeState?.iHaveSentOpening ?? false)
+  const [hasSentInCurrentRound, setHasSentInCurrentRound] = useState(resumeState?.hasSentInCurrentRound ?? false)
+  const [waitingForBotReply, setWaitingForBotReply] = useState(resumeState?.waitingForBotReply ?? false)
+  const [myTime, setMyTime] = useState(debateTime ?? CLOCK_SECONDS)
+  const [opTime, setOpTime] = useState(debateTime ?? CLOCK_SECONDS)
   const [over, setOver] = useState(false)
   const completedSentRef = useRef(false)
   const [draft, setDraft] = useState('')
   const [wsLost, setWsLost] = useState(false)
   const [leaveWarning, setLeaveWarning] = useState(false)
+  const [opponentDisconnected, setOpponentDisconnected] = useState(false)
+  const [leaveToast, setLeaveToast] = useState<string | null>(null)
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const verdictRef = useRef<any>(null)   // stores raw judgement from debate.completed
   // Drives JudgingOverlay independently of `over` — `over` never resets, and RN's
   // Modal renders above the whole app, so relying on `over` would leave it stuck
@@ -122,6 +172,11 @@ export default function DebateChatScreen({ route, navigation }: Props) {
       const updatedRating = rating + ratingDelta
 
       setJudging(false)
+      // The debate is fully resolved at this point — clear the socket/session
+      // state here too, not just on explicit leave/abandon, so no debate's
+      // WS connection ever outlives this screen.
+      debateSession.clear()
+      reconnectState.clear()
       navigation.replace('DebateResult', {
         motion,
         categoryId:    '',
@@ -204,14 +259,14 @@ export default function DebateChatScreen({ route, navigation }: Props) {
 
   const confirmLeave = () => {
     debateSession.clear()
+    reconnectState.clear()
     setLeaveWarning(false)
     bypassLeaveGuard.current = true
-    if (pendingNavAction.current) {
-      navigation.dispatch(pendingNavAction.current)
-      pendingNavAction.current = null
-    } else {
-      navigation.goBack()
-    }
+    pendingNavAction.current = null
+    // Always return home on confirmed exit — matches the behavior used when
+    // the opponent abandons the debate, regardless of how the leave was
+    // triggered (swipe-back, hardware back, or an explicit exit action).
+    navigation.reset({ index: 0, routes: [{ name: 'Main' }] })
   }
 
   // Chess clock — ticks for whoever can currently act
@@ -248,6 +303,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
   useEffect(() => {
     const ws = debateSession.client()
     if (!ws) return
+    reconnectState.setQueue({}, route.params.debateId)
 
     const handleEvent = (raw: unknown) => {
       if (!raw || typeof raw !== 'object') return
@@ -262,7 +318,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
           id: String(msg.id),
           isMe,
           text: msg.content ?? '',
-          time: nowStr(),
+          time: timeStr(),
           roundId,
         }])
         scrollToEnd()
@@ -271,15 +327,8 @@ export default function DebateChatScreen({ route, navigation }: Props) {
           setOpponentTyping(false)
           if (opponentTypingTimer.current) clearTimeout(opponentTypingTimer.current)
           setWaitingForBotReply(false)
-          setCurrentRoundType(rt => {
-            if (rt === 'REBUTTAL') {
-              if (turnTimerRef.current) clearTimeout(turnTimerRef.current)
-              turnTimerRef.current = setTimeout(() => {
-                setIsMyTurn(prev => prev ? prev : true)
-              }, 700)
-            }
-            return rt
-          })
+          if (turnTimerRef.current) { clearTimeout(turnTimerRef.current); turnTimerRef.current = null }
+          setIsMyTurn(true)
         }
       }
 
@@ -310,6 +359,27 @@ export default function DebateChatScreen({ route, navigation }: Props) {
       if (ev.type === 'debate_result' && ev.data) {
         verdictRef.current = ev.data as Judgement
       }
+
+      if (ev.type === 'opponent.disconnected' && ev.data) {
+        const abandoned = !!ev.data.abandoned
+        if (abandoned) {
+          setLeaveToast('Opponent left the debate')
+          bypassLeaveGuard.current = true
+          exitTimerRef.current = setTimeout(() => {
+            debateSession.clear()
+            reconnectState.clear()
+            navigation.reset({ index: 0, routes: [{ name: 'Main' }] })
+          }, 900)
+        } else {
+          setOpponentDisconnected(true)
+        }
+      }
+
+      // Same event the backend sends when a user first connects to the debate —
+      // reused here as the "opponent is back" signal.
+      if (ev.type === 'opponent.connected') {
+        setOpponentDisconnected(false)
+      }
     }
 
     const off = ws.on('message', handleEvent)
@@ -318,8 +388,9 @@ export default function DebateChatScreen({ route, navigation }: Props) {
     // Replay any events that arrived during the opening overlay
     debateSession.drainBuffer().forEach(handleEvent)
 
-    // Auto-send the opening statement written before match
-    if (pendingOpening && ws.readyState === WebSocket.OPEN) {
+    // Auto-send the opening statement written before match (never applies
+    // when resuming an in-progress debate — the opening's already done)
+    if (pendingOpening && !resumeState && ws.readyState === WebSocket.OPEN) {
       ws.send({ type: 'message', data: { content: pendingOpening } })
       setIHaveSentOpening(true)
       setIsMyTurn(false)
@@ -330,8 +401,21 @@ export default function DebateChatScreen({ route, navigation }: Props) {
       offClose()
       if (turnTimerRef.current) clearTimeout(turnTimerRef.current)
       if (opponentTypingTimer.current) clearTimeout(opponentTypingTimer.current)
+      if (exitTimerRef.current) clearTimeout(exitTimerRef.current)
     }
   }, []) // mount once
+
+  // Resume the debate session if my own connection drops and comes back.
+  useEffect(() => {
+    if (over) return
+    return onConnectivityRestored(() => {
+      const ws = debateSession.client()
+      if (!ws) return
+      attemptResume(ws).then((resumed) => {
+        if (resumed) setWsLost(false)
+      })
+    })
+  }, [over])
 
   const onChangeDraft = (t: string) => {
     if (t.length - draft.length > PASTE_GUARD_LEN) return
@@ -375,15 +459,6 @@ export default function DebateChatScreen({ route, navigation }: Props) {
     }
   }
 
-  const endTurn = () => {
-    if (!isMyTurn || over || currentRoundType !== 'REBUTTAL') return
-    const ws = debateSession.client()
-    if (!ws || ws.readyState !== WebSocket.OPEN) return
-    ws.send({ type: 'end_turn', data: {} })
-    setIsMyTurn(false)
-    Keyboard.dismiss()
-  }
-
   const listData = useMemo(() => {
     type ListItem = { type: 'divider'; id: string; label: string } | (WsMsg & { type: 'msg' })
     const out: ListItem[] = []
@@ -404,7 +479,6 @@ export default function DebateChatScreen({ route, navigation }: Props) {
 
   const canType = !over && (currentRoundType === 'OPENING' ? !iHaveSentOpening : isMyTurn && !waitingForBotReply)
   const canSend = canType && !!draft.trim()
-  const canEndTurn = !over && currentRoundType === 'REBUTTAL' && isMyTurn && !waitingForBotReply && hasSentInCurrentRound
   const showTypingDots = !over && (
     opponentTyping ||
     (currentRoundType === 'OPENING' && iHaveSentOpening) ||
@@ -427,7 +501,10 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         myTime={myTime}
         opponentActive={showTypingDots}
         myActive={canType}
+        opponentDisconnected={opponentDisconnected}
       />
+
+      <Toast message={leaveToast} variant="info" onHide={() => setLeaveToast(null)} />
 
       <View style={s.motionBar}>
         <Text style={s.motionText} numberOfLines={2}>{motion}</Text>
@@ -473,10 +550,9 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         over={over}
         canType={canType}
         canSend={canSend}
-        canEndTurn={canEndTurn}
         placeholder={placeholder}
         onSend={send}
-        onEndTurn={endTurn}
+        onEndDebate={() => setLeaveWarning(true)}
         kbHeight={kbHeight}
       />
 

@@ -54,10 +54,9 @@ export function DebateComposer({
   over,
   canType,
   canSend,
-  canEndTurn,
   placeholder,
   onSend,
-  onEndTurn,
+  onEndDebate,
   kbHeight,
 }: {
   draft: string
@@ -69,10 +68,9 @@ export function DebateComposer({
   over: boolean
   canType: boolean
   canSend: boolean
-  canEndTurn: boolean
   placeholder: string
   onSend: () => void
-  onEndTurn: () => void
+  onEndDebate: () => void
   kbHeight: number
 }) {
   const { bottom } = useSafeAreaInsets()
@@ -136,11 +134,14 @@ export function DebateComposer({
             )}
             <View style={{ flex: 1 }} />
             {canType && <Text style={s.charCount}>{draft.length}/{CHAR_LIMIT}</Text>}
-            {canEndTurn && (
-              <TouchableOpacity onPress={onEndTurn} activeOpacity={0.85} style={s.endTurnBtn}>
-                <Text style={s.endTurnLabel}>End Turn</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              onPress={onEndDebate}
+              disabled={over}
+              activeOpacity={0.85}
+              style={[s.endDebateBtn, over && { opacity: 0.5 }]}
+            >
+              <Text style={s.endDebateLabel}>End debate</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={onSend}
               disabled={!canSend}
@@ -198,12 +199,12 @@ const s = StyleSheet.create({
     width: 34, height: 34, borderRadius: 17,
     alignItems: 'center', justifyContent: 'center',
   },
-  endTurnBtn: {
+  endDebateBtn: {
     paddingHorizontal: 10, paddingVertical: 5,
-    borderRadius: 8, borderWidth: 1, borderColor: colors.border,
+    borderRadius: 8, borderWidth: 1, borderColor: colors.red + '55',
   },
-  endTurnLabel: {
+  endDebateLabel: {
     fontFamily: fonts.jakarta.semiBold,
-    fontSize: 11, color: colors.textMuted, letterSpacing: 0.3,
+    fontSize: 11, color: colors.red, letterSpacing: 0.3,
   },
 })

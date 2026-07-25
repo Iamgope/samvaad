@@ -92,38 +92,46 @@ export function MatchIntroOverlay({
             <Text style={s.motion} numberOfLines={4}>{motion}</Text>
           </View>
 
-          {!!(description || sideContext) && (
-            <View style={s.contextBlock}>
-              {!!description && (
-                <View style={s.card}>
-                  <Text style={s.cardEyebrow} allowFontScaling={false}>CONTEXT</Text>
-                  <ExpandableText
-                    text={description}
-                    style={s.cardBody}
-                    lines={3}
-                    toggleTone="accent"
-                    moreLabel="Read more"
-                    lessLabel="Show less"
-                  />
-                </View>
-              )}
-              {!!sideContext && (
-                <View style={s.card}>
-                  <Text style={[s.cardEyebrow, { color: youStance.accent }]} allowFontScaling={false}>
-                    YOUR ANGLE · {youStance.label.toUpperCase()}
-                  </Text>
-                  <ExpandableText
-                    text={sideContext}
-                    style={s.cardBody}
-                    lines={2}
-                    toggleTone="accent"
-                    moreLabel="Read more"
-                    lessLabel="Show less"
-                  />
-                </View>
+          <View style={s.contextBlock}>
+            {!!description && (
+              <View style={s.card}>
+                <Text style={s.cardEyebrow} allowFontScaling={false}>CONTEXT</Text>
+                <ExpandableText
+                  text={description}
+                  style={s.cardBody}
+                  lines={3}
+                  toggleTone="accent"
+                  moreLabel="Read more"
+                  lessLabel="Show less"
+                />
+              </View>
+            )}
+
+            {/*
+              Always shown, even without a written angle — otherwise a debate
+              with no sideContext gives no indication at all of which side
+              you've been assigned.
+            */}
+            <View style={s.card}>
+              <Text style={[s.cardEyebrow, { color: youStance.accent }]} allowFontScaling={false}>
+                YOUR ANGLE · {youStance.label.toUpperCase()}
+              </Text>
+              {sideContext ? (
+                <ExpandableText
+                  text={sideContext}
+                  style={s.cardBody}
+                  lines={2}
+                  toggleTone="accent"
+                  moreLabel="Read more"
+                  lessLabel="Show less"
+                />
+              ) : (
+                <Text style={s.cardBody}>
+                  {youStance.label} this motion.
+                </Text>
               )}
             </View>
-          )}
+          </View>
 
           <Text style={s.eyebrow} allowFontScaling={false}>MATCH FOUND</Text>
 

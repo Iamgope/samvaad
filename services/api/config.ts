@@ -8,8 +8,8 @@ function devHost(): string {
 }
 
 export const BASE_URL = __DEV__
-  ? `https://vaad-vivaad-production.up.railway.app`
-  : 'https://vaad-vivaad-production.up.railway.app';
+  ? `https://api.joinduella.com`
+  : 'https://api.joinduella.com';
 
 export const APP_VERSION = "1";
 

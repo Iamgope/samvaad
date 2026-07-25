@@ -308,11 +308,11 @@ function StepReady({ username, topicCount }: StepReadyProps) {
       </Text>
 
       <View style={s.readyImageArea}>
-        <Image
+        {/* <Image
           source={require('../assets/allset.png')}
           style={s.readyImage}
           resizeMode="contain"
-        />
+        /> */}
       </View>
     </View>
   );

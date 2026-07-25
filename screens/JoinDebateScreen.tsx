@@ -24,6 +24,9 @@ import {
   ApiError,
   getCurrentUserId,
   debateSession,
+  reconnectState,
+  onConnectivityRestored,
+  attemptResume,
   mediaUrl,
   type DebateCategory,
 } from '../services/api'
@@ -99,6 +102,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
 
   const categories: DebateCategory[] = categoriesData?.categories ?? []
   const rules: string[] = categoriesData?.rules ?? []
+  const debateTime: number | undefined = categoriesData?.debate_time
   const fetchError = categoriesError
     ? ((categoriesError as ApiError).message ?? 'Failed to load categories')
     : null
@@ -128,6 +132,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
     opponentId: number
     categoryAccent: string
     myUserId: number
+    debateTime?: number
   }
   const [matchedDebate, setMatchedDebate] = useState<MatchedDebate | null>(null)
   const { data: opponentProfile } = useUserProfileById(
@@ -172,7 +177,13 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
       if (stillExists) { setCategory(stillExists); return }
     }
     if (params?.categoryId) {
-      const match = categoryChips.find(c => c.id === params.categoryId)
+      // params.categoryId is actually the category *name* (e.g. "Politics") —
+      // it comes from TopicScreen, which keys categories by name off the
+      // /debate/topics/ endpoint, whereas these chips are built from
+      // /debate/getCategoryAndRules/ and keyed by numeric db id. Match on
+      // label instead of id, or a real category's name would never match
+      // and this would silently fall back to "All".
+      const match = categoryChips.find(c => c.label.toLowerCase() === params.categoryId!.toLowerCase())
       if (match) setCategory(match)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -227,6 +238,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
         if (m.type === 'queue.matched') {
           try {
             const debate = (m.data as any)?.debate
+            const rounds = (m.data as any)?.rounds
             console.log('[WS] queue.matched debate =', JSON.stringify(debate))
             if (!debate) { setConnecting(false); return }
 
@@ -237,10 +249,29 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
             if (wsRef.current) {
               debateSession.set(wsRef.current, debate.id)
               debateSession.startBuffering()
+              reconnectState.setQueue({}, debate.id)
               wsRef.current = null
             }
 
             setConnecting(false)
+
+            // A `rounds` array means this debate was already in progress —
+            // we're reconnecting, not freshly matched. Skip the intro/opening
+            // flow entirely and drop straight into DebateChat with history.
+            if (Array.isArray(rounds) && rounds.length > 0) {
+              navigation.replace('DebateChat', {
+                debateId: String(debate.id),
+                motion: debate.topic?.title ?? 'Debate',
+                userSide: isUserPro ? 'for' : 'against',
+                opponentName: opponent?.username ?? 'Opponent',
+                categoryAccent: category.accent,
+                myUserId: myUserId ?? 0,
+                resumeRounds: rounds,
+                debateTime,
+              })
+              return
+            }
+
             setIntroDone(false)
             setMatchedDebate({
               debateId: String(debate.id),
@@ -253,6 +284,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
               opponentId: opponent?.id ?? 0,
               categoryAccent: category.accent,
               myUserId: myUserId ?? 0,
+              debateTime,
             })
           } catch (navErr) {
             console.error('[WS] queue.matched handler error:', navErr)
@@ -262,7 +294,6 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
       })
       client.on('close', (info) => {
         console.log('[WS] closed =', info)
-        wsRef.current = null
       })
       client.on('error', (err) => {
         console.log('[WS] error =', err)
@@ -278,7 +309,9 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
       const side = stanceToSide(selectedStance.id)
       if (side) data.pro_or_con = side
 
-      client.send({ type: 'join_queue', data })
+      reconnectState.setQueue(data)
+      const queueState = reconnectState.get()
+      client.send({ type: 'join_queue', data: queueState?.data ?? data })
     } catch (err) {
       console.log('[WS] connect failed =', err)
       setQueueError('Could not connect to matchmaking. Please try again.')
@@ -289,9 +322,24 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
 
   const handleCancelSearch = () => {
     closeSocket()
+    reconnectState.clear()
     setSearching(false)
     setConnecting(false)
   }
+
+  // While searching, resume matchmaking if we briefly lose and regain connectivity.
+  useEffect(() => {
+    if (!searching) return
+    return onConnectivityRestored(() => {
+      if (!wsRef.current) return
+      attemptResume(wsRef.current).then((resumed) => {
+        if (!resumed) {
+          setQueueError('Reconnected but could not resume matchmaking. Please try again.')
+          setSearching(false)
+        }
+      })
+    })
+  }, [searching])
 
   const handleBack = () => {
     if (searching || connecting) handleCancelSearch()
@@ -372,6 +420,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
                 onSelect={setSelectedStance}
                 accent={selectedStance.accent}
                 zIndex={10}
+                menuAlign={hasSpecificTopic ? 'left' : 'right'}
               />
             </View>
 

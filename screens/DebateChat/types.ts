@@ -2,6 +2,23 @@ export type Side = 'for' | 'against'
 export type WsMsg = { id: string; isMe: boolean; text: string; time: string; roundId: number }
 export type RoundLabel = { roundId: number; label: string }
 
+// Full round/message history sent back on `queue.matched` when the user is
+// reconnecting into a debate already in progress (as opposed to a fresh match).
+export type ResumeRound = {
+  round_id: number
+  round_type: string
+  order: number
+  started_at: string
+  ended_at: string | null
+  messages: {
+    id: number
+    user: { id: number; username: string }
+    content: string
+    created_at: string
+    round_id: number
+  }[]
+}
+
 export type Judgement = {
   id: number
   winner: { id: number; username: string } | null

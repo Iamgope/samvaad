@@ -1,5 +1,5 @@
-import React from 'react'
-import { View, StyleSheet } from 'react-native'
+import React, { useEffect, useRef } from 'react'
+import { View, StyleSheet, Animated } from 'react-native'
 import { colors } from '../../constants/colors'
 import { fonts } from '../../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../../constants/spacing'
@@ -16,12 +16,26 @@ const DEFAULT_AVATAR = require('../../assets/defaultprofilepic.png')
 const FOR_COLOR = '#4ADE80'
 const AGAINST_COLOR = colors.red
 
-function PlayerBadge({ name, avatarUri, side }: {
+function PlayerBadge({ name, avatarUri, side, disconnected }: {
   name: string
   avatarUri?: string | null
   side: Side
+  disconnected?: boolean
 }) {
   const stanceColor = side === 'for' ? FOR_COLOR : AGAINST_COLOR
+  const pulse = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    if (!disconnected) return
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1, duration: 650, useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 0, duration: 650, useNativeDriver: true }),
+    ]))
+    loop.start()
+    return () => loop.stop()
+  }, [disconnected, pulse])
+
+  const reconnectOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] })
 
   return (
     <View style={s.playerBadge}>
@@ -31,12 +45,18 @@ function PlayerBadge({ name, avatarUri, side }: {
           source={avatarUri ? { uri: avatarUri } : DEFAULT_AVATAR}
           borderColor={colors.border}
           backgroundColor={colors.surface2}
+          style={disconnected ? { opacity: 0.4 } : undefined}
         />
         <View style={[s.stanceBox, { backgroundColor: stanceColor }]}>
           <Text style={s.stanceText}>{sideLabel(side)}</Text>
         </View>
       </View>
       <Text style={s.playerName} numberOfLines={1}>{name}</Text>
+      {disconnected && (
+        <Animated.Text style={[s.reconnecting, { opacity: reconnectOpacity }]} numberOfLines={1}>
+          Reconnecting…
+        </Animated.Text>
+      )}
     </View>
   )
 }
@@ -46,6 +66,7 @@ export function DebateChatHeader({
   opponentAvatarUri,
   opponentSide,
   opponentActive,
+  opponentDisconnected,
   opTime,
   myAvatarUri,
   mySide,
@@ -56,6 +77,7 @@ export function DebateChatHeader({
   opponentAvatarUri?: string | null
   opponentSide: Side
   opponentActive: boolean
+  opponentDisconnected?: boolean
   opTime: number
   myAvatarUri?: string | null
   mySide: Side
@@ -64,7 +86,12 @@ export function DebateChatHeader({
 }) {
   return (
     <View style={s.header}>
-      <PlayerBadge name={opponentName} avatarUri={opponentAvatarUri} side={opponentSide} />
+      <PlayerBadge
+        name={opponentName}
+        avatarUri={opponentAvatarUri}
+        side={opponentSide}
+        disconnected={opponentDisconnected}
+      />
       <View style={s.timerCenter}>
         <View style={s.timerBadge}>
           <Text style={[s.timerText, opponentActive && { color: colors.text }]}>{fmtTime(opTime)}</Text>
@@ -126,6 +153,12 @@ const s = StyleSheet.create({
     fontSize: 10,
     color: colors.textMuted,
     letterSpacing: -0.1,
+  },
+  reconnecting: {
+    fontFamily: fonts.jakarta.extraBold,
+    fontSize: 8,
+    color: colors.tierMaster,
+    letterSpacing: 0.3,
   },
   stanceBox: {
     position: 'absolute',

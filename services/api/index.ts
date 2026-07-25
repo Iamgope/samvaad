@@ -4,6 +4,7 @@ export { tokens, getCurrentUserId } from './tokens';
 export { WebSocketClient, connectWebSocket, WS_BASE_URL } from './ws';
 export type { WebSocketClientOptions } from './ws';
 export { debateSession } from './debateSession';
+export { reconnectState, onConnectivityRestored, attemptResume } from './reconnect';
 export * from './auth';
 export * from './topics';
 export * from './categories';

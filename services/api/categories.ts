@@ -11,6 +11,7 @@ export type DebateCategory = {
 export type CategoryAndRules = {
   categories: DebateCategory[];
   rules: string[];
+  debate_time: number;
 };
 
 type ApiResponse = {

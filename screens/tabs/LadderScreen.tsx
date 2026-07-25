@@ -64,11 +64,11 @@ function getBlockColors(accent: string, position: 1 | 2 | 3): BlockColors {
   const hue = position === 1 ? accent : NEUTRAL_HUE;
   const a = BLOCK_ALPHA[position];
   return {
-    top:           hue + a.top,
-    front:         hue + a.front,
-    side:          hue + a.side,
-    edge:          hue + a.edge,
-    numeralFill:   hue + a.numFill,
+    top: hue + a.top,
+    front: hue + a.front,
+    side: hue + a.side,
+    edge: hue + a.edge,
+    numeralFill: hue + a.numFill,
     numeralStroke: hue + a.numStroke,
   };
 }
