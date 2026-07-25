@@ -47,11 +47,14 @@ function computeClockState(
 }
 
 // Live display values derived from a ClockState — the active side counts down
-// to its server deadline, the other side stays frozen at its last snapshot.
+// to its server deadline, the other side stays frozen at its last snapshot. With
+// no live deadline yet (OPENING, or before the first round_time payload arrives),
+// both sides just show their frozen fallback — neither clock is ticking.
 function deriveTimes(clock: ClockState): { my: number; op: number } {
-  const activeRemaining = clock.turnDeadline != null
-    ? Math.max(0, Math.round((clock.turnDeadline - correctedNow()) / 1000))
-    : 0
+  if (clock.turnDeadline == null) {
+    return { my: Math.round(clock.frozenMy), op: Math.round(clock.frozenOp) }
+  }
+  const activeRemaining = Math.max(0, Math.round((clock.turnDeadline - correctedNow()) / 1000))
   return clock.activeIsMe
     ? { my: activeRemaining, op: Math.round(clock.frozenOp) }
     : { my: Math.round(clock.frozenMy), op: activeRemaining }
