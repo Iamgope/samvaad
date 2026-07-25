@@ -19,6 +19,18 @@ export type ResumeRound = {
   }[]
 }
 
+// Server-authoritative rebuttal chess clock snapshot — attached to `round.advanced`,
+// `message.new` (during REBUTTAL), and the `queue.matched` resume payload. Null
+// whenever there's no live rebuttal clock (OPENING, or the round already ended).
+export type RoundTime = {
+  current_speaker_id: number | null
+  turn_started_at: string | null
+  turn_deadline: string | null
+  pro_time_remaining_seconds: number | null
+  con_time_remaining_seconds: number | null
+  server_now: string
+}
+
 export type Judgement = {
   id: number
   winner: { id: number; username: string } | null

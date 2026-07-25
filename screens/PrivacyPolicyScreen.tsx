@@ -31,7 +31,7 @@ const SECTIONS: { title: string; body: string }[] = [
   },
   {
     title: 'Contact',
-    body: 'Questions? Reach us at privacy@joinduella.com.',
+    body: 'Questions? Reach us at support@joinduella.com.',
   },
 ];
 

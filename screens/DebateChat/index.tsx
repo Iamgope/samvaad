@@ -17,6 +17,7 @@ import {
 import { Toast } from '../../components/Toast'
 import { QUERY_KEYS, useUserProfile } from '../../hooks/useQueries'
 import { roundHalfEven } from '../../utils/math'
+import { correctedNow, syncServerClock } from '../../utils/serverClock'
 import { DebateChatHeader } from './DebateChatHeader'
 import { Bubble, OpeningCard, RoundDivider, TypingDots } from './MessageBubble'
 import { DebateComposer } from './DebateComposer'
@@ -24,8 +25,37 @@ import { OpeningShareCard, shareOpeningCard } from './OpeningShareCard'
 import { JudgingOverlay } from './JudgingOverlay'
 import {
   CLOCK_SECONDS, CHAR_LIMIT, PASTE_GUARD_LEN, ROUND_TYPE_LABELS,
-  type Side, type WsMsg, type RoundLabel, type Judgement, type ResumeRound,
+  type Side, type WsMsg, type RoundLabel, type Judgement, type ResumeRound, type RoundTime,
 } from './types'
+
+// Server-authoritative rebuttal clock state, derived from the latest RoundTime
+// snapshot the backend has sent (round.advanced / message.new / resume payload).
+type ClockState = { activeIsMe: boolean; turnDeadline: number | null; frozenMy: number; frozenOp: number }
+
+function computeClockState(
+  rt: RoundTime | null | undefined, userSide: Side, myUserId: number, fallbackSeconds: number,
+): ClockState {
+  if (!rt) return { activeIsMe: true, turnDeadline: null, frozenMy: fallbackSeconds, frozenOp: fallbackSeconds }
+  const proRemaining = rt.pro_time_remaining_seconds ?? fallbackSeconds
+  const conRemaining = rt.con_time_remaining_seconds ?? fallbackSeconds
+  return {
+    activeIsMe: !!myUserId && Number(rt.current_speaker_id) === Number(myUserId),
+    turnDeadline: rt.turn_deadline ? Date.parse(rt.turn_deadline) : null,
+    frozenMy: userSide === 'for' ? proRemaining : conRemaining,
+    frozenOp: userSide === 'for' ? conRemaining : proRemaining,
+  }
+}
+
+// Live display values derived from a ClockState — the active side counts down
+// to its server deadline, the other side stays frozen at its last snapshot.
+function deriveTimes(clock: ClockState): { my: number; op: number } {
+  const activeRemaining = clock.turnDeadline != null
+    ? Math.max(0, Math.round((clock.turnDeadline - correctedNow()) / 1000))
+    : 0
+  return clock.activeIsMe
+    ? { my: activeRemaining, op: Math.round(clock.frozenOp) }
+    : { my: Math.round(clock.frozenMy), op: activeRemaining }
+}
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DebateChat'>
 
@@ -82,7 +112,10 @@ function useKeyboardHeight() {
 }
 
 export default function DebateChatScreen({ route, navigation }: Props) {
-  const { motion, userSide, opponentName, categoryAccent, myUserId, pendingOpening, resumeRounds, debateTime } = route.params
+  const {
+    motion, userSide, opponentName, categoryAccent, myUserId, pendingOpening,
+    resumeRounds, resumeRoundTime, debateTime,
+  } = route.params
   const resumeState = useMemo(
     () => (resumeRounds && resumeRounds.length > 0 ? buildResumeState(resumeRounds, myUserId) : null),
     [] // route.params for this screen instance never change — compute once
@@ -96,6 +129,17 @@ export default function DebateChatScreen({ route, navigation }: Props) {
   // since the backend never actually uses 0 as a round id. Seeded from resume
   // history when reconnecting mid-debate.
   const openingRoundIdRef = useRef<number | null>(resumeState?.openingRoundId ?? null)
+
+  // Server-authoritative rebuttal clock — see computeClockState/deriveTimes above.
+  if (resumeRoundTime) syncServerClock(resumeRoundTime.server_now)
+  const clockRef = useRef<ClockState>(
+    computeClockState(resumeRoundTime, userSide, myUserId, debateTime ?? CLOCK_SECONDS)
+  )
+  const applyRoundTime = (rt: RoundTime | null | undefined) => {
+    if (!rt) return
+    syncServerClock(rt.server_now)
+    clockRef.current = computeClockState(rt, userSide, myUserId, debateTime ?? CLOCK_SECONDS)
+  }
 
   const { data: myProfile } = useUserProfile()
   const shareCardRef = useRef<View>(null)
@@ -127,10 +171,9 @@ export default function DebateChatScreen({ route, navigation }: Props) {
   const [iHaveSentOpening, setIHaveSentOpening] = useState(resumeState?.iHaveSentOpening ?? false)
   const [hasSentInCurrentRound, setHasSentInCurrentRound] = useState(resumeState?.hasSentInCurrentRound ?? false)
   const [waitingForBotReply, setWaitingForBotReply] = useState(resumeState?.waitingForBotReply ?? false)
-  const [myTime, setMyTime] = useState(debateTime ?? CLOCK_SECONDS)
-  const [opTime, setOpTime] = useState(debateTime ?? CLOCK_SECONDS)
+  const [myTime, setMyTime] = useState(() => deriveTimes(clockRef.current).my)
+  const [opTime, setOpTime] = useState(() => deriveTimes(clockRef.current).op)
   const [over, setOver] = useState(false)
-  const completedSentRef = useRef(false)
   const [draft, setDraft] = useState('')
   const [wsLost, setWsLost] = useState(false)
   const [leaveWarning, setLeaveWarning] = useState(false)
@@ -145,12 +188,6 @@ export default function DebateChatScreen({ route, navigation }: Props) {
   useEffect(() => {
     if (!over) return
     setJudging(true)
-
-    // Tell the backend the debate is over so it triggers the judge.
-    // Safe to call even if end_turn was already used — the backend is idempotent.
-    try {
-      debateSession.client()?.send({ type: 'time_expired', data: {} })
-    } catch (_) {}
 
     const goToResult = (username: string, rating: number) => {
       const j = verdictRef.current as Judgement | null
@@ -269,35 +306,26 @@ export default function DebateChatScreen({ route, navigation }: Props) {
     navigation.reset({ index: 0, routes: [{ name: 'Main' }] })
   }
 
-  // Chess clock — ticks for whoever can currently act
+  // Chess clock — server-authoritative (see clockRef/computeClockState/deriveTimes
+  // above). Re-renders every second from the latest deadline the backend sent;
+  // never decrements locally.
   useEffect(() => {
     if (over) return
     if (currentRoundType === 'OPENING') return // Opening phase is handled by OpeningOverlay's 30s timer
 
-    const myActive = isMyTurn && !waitingForBotReply
-    const id = setInterval(() => {
-      if (myActive) setMyTime(t => Math.max(0, t - 1))
-      else setOpTime(t => Math.max(0, t - 1))
-    }, 1000)
+    const tick = () => {
+      const { my, op } = deriveTimes(clockRef.current)
+      setMyTime(my)
+      setOpTime(op)
+    }
+    tick()
+    const id = setInterval(tick, 1000)
     return () => clearInterval(id)
-  }, [currentRoundType, isMyTurn, waitingForBotReply, over])
+  }, [currentRoundType, over])
 
   useEffect(() => {
     if (!over && (myTime === 0 || opTime === 0)) setOver(true)
   }, [myTime, opTime, over])
-
-  // Ask the backend to judge the debate as soon as it ends, however it ended.
-  useEffect(() => {
-    if (!over || completedSentRef.current) return
-    completedSentRef.current = true
-    const ws = debateSession.client()
-    if (!ws || ws.readyState !== WebSocket.OPEN) return
-    try {
-      ws.send({ type: 'debate_completed', data: { debate_id: debateSession.debateId() } })
-    } catch (err) {
-      console.warn('Failed to send debate_completed', err)
-    }
-  }, [over])
 
   // Wire live WebSocket events
   useEffect(() => {
@@ -307,7 +335,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
 
     const handleEvent = (raw: unknown) => {
       if (!raw || typeof raw !== 'object') return
-      const ev = raw as { type?: string; message?: any; round?: any; data?: any; judgement?: any }
+      const ev = raw as { type?: string; message?: any; round?: any; data?: any; round_time?: RoundTime | null }
 
       if (ev.type === 'message.new' && ev.message) {
         const msg = ev.message
@@ -321,6 +349,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
           time: timeStr(),
           roundId,
         }])
+        applyRoundTime(ev.round_time)
         scrollToEnd()
 
         if (!isMe) {
@@ -340,6 +369,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         setCurrentRoundType('REBUTTAL')
         setHasSentInCurrentRound(false)
         setWaitingForBotReply(false)
+        applyRoundTime(ev.round_time)
         const firstSpeakerId = round.current_speaker_id
         setIsMyTurn(!!myUserId && Number(firstSpeakerId) === Number(myUserId))
       }
@@ -350,9 +380,10 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         opponentTypingTimer.current = setTimeout(() => setOpponentTyping(false), 3000)
       }
 
+      // Server-authoritative "the debate is over" signal — sent once a rebuttal
+      // clock genuinely expires (see check_rebuttal_deadline on the backend).
       if (ev.type === 'debate.completed') {
         if (turnTimerRef.current) clearTimeout(turnTimerRef.current)
-        if (ev.judgement) verdictRef.current = ev.judgement
         setOver(true)
       }
 
@@ -395,6 +426,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         setHasSentInCurrentRound(resumed.hasSentInCurrentRound)
         setWaitingForBotReply(resumed.waitingForBotReply)
         if (resumed.openingRoundId !== null) openingRoundIdRef.current = resumed.openingRoundId
+        applyRoundTime(ev.data?.round_time)
         scrollToEnd()
       }
     }

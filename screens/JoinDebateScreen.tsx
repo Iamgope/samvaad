@@ -239,6 +239,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
           try {
             const debate = (m.data as any)?.debate
             const rounds = (m.data as any)?.rounds
+            const roundTime = (m.data as any)?.round_time
             console.log('[WS] queue.matched debate =', JSON.stringify(debate))
             if (!debate) { setConnecting(false); return }
 
@@ -267,6 +268,7 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
                 categoryAccent: category.accent,
                 myUserId: myUserId ?? 0,
                 resumeRounds: rounds,
+                resumeRoundTime: roundTime ?? null,
                 debateTime,
               })
               return
