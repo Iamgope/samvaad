@@ -1,36 +1,26 @@
 {
   "project_info": {
-    "project_number": "377669594538",
-    "project_id": "my-project-1616589648686",
-    "storage_bucket": "my-project-1616589648686.firebasestorage.app"
+    "project_number": "683314717173",
+    "project_id": "duella-c7f67",
+    "storage_bucket": "duella-c7f67.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:377669594538:android:344e391b716bb231cb8fd3",
+        "mobilesdk_app_id": "1:683314717173:android:8057ea407c6e3e0112c0bc",
         "android_client_info": {
-          "package_name": "com.samvaad.app"
+          "package_name": "com.samvaad.com"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "377669594538-g1cdo3e8uk3lfcrgdqden8s9mnipkm11.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBvNNvJ2_t3cT3AmyPeuwAyUQ57EWKQ1k4"
+          "current_key": "AIzaSyCEGNGhxAdOwKUdE0J0JCHFGOREazlfNJM"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "377669594538-g1cdo3e8uk3lfcrgdqden8s9mnipkm11.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }
