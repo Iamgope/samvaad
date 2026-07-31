@@ -7,12 +7,17 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:683314717173:android:8057ea407c6e3e0112c0bc",
+        "mobilesdk_app_id": "1:683314717173:android:fe2f104e036e458812c0bc",
         "android_client_info": {
-          "package_name": "com.samvaad.com"
+          "package_name": "com.samvaad.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "683314717173-05hqkein1fjo3k5m7b09ienq3fuf7tjv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCEGNGhxAdOwKUdE0J0JCHFGOREazlfNJM"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "683314717173-05hqkein1fjo3k5m7b09ienq3fuf7tjv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

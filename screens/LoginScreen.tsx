@@ -14,7 +14,7 @@ import { GoogleLogo } from '../components/GoogleLogo';
 import { signInWithGoogle, ApiError, registerDeviceAsync } from '../services/api';
 
 GoogleSignin.configure({
-  webClientId: '377669594538-g1cdo3e8uk3lfcrgdqden8s9mnipkm11.apps.googleusercontent.com',
+  webClientId: '683314717173-05hqkein1fjo3k5m7b09ienq3fuf7tjv.apps.googleusercontent.com',
 });
 
 type Props = {
