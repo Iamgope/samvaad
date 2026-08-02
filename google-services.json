@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "683314717173-lnaru6v4cibfi8nrmen3uujgthcempr0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.samvaad.app",
+            "certificate_hash": "ccb408ea995422b1e27a66b8e671d770ca567efd"
+          }
+        },
+        {
           "client_id": "683314717173-05hqkein1fjo3k5m7b09ienq3fuf7tjv.apps.googleusercontent.com",
           "client_type": 3
         }
