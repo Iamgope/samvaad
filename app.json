@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.samvaad.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
