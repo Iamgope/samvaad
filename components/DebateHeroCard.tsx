@@ -85,13 +85,13 @@ export function DebateHeroCard({
         style={[
           s.tag,
           {
-            backgroundColor: categoryAccent + '33',
-            borderColor: categoryAccent + '50',
-            borderBottomColor: categoryAccent,
+            backgroundColor: colors.surface2,
+            borderColor: colors.border,
+            borderBottomColor: colors.steel,
           },
         ]}
       >
-        <Text style={[s.tagText, { color: categoryAccent }]}>{categoryName}</Text>
+        <Text style={[s.tagText, { color: colors.steel }]}>{categoryName}</Text>
       </View>
 
       <View style={s.footer}>

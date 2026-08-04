@@ -14,6 +14,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "683314717173-040ee2vsqkflfeeau934c2u40jdq3jsd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.samvaad.app",
+            "certificate_hash": "61c46cfa234062e65998a0af4f8c7deb6b1abc56"
+          }
+        },
+        {
+          "client_id": "683314717173-6286p8g47gte77gt1s0bl658teic76c2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.samvaad.app",
+            "certificate_hash": "f135da61591768ffdc1538715b538240a6c29546"
+          }
+        },
+        {
           "client_id": "683314717173-do6l2nf7pcpq9gn2gs8kdtglmc7ihfdj.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

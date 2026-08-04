@@ -66,7 +66,7 @@ export function DebateHeadline({
 
           {/* Byline: category + stat, understated, below the headline */}
           <View style={s.bylineRow}>
-            <Text style={[s.bylineCategory, { color: categoryAccent }]}>
+            <Text style={[s.bylineCategory, { color: colors.steel }]}>
               {categoryName}
             </Text>
             {hasStats ? (

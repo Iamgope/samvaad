@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Circle, Line, Path } from 'react-native-svg'
 import { useNavigation } from '@react-navigation/native'
@@ -117,15 +118,24 @@ function PillRow({
             style={[
               s.pill,
               {
-                backgroundColor:   active ? p.color + '33' : p.color + '18',
-                borderColor:       p.color + '50',
-                borderBottomColor: active ? p.color : p.color + 'AA',
+                backgroundColor: active ? undefined : colors.surface2,
+                borderColor: active ? '#A0A7B6' : colors.border,
+                borderBottomColor: active ? '#7A8193' : colors.border,
+                overflow: 'hidden',
               },
             ]}
             onPress={() => onSelect(p.id)}
             activeOpacity={0.8}
           >
-            <Text style={[s.pillLabel, { color: active ? p.color : p.color + 'BB' }]}>
+            {active && (
+              <LinearGradient
+                colors={['#F4F6FA', '#CFD4DF', '#A0A7B6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+              />
+            )}
+            <Text style={[s.pillLabel, { color: active ? '#1A1F2C' : colors.text }]}>
               {p.emoji ? `${p.emoji}  ` : ''}{p.label}
             </Text>
           </TouchableOpacity>
