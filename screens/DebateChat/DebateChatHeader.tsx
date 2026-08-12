@@ -72,6 +72,7 @@ export function DebateChatHeader({
   mySide,
   myActive,
   myTime,
+  myDisconnected,
 }: {
   opponentName: string
   opponentAvatarUri?: string | null
@@ -83,6 +84,7 @@ export function DebateChatHeader({
   mySide: Side
   myActive: boolean
   myTime: number
+  myDisconnected?: boolean
 }) {
   return (
     <View style={s.header}>
@@ -99,7 +101,7 @@ export function DebateChatHeader({
           <Text style={[s.timerText, myActive && { color: USER_BLUE }]}>{fmtTime(myTime)}</Text>
         </View>
       </View>
-      <PlayerBadge name="You" avatarUri={myAvatarUri} side={mySide} />
+      <PlayerBadge name="You" avatarUri={myAvatarUri} side={mySide} disconnected={myDisconnected} />
     </View>
   )
 }

@@ -554,6 +554,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         opponentActive={showTypingDots}
         myActive={canType}
         opponentDisconnected={opponentDisconnected}
+        myDisconnected={wsLost}
       />
 
       <Toast message={leaveToast} variant="info" onHide={() => setLeaveToast(null)} />
@@ -585,12 +586,6 @@ export default function DebateChatScreen({ route, navigation }: Props) {
         showsVerticalScrollIndicator={false}
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
       />
-
-      {wsLost && !over && (
-        <View style={s.wsLostBanner}>
-          <Text variant="labelSm" style={s.wsLostText}>Connection lost — messages may not send</Text>
-        </View>
-      )}
 
       <DebateComposer
         draft={draft}
@@ -654,12 +649,5 @@ const s = StyleSheet.create({
     letterSpacing: -0.1,
   },
   list: { paddingHorizontal: SCREEN_PADDING, paddingTop: spacing.xs, paddingBottom: spacing.md },
-  wsLostBanner: {
-    backgroundColor: '#7C2D12',
-    paddingVertical: spacing.xs,
-    paddingHorizontal: SCREEN_PADDING,
-    alignItems: 'center',
-  },
-  wsLostText: { color: '#FED7AA' },
   shareCapture: { position: 'absolute', left: -9999, top: 0 },
 })
