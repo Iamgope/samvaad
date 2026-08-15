@@ -70,8 +70,23 @@ export async function attemptResume(client: WebSocketClient): Promise<boolean> {
   if (!state) return false;
   try {
     await client.reconnect();
-    client.send({ type: state.type, data: state.data });
-    return true;
+    
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        unsubscribe();
+        resolve(false);
+      }, 5000);
+
+      const unsubscribe = client.on('message', (msg: any) => {
+        if (msg && msg.type === 'queue.matched') {
+          clearTimeout(timeout);
+          unsubscribe();
+          resolve(true);
+        }
+      });
+
+      client.send({ type: state.type, data: state.data });
+    });
   } catch {
     return false;
   }

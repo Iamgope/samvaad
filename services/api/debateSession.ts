@@ -40,7 +40,7 @@ export const debateSession = {
     _buffer = [];
     _bufferCleanup?.();
     _bufferCleanup = null;
-    _client?.close();
+    _client?.close(1000, 'Intentional leave');
     _client = null;
     _debateId = null;
   },

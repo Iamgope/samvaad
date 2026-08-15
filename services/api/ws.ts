@@ -66,6 +66,10 @@ export class WebSocketClient {
     error: new Set(),
   };
   private didRefresh = false;
+  
+  private reconnectPromise: Promise<void> | null = null;
+  private pingIntervalId: ReturnType<typeof setInterval> | null = null;
+  private pongTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly path: string,
@@ -94,10 +98,14 @@ export class WebSocketClient {
    */
   reconnect(): Promise<void> {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) return Promise.resolve();
+    if (this.reconnectPromise) return this.reconnectPromise;
     this.didRefresh = false;
-    return new Promise((resolve, reject) => {
+    this.reconnectPromise = new Promise<void>((resolve, reject) => {
       this.attempt(resolve, reject);
+    }).finally(() => {
+      this.reconnectPromise = null;
     });
+    return this.reconnectPromise;
   }
 
   private async attempt(
@@ -117,12 +125,19 @@ export class WebSocketClient {
     ws.onopen = () => {
       opened = true;
       this.didRefresh = false;
+      this.startHeartbeat();
       this.emit('open', undefined);
       resolve();
     };
 
     ws.onmessage = (e: MessageEvent) => {
-      this.emit('message', tryParse(e.data));
+      const data = tryParse(e.data);
+      if (typeof data === 'object' && data !== null && (data as any).type === 'pong') {
+        if (this.pongTimeoutId) clearTimeout(this.pongTimeoutId);
+        this.pongTimeoutId = null;
+        return;
+      }
+      this.emit('message', data);
     };
 
     ws.onerror = (e) => {
@@ -131,6 +146,7 @@ export class WebSocketClient {
 
     ws.onclose = async (e: CloseEvent) => {
       this.ws = null;
+      this.stopHeartbeat();
       const codes = this.options.authFailCodes ?? DEFAULT_AUTH_FAIL_CODES;
       const isAuthFail = codes.includes(e.code);
 
@@ -168,6 +184,25 @@ export class WebSocketClient {
 
   get readyState(): number {
     return this.ws?.readyState ?? WebSocket.CLOSED;
+  }
+
+  private startHeartbeat() {
+    this.stopHeartbeat();
+    this.pingIntervalId = setInterval(() => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.send({ type: 'ping', data: {} });
+        this.pongTimeoutId = setTimeout(() => {
+          this.close(4000, 'Ping timeout'); // Close and trigger reconnect
+        }, 5000);
+      }
+    }, 15000);
+  }
+
+  private stopHeartbeat() {
+    if (this.pingIntervalId) clearInterval(this.pingIntervalId);
+    if (this.pongTimeoutId) clearTimeout(this.pongTimeoutId);
+    this.pingIntervalId = null;
+    this.pongTimeoutId = null;
   }
 }
 
