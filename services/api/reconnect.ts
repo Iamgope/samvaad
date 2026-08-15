@@ -1,4 +1,5 @@
 import NetInfo from '@react-native-community/netinfo';
+import { AppState, type AppStateStatus } from 'react-native';
 import type { WebSocketClient } from './ws';
 
 type LastJoinState =
@@ -47,6 +48,20 @@ export function onConnectivityRestored(callback: () => void): () => void {
       wasOffline = true;
     }
   });
+}
+
+/** Fires `callback` when the app returns to the foreground (background/inactive -> active). */
+export function onAppForeground(callback: () => void): () => void {
+  let prevState: AppStateStatus = AppState.currentState;
+
+  const subscription = AppState.addEventListener('change', (nextState) => {
+    if (prevState.match(/inactive|background/) && nextState === 'active') {
+      callback();
+    }
+    prevState = nextState;
+  });
+
+  return () => subscription.remove();
 }
 
 /** Reopens `client` and resends whatever join event matches the last known state. */

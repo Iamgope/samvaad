@@ -26,6 +26,7 @@ import {
   debateSession,
   reconnectState,
   onConnectivityRestored,
+  onAppForeground,
   attemptResume,
   mediaUrl,
   type DebateCategory,
@@ -335,6 +336,22 @@ export default function JoinDebateScreen({ navigation, route }: Props) {
     return onConnectivityRestored(() => {
       if (!wsRef.current) return
       attemptResume(wsRef.current).then((resumed) => {
+        if (!resumed) {
+          setQueueError('Reconnected but could not resume matchmaking. Please try again.')
+          setSearching(false)
+        }
+      })
+    })
+  }, [searching])
+
+  // Backgrounding the app suspends/kills the socket without ever tripping
+  // NetInfo's offline->online edge, so resume separately on foreground.
+  useEffect(() => {
+    if (!searching) return
+    return onAppForeground(() => {
+      const ws = wsRef.current
+      if (!ws || ws.readyState === WebSocket.OPEN) return
+      attemptResume(ws).then((resumed) => {
         if (!resumed) {
           setQueueError('Reconnected but could not resume matchmaking. Please try again.')
           setSearching(false)

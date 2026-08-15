@@ -12,7 +12,7 @@ import { ConfirmModal } from '../../components/ConfirmModal'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   debateSession, fetchUserProfile, mediaUrl,
-  reconnectState, onConnectivityRestored, attemptResume,
+  reconnectState, onConnectivityRestored, onAppForeground, attemptResume,
 } from '../../services/api'
 import { Toast } from '../../components/Toast'
 import { QUERY_KEYS, useUserProfile } from '../../hooks/useQueries'
@@ -463,6 +463,19 @@ export default function DebateChatScreen({ route, navigation }: Props) {
     return onConnectivityRestored(() => {
       const ws = debateSession.client()
       if (!ws) return
+      attemptResume(ws).then((resumed) => {
+        if (resumed) setWsLost(false)
+      })
+    })
+  }, [over])
+
+  // Backgrounding the app suspends/kills the socket without ever tripping
+  // NetInfo's offline->online edge, so resume separately on foreground.
+  useEffect(() => {
+    if (over) return
+    return onAppForeground(() => {
+      const ws = debateSession.client()
+      if (!ws || ws.readyState === WebSocket.OPEN) return
       attemptResume(ws).then((resumed) => {
         if (resumed) setWsLost(false)
       })
