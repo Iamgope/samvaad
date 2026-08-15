@@ -542,14 +542,16 @@ export default function DebateChatScreen({ route, navigation }: Props) {
     return out
   }, [messages, roundLabels, over])
 
-  const canType = !over && (currentRoundType === 'OPENING' ? !iHaveSentOpening : isMyTurn && !waitingForBotReply)
+  const canType = !wsLost && !over && (currentRoundType === 'OPENING' ? !iHaveSentOpening : isMyTurn && !waitingForBotReply)
   const canSend = canType && !!draft.trim()
   const showTypingDots = !over && (
     opponentTyping ||
     (currentRoundType === 'OPENING' && iHaveSentOpening) ||
     (currentRoundType === 'REBUTTAL' && waitingForBotReply)
   )
-  const placeholder = over
+  const placeholder = wsLost
+    ? 'Reconnecting…'
+    : over
     ? 'Match complete'
     : currentRoundType === 'OPENING'
       ? (iHaveSentOpening ? 'Waiting for opponent…' : 'State your opening…')
