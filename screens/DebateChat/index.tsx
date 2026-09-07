@@ -538,7 +538,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
   const showTypingDots = !over && (
     opponentTyping ||
     (currentRoundType === 'OPENING' && iHaveSentOpening) ||
-    (currentRoundType === 'REBUTTAL' && waitingForBotReply)
+    (currentRoundType === 'REBUTTAL' && (!isMyTurn || waitingForBotReply))
   )
   const placeholder = over
     ? 'Match complete'
