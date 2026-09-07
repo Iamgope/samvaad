@@ -438,6 +438,26 @@ export function DiceIcon({ size = 68 }: { size?: number }) {
   )
 }
 
+export function MicIcon({
+  size = 20,
+  color = colors.text,
+  strokeWidth = 1.8,
+  filled = false,
+}: IconProps & { filled?: boolean }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        fill={filled ? color : 'none'}
+      />
+      <Path d="M5 11a7 7 0 0 0 14 0" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <Path d="M12 18v3" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 export function ThumbDownIcon({
   size = 24,
   color = colors.text,

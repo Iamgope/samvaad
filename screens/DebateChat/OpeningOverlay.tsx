@@ -7,7 +7,9 @@ import Svg, { Path, Circle } from 'react-native-svg'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Text } from '../../components/Text'
 import { IconButton } from '../../components/IconButton'
-import { ChevronLeftIcon } from '../../components/Icons'
+import { ChevronLeftIcon, MicIcon } from '../../components/Icons'
+import { Toast } from '../../components/Toast'
+import { useSpeechToText } from '../../hooks/useSpeechToText'
 import { colors } from '../../constants/colors'
 import { fonts } from '../../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../../constants/spacing'
@@ -69,6 +71,34 @@ export function OpeningOverlay({ motion, userSide, onSubmit, onBack }: Props) {
   const inputRef = useRef<TextInput>(null)
   const fadeIn = useRef(new Animated.Value(0)).current
 
+  const [sttError, setSttError] = useState<string | null>(null)
+  const { isListening, isSupported: sttSupported, start: startListening, stop: stopListening } =
+    useSpeechToText({
+      onTranscript: (t) => setText(t.slice(0, CHAR_LIMIT)),
+      onError: setSttError,
+    })
+
+  const pulse = useRef(new Animated.Value(1)).current
+  useEffect(() => {
+    if (!isListening) {
+      pulse.setValue(1)
+      return
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 0.3, duration: 500, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 500, useNativeDriver: true }),
+      ]),
+    )
+    loop.start()
+    return () => loop.stop()
+  }, [isListening, pulse])
+
+  const toggleListening = () => {
+    if (isListening) stopListening()
+    else startListening(text)
+  }
+
   const [kbHeight, setKbHeight] = useState(0)
   useEffect(() => {
     const show = Keyboard.addListener(
@@ -110,6 +140,8 @@ export function OpeningOverlay({ motion, userSide, onSubmit, onBack }: Props) {
 
   return (
     <Animated.View style={[s.overlay, { opacity: fadeIn }]}>
+      <Toast message={sttError} variant="error" onHide={() => setSttError(null)} />
+
       {/* ── Header ── */}
       <View style={[s.header, { paddingTop: insets.top + spacing.sm }]}>
         <IconButton
@@ -138,10 +170,22 @@ export function OpeningOverlay({ motion, userSide, onSubmit, onBack }: Props) {
           selectionColor={colors.text}
           maxLength={CHAR_LIMIT}
         />
+        {isListening && <Text style={s.listeningLabel}>Listening…</Text>}
       </View>
 
       {/* ── Toolbar – always at bottom, rises with keyboard ── */}
       <View style={[s.toolbar, { paddingBottom: insets.bottom + spacing.sm, marginBottom: kbHeight }]}>
+        {sttSupported && (
+          <Animated.View style={{ opacity: pulse }}>
+            <IconButton
+              icon={<MicIcon size={18} color={isListening ? colors.red : colors.text} filled={isListening} />}
+              accent={isListening ? colors.red : colors.text}
+              onPress={toggleListening}
+              size="lg"
+            />
+          </Animated.View>
+        )}
+
         <View style={s.pillBox}>
           <WatchIcon size={18} color={colors.text} />
           <Text style={[s.pillNum, { color: timerColor }]}>
@@ -230,6 +274,12 @@ const s = StyleSheet.create({
     lineHeight: 25,
     minHeight: 80,
     textAlignVertical: 'top',
+  },
+  listeningLabel: {
+    fontFamily: fonts.jakarta.medium,
+    fontSize: 12,
+    color: colors.red,
+    textAlign: 'center',
   },
 
   toolbar: {
