@@ -482,6 +482,10 @@ export default function DebateChatScreen({ route, navigation }: Props) {
     }
   }
 
+  // Bypasses the paste-guard in onChangeDraft above — dictated speech legitimately
+  // arrives in larger chunks than a keystroke, unlike a pasted argument.
+  const onSpeechTranscript = (t: string) => setDraft(t.slice(0, CHAR_LIMIT))
+
   const toggleEmoji = () =>
     setShowEmoji(v => {
       const next = !v
@@ -590,6 +594,7 @@ export default function DebateChatScreen({ route, navigation }: Props) {
       <DebateComposer
         draft={draft}
         onChangeDraft={onChangeDraft}
+        onSpeechTranscript={onSpeechTranscript}
         inputRef={inputRef}
         showEmoji={showEmoji}
         onToggleEmoji={toggleEmoji}

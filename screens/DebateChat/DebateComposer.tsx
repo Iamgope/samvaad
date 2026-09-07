@@ -1,10 +1,11 @@
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   View,
   TextInput,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Animated,
 } from 'react-native'
 import Svg, { Path, Circle } from 'react-native-svg'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -12,6 +13,9 @@ import { colors } from '../../constants/colors'
 import { fonts } from '../../constants/fonts'
 import { spacing, SCREEN_PADDING } from '../../constants/spacing'
 import { Text } from '../../components/Text'
+import { Toast } from '../../components/Toast'
+import { MicIcon } from '../../components/Icons'
+import { useSpeechToText } from '../../hooks/useSpeechToText'
 import { CHAR_LIMIT, EMOJIS, USER_BLUE } from './types'
 
 function ArrowUpIcon({ size = 18, color = colors.black as string }) {
@@ -47,6 +51,7 @@ function EmojiIcon({ size = 22, color = colors.textMuted as string }) {
 export function DebateComposer({
   draft,
   onChangeDraft,
+  onSpeechTranscript,
   inputRef,
   showEmoji,
   onToggleEmoji,
@@ -61,6 +66,7 @@ export function DebateComposer({
 }: {
   draft: string
   onChangeDraft: (t: string) => void
+  onSpeechTranscript: (t: string) => void
   inputRef: React.RefObject<TextInput | null>
   showEmoji: boolean
   onToggleEmoji: () => void
@@ -77,8 +83,45 @@ export function DebateComposer({
 
   const addEmoji = (e: string) => onChangeDraft((draft + e).slice(0, CHAR_LIMIT))
 
+  const [sttError, setSttError] = useState<string | null>(null)
+  const { isListening, isSupported: sttSupported, start: startListening, stop: stopListening } =
+    useSpeechToText({
+      onTranscript: onSpeechTranscript,
+      onError: setSttError,
+    })
+
+  // Never leave the mic looking "on" once typing stops being allowed (turn
+  // ended, debate over, waiting on opponent) — matches the emoji panel's
+  // own canType gating just above.
+  useEffect(() => {
+    if (!canType && isListening) stopListening()
+  }, [canType, isListening, stopListening])
+
+  const pulse = useRef(new Animated.Value(1)).current
+  useEffect(() => {
+    if (!isListening) {
+      pulse.setValue(1)
+      return
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 0.3, duration: 500, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 500, useNativeDriver: true }),
+      ]),
+    )
+    loop.start()
+    return () => loop.stop()
+  }, [isListening, pulse])
+
+  const toggleListening = () => {
+    if (isListening) stopListening()
+    else startListening(draft)
+  }
+
   return (
     <>
+      <Toast message={sttError} variant="error" onHide={() => setSttError(null)} />
+
       <View style={[s.composer, { paddingBottom: bottom + (kbHeight > 0 ? spacing.md : 0) }]}>
         {over && (
           <View style={s.statusRow}>
@@ -133,7 +176,15 @@ export function DebateComposer({
               </TouchableOpacity>
             )}
             <View style={{ flex: 1 }} />
-            {canType && <Text style={s.charCount}>{draft.length}/{CHAR_LIMIT}</Text>}
+            {isListening && <Text style={s.listeningLabel}>Listening…</Text>}
+            {canType && !isListening && <Text style={s.charCount}>{draft.length}/{CHAR_LIMIT}</Text>}
+            {canType && sttSupported && (
+              <TouchableOpacity onPress={toggleListening} hitSlop={8} activeOpacity={0.7}>
+                <Animated.View style={{ opacity: pulse }}>
+                  <MicIcon size={20} color={isListening ? colors.red : colors.textMuted} filled={isListening} />
+                </Animated.View>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               onPress={onEndDebate}
               disabled={over}
@@ -183,6 +234,7 @@ const s = StyleSheet.create({
   },
   inputFooter: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm },
   charCount: { fontFamily: fonts.jakarta.regular, fontSize: 11, color: colors.textSubtle },
+  listeningLabel: { fontFamily: fonts.jakarta.medium, fontSize: 11, color: colors.red },
 
   emojiPanel: {
     height: 220,

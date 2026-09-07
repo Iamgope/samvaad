@@ -44,6 +44,13 @@
             "enableShrinkResourcesInReleaseBuilds": true
           }
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow Duella to use the microphone to transcribe your debate messages.",
+          "speechRecognitionPermission": "Allow Duella to use speech recognition to transcribe your debate messages."
+        }
       ]
     ],
     "extra": {
